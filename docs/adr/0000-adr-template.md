@@ -1,29 +1,23 @@
-# [Number]. [Title]
-
-Date: YYYY-MM-DD
+# ADR NNNN - <Decision Title>
 
 ## Status
-[Proposed | Accepted | Deprecated | Superseded]
+Proposed | Accepted | Superseded | Deprecated
 
 ## Context
-What is the issue that we're seeing that is motivating this decision or change?
+Explain the problem and constraints.
 
 ## Decision
-What is the change that we're proposing and/or doing?
-
-## Consequences
-What becomes easier or more difficult to do because of this change?
-
-### Positive Consequences
-- 
-
-### Negative Consequences
-- 
+State the chosen direction.
 
 ## Alternatives Considered
-What other options were considered and why were they not chosen?
+Option 1:  
+Option 2:
 
-## References
-- Links to relevant documentation
-- Related ADRs
-- Discussion threads
+## Consequences
+Positive:  
+Negative:  
+Tradeoffs:
+
+## Links
+Journey Source:  
+Related ADRs:
