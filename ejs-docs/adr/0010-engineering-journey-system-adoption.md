@@ -44,7 +44,7 @@ Determine if an enhanced ADR approach could:
 # Collaboration Summary
 
 Human proposed extending ADRs to include agent collaboration and learning.  
-Agent suggested schema-based system and `agent.md` as control point.  
+Agent suggested schema-based system and `.github/agents/ejs-journey.agent.md` as control point.  
 Human simplified schema for portability while retaining extensibility.
 
 ---
@@ -65,8 +65,9 @@ Adopt structured, schema-driven extension to ADRs with agent instructions.
 # Decision
 
 Adopt **Engineering Journey System (EJS)** using:
-- schema-driven Journey ADRs
-- `agent.md` for agent behavior
+- a Session Journey artifact captured at session end (always)
+- numbered ADRs only for significant architecture/design decisions
+- `.github/agents/ejs-journey.agent.md` for agent behavior
 - lightweight markdown artifacts
 
 ---

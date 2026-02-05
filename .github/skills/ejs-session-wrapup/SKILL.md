@@ -1,18 +1,18 @@
-# Engineering Journey System — Session Journey + ADR Skill (pointer)
+---
+name: ejs-session-wrapup
+description: Create end-of-session EJS artifacts (always one Session Journey; ADR only when significant)
+---
 
-Canonical Copilot Agent Skill:
+# Engineering Journey System — Session Journey + ADR Skill
 
-- `.github/skills/ejs-session-wrapup/SKILL.md`
-
-This file is kept as a stable reference for humans and for tools that don’t (yet) load `.github/skills/**/SKILL.md`.
+## Purpose
+Automate end-of-session capture for developer + agent sessions.
 
 At session end, this skill:
 - always creates a single **Session Journey** artifact (collaboration + influence + iterations + experiments + learnings)
 - only creates an ADR when a significant architecture/design decision occurred
 
 This skill integrates with GitHub Copilot or compatible AI coding agents.
-
----
 
 ## Triggers
 
@@ -32,8 +32,6 @@ Also treat these as session-end signals:
 - "Push this"
 - "Create the Session Journey"
 
----
-
 ## Actions on Trigger
 
 ### 1. Switch Modes
@@ -47,16 +45,16 @@ Also treat these as session-end signals:
 ### 3. Create Session Journey (Always)
 - Use `ejs-docs/journey/_templates/journey-template.md` as base
 - Capture:
-  - Problem/Intent
-  - Collaboration summary (key prompts, suggestions, corrections)
-  - **Agent Influence** (where the agent shaped direction; where the human overrode)
-  - Experiments/evidence (what was tried, what happened)
-  - Iteration log (pivots and why)
-  - Key learnings
-  - Decisions made (including rationale)
-  - Future agent guidance
+	- Problem/Intent
+	- Collaboration summary (key prompts, suggestions, corrections)
+	- **Agent Influence** (where the agent shaped direction; where the human overrode)
+	- Experiments/evidence (what was tried, what happened)
+	- Iteration log (pivots and why)
+	- Key learnings
+	- Decisions made (including rationale)
+	- Future agent guidance
 - Write to:
-  `ejs-docs/journey/YYYY/<session-id>.md`
+	`ejs-docs/journey/YYYY/<session-id>.md`
 
 ### 4. Decision Detection (ADR Gate)
 Create an ADR only if at least one applies:
@@ -72,18 +70,21 @@ If none apply: set `decision_detected: false` in the Session Journey and do not 
 ### 5. Draft ADR (Only If Needed)
 - Use `ejs-docs/adr/0000-adr-template.md` as base
 - Create a numbered ADR at:
-  `ejs-docs/adr/NNNN-<kebab-title>.md`
+	`ejs-docs/adr/NNNN-<kebab-title>.md`
 - Requirements:
-  - include `session_id`
-  - include a link back to the Session Journey file (relative link)
-  - record considered options + rationale + consequences
-  - keep it decision-focused; details live in the Session Journey
-
----
+	- include `session_id`
+	- include a link back to the Session Journey file (relative link)
+	- record considered options + rationale + consequences
+	- keep it decision-focused; details live in the Session Journey
 
 ## Notes for Agents
 
-- Treat session content as frozen once end-session is triggered  
-- Ensure **all decisions and learning points are explicit**  
-- Do not overwrite previous Session Journeys or ADRs with the same session ID  
+- Treat session content as frozen once end-session is triggered
+- Ensure **all decisions and learning points are explicit**
+- Do not overwrite previous Session Journeys or ADRs with the same session ID
 - Links between ADR and Session Journey should be relative
+
+## Reminder: skills don’t auto-run on git events
+
+Skills are loaded by prompt relevance (based on this file’s description and your request).
+For "fire on commit/push" enforcement/reminders, use the git hooks in this repo.

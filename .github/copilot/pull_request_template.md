@@ -6,13 +6,16 @@ Brief description of what this PR changes.
 
 ## Engineering Journey System (EJS) Check
 
-- [ ] Architectural or design decisions involved
-- [ ] Journey ADR created or updated
+- [ ] Session Journey created/updated and linked
+- [ ] Significant architecture/design decision involved (only then: ADR required)
 - [ ] Collaboration with agent captured
 - [ ] Key learnings documented
 
-If applicable, link ADR(s):
-- ADR: `docs/adr/XXXX-<title>.md`
+Link Session Journey (required):
+- Session Journey: `ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md`
+
+If applicable, link ADR(s) (only for significant decisions):
+- ADR: `ejs-docs/adr/NNNN-<kebab-title>.md`
 
 ---
 

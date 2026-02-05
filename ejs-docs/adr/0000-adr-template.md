@@ -1,12 +1,13 @@
 ---
 ejs:
   type: journey-adr
-  version: 1.0
+  version: 1.1
   adr_id: XXXX
   title: <Short, descriptive title>
   date: YYYY-MM-DD
   status: proposed | accepted | deprecated
   session_id: ejs-session-<date>-<seq>
+  session_journey: ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md
 
 actors:
   humans:
@@ -19,10 +20,14 @@ actors:
 context:
   repo: <repo-name>
   branch: <branch>
-  platform: <github | ado | local>
-  tools:
-    - <tool>
 ---
+
+> ADRs are optional. Create one only when a significant architecture/design decision occurred. Otherwise, capture decisions and rationale in the Session Journey.
+
+# Session Journey
+
+Link to the originating session artifact:
+- Session Journey: `ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md`
 
 # Context
 
@@ -35,7 +40,7 @@ Include constraints, assumptions, and environmental context.
 
 What the human intended to achieve at the start of the session.
 
----
+
 
 # Collaboration Summary
 
@@ -43,6 +48,10 @@ Describe how the human and agent collaborated.
 Include notable pivots, corrections, and insights.
 
 ---
+
+# Decision Trigger / Significance
+
+Why did this session warrant an ADR (vs only a Session Journey)?
 
 # Considered Options
 
