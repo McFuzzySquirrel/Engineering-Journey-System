@@ -1,33 +1,25 @@
-# Engineering Journey System
+# Engineering Journey System (EJS)
 
-This repository implements a portable, dual‑layer system for capturing:
+Starter repository for the Engineering Journey System.
 
-- Solution Journey Records (primary learning artifact)
-- Architecture Decision Records (stable decision memory)
-- Agent Memory Extracts (prompt patterns, anti‑patterns, heuristics)
+Includes:
+- `agent.md` — agent behavior and session semantics
+- `docs/adr/adr-template.md` — ADR template for structured journey capture
+- `docs/adr/0010-engineering-journey-system-adoption.md` — example ADR
+- `.github/pull_request_template.md` — PR template with EJS checks
 
 ## Purpose
 
-Modern development involves human + AI collaboration. Traditional ADRs only capture the decision, not the reasoning, collaboration, or learning behind it. This system fixes that.
+EJS captures:
+- human + AI collaboration
+- learning and decision evolution
+- reusable knowledge for future agents
+- cross-platform engineering memory
 
-## Structure
+## How to Use
 
-/docs/journey → learning-first session records  
-/docs/adr → architectural decisions  
-/docs/agent-memory → reusable AI + dev heuristics  
-/.github/copilot → Copilot agent behavior 
-/.agents → sub-agents for extraction
-
-## Usage Flow
-
-1. Finish a coding session
-2. Trigger Copilot: **"Create Journey Record"**
-3. Commit the generated Journey + ADR (if present)
-4. Agent memory gets updated automatically
-
-## Long-Term Vision
-
-A portable cognitive memory system for:
-- Developer learning  
-- AI agent alignment  
-- Architectural traceability  
+1. Work with your coding agent as usual
+2. At session end, trigger Journey Capture Mode
+3. Agent drafts ADR, collaboration summary, and learning capture
+4. Review and commit artifacts
+5. Include links in PR template
