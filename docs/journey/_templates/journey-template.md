@@ -1,27 +1,51 @@
-# Journey Template
+---
+journey_id:
+author:
+date:
+repo:
+branchfd:
+agents_involved:
+decision_detected: false
+adr_links: []
+tags: []
+---
 
-## Date
-YYYY-MM-DD
+# Problem / Intent
+Describe the purpose of the session.
 
-## Context
-What was happening? What prompted this journey?
+# Agent Collaboration Summary
+Key prompts used  
+Key suggestions  
+Corrections required  
 
-## Goals
-What were you trying to achieve?
+# Key Learnings
+Technical insights  
+Prompting insights  
+Tooling insights  
 
-## Actions Taken
-What steps did you take?
+# Decisions Made
+- Decision:
+  - Reason:
+  - Impact:
 
-## Learnings
-What did you learn?
+# If Repeating This Work
+Do this:  
+Avoid this:  
+Watch out for:  
 
-## Outcomes
-What was the result?
+# Experiments / Alternatives Tried
+What was tried?  
+What failed?  
+Why rejected?  
 
-## Next Steps
-What should happen next?
+# Future Agent Guidance
+Prefer:  
+Avoid:  
 
-## Resources
-- Links to relevant documentation
-- Code snippets
-- References
+## MACHINE EXTRACTS
+
+### DECISIONS_EXTRACT
+
+### LEARNING_EXTRACT
+
+### AGENT_GUIDANCE_EXTRACT
