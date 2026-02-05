@@ -1,43 +1,24 @@
-# GitHub Copilot Agent Configuration
+# Skill: Solution Journey + ADR Capture
 
-This file configures the GitHub Copilot agent for this repository.
+## Mission
+Generate Journey Records and ADRs after meaningful coding sessions.
 
-## Agent Behavior
+## Trigger When
+- Feature completed
+- Refactor completed
+- PR creation
+- User says: "Create Journey Record"
 
-The agent should:
-- Follow the established folder structure
-- Use templates when creating new journeys or ADRs
-- Maintain consistency in documentation
-- Reference agent memory patterns when applicable
+## Required Outputs
+1. Journey Record  
+2. ADR draft (if decision detected)
 
-## Documentation Standards
+## Detection Rules
+- Architecture boundary changes  
+- Security or data flow changes  
+- New dependencies  
 
-### Journey Entries
-- Use the template from `docs/journey/_templates/journey-template.md`
-- Organize by year/month: `docs/journey/YYYY/MM/`
-- Name files: `YYYY-MM-DD-description.md`
-
-### Architecture Decision Records
-- Follow the ADR template: `docs/adr/0000-adr-template.md`
-- Number sequentially: `0001`, `0002`, etc.
-- Use descriptive titles
-
-### Agent Memory
-- Update patterns as you learn
-- Document successful approaches in `prompt-patterns.md`
-- Document architectural insights in `architecture-patterns.md`
-- Document pitfalls in `anti-patterns.md`
-
-## Code Standards
-
-- Write clear, maintainable code
-- Follow existing patterns in the repository
-- Document architectural decisions
-- Test thoroughly before committing
-
-## Communication
-
-- Be clear and concise
-- Provide context for decisions
-- Ask for clarification when needed
-- Document learnings for future reference
+## Quality Rules
+- Specific learnings  
+- Clear decision drivers  
+- Extractable machine sections 
