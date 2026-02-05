@@ -2,6 +2,21 @@
 
 Starter repository for the Engineering Journey System.
 
+## Why This Exists
+
+Traditional ADRs are great at recording the *final decision*, but modern development (especially human+AI collaboration) includes a lot of valuable context that usually disappears:
+
+- The prompt/response trail and the “why” behind changes
+- Experiments tried, evidence observed, and iterations/pivots
+- Trade-offs considered but not chosen
+- Agent influence vs. human overrides/corrections
+
+EJS exists to capture that reality with **low friction** and **high auditability**:
+
+- **One Session Journey per session end** (always) to preserve collaboration + evidence + learning.
+- **ADRs only when significant** (conditional, numbered) to keep the ADR ledger curated.
+- A **repo-portable, tool-agnostic** structure so the same workflow works in GitHub web, VS Code, and across teams.
+
 Includes:
 - `.github/agents/ejs-journey.agent.md` — Copilot custom agent profile (canonical)
 - `.github/skills/ejs-session-wrapup/SKILL.md` — Copilot Agent Skill (canonical)
