@@ -47,7 +47,7 @@ README.md
 
 ---
 
-## 2. Configure the Agent
+## Configure the Agent
 
 1. Ensure your coding agent (e.g., GitHub Copilot, Claude, or similar) can read `.github/agents/ejs-agent.md`.
 2. The agent will operate in **dual modes**:
@@ -61,7 +61,7 @@ README.md
 
 ---
 
-## 3. Using ADRs
+## Using ADRs
 
 1. Fill out the `adr-template.md` for each session.
 2. Example ADRs can be used as reference.
@@ -69,41 +69,24 @@ README.md
 
 ---
 
-## 4. Pull Request Integration
+## Pull Request Integration
 
 - The PR template ensures you always attach an ADR and record agent collaboration.
 - Contributors can review the session summaries and learnings before merging.
 
 ---
 
-## 5. Optional: Vector Search Integration
+## Skills Instructions
 
-You can index ADRs, collaboration summaries, and learning captures using a vector database to allow **AI-assisted Q&A** across your repository’s history.
-
-Suggested workflow:
-
-1. Extract the textual content from ADRs and summaries.
-2. Convert content into embeddings (using OpenAI, Azure, or any embedding service).
-3. Store embeddings in a vector store (Chroma, Pinecone, Milvus, or Azure AI Search).
-4. Query the vector store for similarity search during:
-   - New coding sessions
-   - Learning reviews
-   - Agent priming
-
-> This allows future agents or developers to instantly recall **similar decisions, lessons, or patterns** from prior sessions.
+1. Place `ejs-session-skill.md` in `.github/skills/`  
+2. During a coding session, the agent follows standard collaboration mode  
+3. At session end, type one of the trigger phrases  
+4. The skill writes:
+   - ADR in `docs/adr/`
+   - Collaboration summary in `docs/journey/summaries/`
+   - Key learnings in `docs/journey/learning/`
+5. Commit the files and link ADR in PR template
 
 ---
-
-## 6. Recommended Folder Structure in Your Repo
-
-- `.github/`
-   - `pull_request_template.md`
-- `.github/agents/`
-   - `ejs-agent.md`
-- `docs/adr/`
-   - `adr-template.md`
-   - `<example ADRs>`
-- `journey/summaries` – collaboration summaries
-- `journey/learning` – captured key learnings
 
 
