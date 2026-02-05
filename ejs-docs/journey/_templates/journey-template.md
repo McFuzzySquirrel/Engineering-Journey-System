@@ -14,10 +14,26 @@ refs: []
 # Problem / Intent
 Describe the purpose of the session.
 
+# Interaction Summary (Required)
+Capture the human↔agent collaboration trail in a concise, chronological form.
+
+Recommended format:
+- Human: <prompt / request>
+  - Agent: <response / guidance>
+  - Outcome: <what changed / what was decided>
+
+Do:
+- Include key prompts, constraints, and “why” questions.
+- Include pivotal corrections/pivots and what triggered them.
+
+Avoid:
+- Pasting full transcripts.
+- Including secrets, tokens, or sensitive content.
+
 # Agent Collaboration Summary
-Key prompts used  
-Key suggestions  
-Corrections required  
+Key prompts used
+Key suggestions
+Corrections required
 
 # Agent Influence (Required)
 Where did the agent influence the outcome?
@@ -53,6 +69,8 @@ Prefer:
 Avoid:  
 
 ## MACHINE EXTRACTS
+
+### INTERACTION_EXTRACT
 
 ### DECISIONS_EXTRACT
 

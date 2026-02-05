@@ -30,7 +30,8 @@ During a coding session:
 ### 2. Journey Capture Mode
 Triggered at session end:
 - create a **Session Journey** artifact (single file)
-- capture collaboration + agent influence + iterations + experiments/evidence
+- capture collaboration, including a concise Interaction Summary of human↔agent prompts/responses/outcomes
+- capture agent influence + iterations + experiments/evidence
 - extract key learnings and future-agent guidance
 - **only** draft an ADR when a significant architecture/design decision occurred
 

@@ -46,6 +46,7 @@ Also treat these as session-end signals:
 - Use `ejs-docs/journey/_templates/journey-template.md` as base
 - Capture:
 	- Problem/Intent
+	- Interaction Summary (concise human↔agent prompt/response/outcome trail)
 	- Collaboration summary (key prompts, suggestions, corrections)
 	- **Agent Influence** (where the agent shaped direction; where the human overrode)
 	- Experiments/evidence (what was tried, what happened)
@@ -53,6 +54,8 @@ Also treat these as session-end signals:
 	- Key learnings
 	- Decisions made (including rationale)
 	- Future agent guidance
+
+Also populate `## MACHINE EXTRACTS / INTERACTION_EXTRACT` with a compact prompt/response/outcome trail suitable for downstream parsing.
 - Write to:
 	`ejs-docs/journey/YYYY/<session-id>.md`
 
