@@ -1,24 +1,58 @@
 # Skill: Solution Journey + ADR Capture
 
-## Mission
-Generate Journey Records and ADRs after meaningful coding sessions.
+## Triggers
 
-## Trigger When
-- Feature completed
-- Refactor completed
-- PR creation
-- User says: "Create Journey Record"
+- User comment: "Create Journey Record"
+- PR events: opened, synchronize, ready_for_review
+- Post-merge to main (index & lint pass)
 
-## Required Outputs
-1. Journey Record  
-2. ADR draft (if decision detected)
+## Steps
 
-## Detection Rules
-- Architecture boundary changes  
-- Security or data flow changes  
-- New dependencies  
+1) Collect context:
+   - Git diff (primary)
+   - PR title/body & linked issues
+   - Changed files summary and test coverage deltas if available
+   - Past ADRs & journeys for cross-linking
+2) Draft Journey (use template below)
+3) Detect decisions → draft ADR
+4) Update Agent Memory extracts
+5) Update ADR index
+6) Run lint (structure + links) and fix if trivial
+7) Output summary as PR comment
 
-## Quality Rules
-- Specific learnings  
-- Clear decision drivers  
-- Extractable machine sections 
+## Journey Template (strict)
+
+journey_id: auto author: ${author} date: ${yyyy-mm-dd} repo: ${repo} branch: ${branch} agents_involved:
+ - github_copilot decision_detected: ${true|false} adr_links: [] tags: [architecture, agent-collaboration]
+Problem / Intent
+Agent Collaboration Summary
+Key Learnings
+Decisions Made
+If Repeating This Work
+Experiments / Alternatives Tried
+Future Agent Guidance
+
+MACHINE EXTRACTS
+- DECISIONS_EXTRACT
+- LEARNING_EXTRACT
+- AGENT_GUIDANCE_EXTRACT
+
+## ADR Template (strict)
+
+ADR NNNN -
+Status
+ - Accepted
+Context
+Decision
+Alternatives Considered
+- Option A:
+- Option B:
+
+Consequences
+Positive: Negative: Tradeoffs:
+
+Links
+Journey Source: Related ADRs:
+
+
+            - Memory updates: ${{ steps.gen.outputs.memory_updates }}
