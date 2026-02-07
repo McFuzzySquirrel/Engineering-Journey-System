@@ -39,6 +39,7 @@ EJS captures:
 ## How to Use
 
 ### Visual Overview
+A quick visual flowchart to show the new flow:
 
 ```mermaid
 flowchart TD
@@ -79,6 +80,9 @@ flowchart TD
     style Finalize fill:#cce5ff
     style CreateADR fill:#f8d7da
 ```
+### Data Flows
+
+To see the data flow of how this works both in a **single user and agent interaction** and a **multi-agent / sub-agent ineraction** check the [Session Lifecycle Patterns](https://github.com/McFuzzySquirrel/Engineering-Journey-System/blob/main/ejs-docs/agent-memory/session-lifecycle-patterns.md)
 
 ### New Session-Lifecycle Approach (Recommended)
 
