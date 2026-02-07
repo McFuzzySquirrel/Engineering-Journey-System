@@ -38,12 +38,36 @@ EJS captures:
 
 ## How to Use
 
-1. Work with your coding agent as usual
-2. At session end, trigger Journey Capture Mode
-3. Agent always drafts a **Session Journey** artifact
-4. Agent drafts a numbered ADR only if a significant architecture/design decision occurred
-5. Review and commit artifacts
-6. Include links in PR template
+### New Session-Lifecycle Approach (Recommended)
+
+1. **At session start**, initialize the Session Journey:
+   - Agent creates `ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md`
+   - Initial metadata and problem/intent are captured
+   - Structure is ready for continuous updates
+
+2. **During the session**, work with your coding agent as usual:
+   - Agent continuously updates the Session Journey as work progresses
+   - Interactions, experiments, learnings captured in real-time
+   - No need to remember details for end-of-session reconstruction
+
+3. **At session end**, finalize the journey:
+   - Agent completes all sections with coherent summaries
+   - Machine extracts are populated
+   - Agent drafts a numbered ADR only if a significant architecture/design decision occurred
+
+4. **Review and commit** artifacts:
+   - Verify Session Journey completeness
+   - Review ADR if created
+   - Include links in PR template
+
+### Why This Approach?
+
+**Incremental capture throughout the session** produces better documentation than end-of-session reconstruction:
+- Context preserved when fresh (not from memory)
+- Accurate collaboration trail (recorded as it happens)
+- Reduced end-of-session burden (most work already done)
+- Higher quality documentation (real-time vs. retrospective)
+- Better for multi-step/multi-agent sessions (preserves full history)
 
 ### Make It “Fire” on Commit/Push
 
@@ -114,14 +138,24 @@ If you work primarily in VS Code, you can use the same custom agent + skill file
 - Use the agent dropdown to select `ejs-journey`.
 - If you don’t see it, use the agent dropdown → “Configure Custom Agents…” and ensure the workspace agent profile exists at `.github/agents/ejs-journey.agent.md`.
 
-### Skill (session wrap-up)
+### Skill (session management)
 
 Agent Skills support is evolving across Copilot surfaces. If your VS Code/Copilot build supports skills, Copilot can load `.github/skills/ejs-session-wrapup/SKILL.md` when relevant.
 
-If skills aren’t loading automatically, you can still get the same behavior by explicitly prompting:
+If skills aren't loading automatically, you can still get the same behavior by explicitly prompting:
 
-- “Wrap up this session”
-- “Use the ejs-session-wrapup skill and wrap up this session”
+**At session start:**
+- "Initialize session"
+- "Let's start working on [task]"
+- "Create session journey"
+
+**During session:**
+- The agent automatically updates the Session Journey as work progresses
+
+**At session end:**
+- "Wrap up this session"
+- "Finalize journey"
+- "Use the ejs-session-wrapup skill and wrap up this session"
 
 ### Commit/push reminders
 
@@ -183,12 +217,13 @@ ejs-docs/
 
 ### What to do in GitHub web (your next step)
 
-- Make sure the copied files are committed and merged to the target repo’s default branch (so GitHub web can discover the agent/skill).
+- Make sure the copied files are committed and merged to the target repo's default branch (so GitHub web can discover the agent/skill).
 - Start a Copilot coding session and select the `ejs-journey` custom agent.
-- Work normally.
-- At session end, say: “Wrap up this session” (or explicitly: “Use the ejs-session-wrapup skill and wrap up this session”).
+- **At session start**, say: "Initialize session" or "Let's start working on [task]" to create the initial Session Journey.
+- Work normally throughout the session. The agent will continuously update the Session Journey as you collaborate.
+- **At session end**, say: "Wrap up this session" or "Finalize journey" to complete the Session Journey.
 - Expect outputs under:
-  - `ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md` (always)
+  - `ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md` (created at start, updated throughout, finalized at end)
   - `ejs-docs/adr/NNNN-<kebab-title>.md` (only if decision rubric triggers)
 
 
