@@ -6,6 +6,193 @@ EJS uses a **start-of-session initialization** with **continuous updates** appro
 
 This pattern produces higher-quality documentation by capturing context in real-time as work progresses.
 
+## Flow Diagrams
+
+### Single User-Agent Interaction
+
+The following diagram shows a typical EJS session with a single human user and one AI agent:
+
+```mermaid
+sequenceDiagram
+    participant H as Human
+    participant A as Agent
+    participant J as Session Journey
+
+    Note over H,A: Session Start
+    H->>A: "Let's start working on [task]"
+    A->>J: Create journey file<br/>ejs-session-YYYY-MM-DD-001.md
+    A->>J: Write metadata + initial problem/intent
+    A->>H: "Session initialized: ejs-session-YYYY-MM-DD-001"
+    
+    Note over H,A: Active Collaboration (Continuous Updates)
+    
+    H->>A: "Implement feature X"
+    A->>A: Work on implementation
+    A->>J: Update Interaction Summary
+    A->>J: Record decision made
+    A->>H: Implementation complete
+    
+    H->>A: "Let's refactor this part"
+    A->>A: Refactor code
+    A->>J: Update Iteration Log (pivot)
+    A->>J: Record learning
+    A->>H: Refactoring complete
+    
+    H->>A: "Should we use approach A or B?"
+    A->>H: Discuss trade-offs
+    A->>J: Update Decisions Made
+    A->>J: Flag potential ADR
+    H->>A: "Let's go with approach A"
+    A->>A: Implement approach A
+    A->>J: Update with decision rationale
+    
+    Note over H,A: Session End
+    H->>A: "Wrap up this session"
+    A->>J: Finalize all sections
+    A->>J: Populate machine extracts
+    A->>J: Apply ADR decision rubric
+    alt ADR criteria met
+        A->>J: Set decision_detected: true
+        A->>J: Create ADR 00XX
+        A->>J: Link ADR ↔ Journey
+    else No significant decision
+        A->>J: Set decision_detected: false
+    end
+    A->>H: "Session finalized: ejs-session-YYYY-MM-DD-001"
+```
+
+### Multi-Agent and Sub-Agent Scenario
+
+The following diagram shows a more complex scenario with multiple agents and sub-agents collaborating on a task:
+
+```mermaid
+sequenceDiagram
+    participant H as Human
+    participant MA as Main Agent
+    participant SA1 as Sub-Agent 1<br/>(Code Review)
+    participant SA2 as Sub-Agent 2<br/>(Testing)
+    participant SA3 as Sub-Agent 3<br/>(Documentation)
+    participant J as Session Journey
+
+    Note over H,MA: Session Start
+    H->>MA: "Let's refactor the authentication system"
+    MA->>J: Create journey file<br/>ejs-session-YYYY-MM-DD-001.md
+    MA->>J: Write metadata<br/>agents_involved: [Main, Code Review, Testing, Docs]
+    MA->>H: "Session initialized"
+    
+    Note over H,MA: Phase 1: Initial Implementation
+    H->>MA: "Extract JWT validation logic"
+    MA->>MA: Implement extraction
+    MA->>J: Update Interaction Summary
+    MA->>J: Record implementation decision
+    MA->>H: Implementation complete
+    
+    Note over H,MA: Phase 2: Code Review (Delegate to Sub-Agent)
+    H->>MA: "Review the changes"
+    MA->>SA1: Request code review
+    SA1->>SA1: Analyze changes
+    SA1->>MA: Review feedback: "Add input validation"
+    MA->>J: Update Interaction Summary<br/>(Sub-agent feedback)
+    MA->>H: "Code review suggests adding validation"
+    H->>MA: "Good point, add it"
+    MA->>MA: Add validation
+    MA->>J: Update Iteration Log (refinement)
+    
+    Note over H,MA: Phase 3: Testing (Delegate to Sub-Agent)
+    MA->>SA2: Run tests for auth changes
+    SA2->>SA2: Execute test suite
+    SA2->>MA: Test results: 2 failures
+    MA->>J: Update Experiments/Evidence
+    MA->>H: "Tests found 2 failures"
+    H->>MA: "Fix those issues"
+    MA->>MA: Fix test failures
+    MA->>SA2: Re-run tests
+    SA2->>SA2: Execute test suite
+    SA2->>MA: All tests pass
+    MA->>J: Update Experiments/Evidence<br/>(tests now passing)
+    
+    Note over H,MA: Phase 4: Documentation (Delegate to Sub-Agent)
+    H->>MA: "Update the API docs"
+    MA->>SA3: Update authentication docs
+    SA3->>SA3: Generate documentation
+    SA3->>MA: Documentation updated
+    MA->>J: Update Iteration Log
+    MA->>H: "Documentation complete"
+    
+    Note over H,MA: Session End
+    H->>MA: "Wrap up this session"
+    MA->>J: Finalize Interaction Summary<br/>(including all sub-agent interactions)
+    MA->>J: Complete all sections
+    MA->>J: Populate machine extracts
+    MA->>J: Apply ADR decision rubric
+    MA->>J: Set decision_detected: true<br/>(security decision)
+    MA->>J: Create ADR 00XX<br/>(JWT validation extraction)
+    MA->>J: Link ADR ↔ Journey
+    MA->>H: "Session finalized with ADR created"
+```
+
+### Key Differences: Single vs Multi-Agent
+
+| Aspect | Single Agent | Multi-Agent |
+|--------|--------------|-------------|
+| **Journey Updates** | Main agent updates directly | Main agent consolidates sub-agent inputs |
+| **Interaction Summary** | Human ↔ Agent only | Human ↔ Main Agent ↔ Sub-Agents |
+| **Agent Collaboration** | N/A | Captured in Agent Collaboration Summary |
+| **Decision Attribution** | Clear single source | Track which agent contributed to decision |
+| **Experiments** | Single agent's attempts | Multiple sub-agent experiments aggregated |
+| **Complexity** | Linear interaction flow | Parallel/delegated work streams |
+
+### Flow Patterns
+
+**Continuous Update Pattern (Both Scenarios):**
+```mermaid
+flowchart TD
+    Start[Session Start] --> Init[Initialize Journey]
+    Init --> Work[Work on Task]
+    Work --> Update{Meaningful<br/>Progress?}
+    Update -->|Yes| Record[Update Journey Section]
+    Record --> Work
+    Update -->|No| Continue[Continue Working]
+    Continue --> Work
+    Work --> Done{Session<br/>Complete?}
+    Done -->|No| Work
+    Done -->|Yes| Finalize[Finalize Journey]
+    Finalize --> ADR{ADR<br/>Criteria<br/>Met?}
+    ADR -->|Yes| CreateADR[Create ADR]
+    ADR -->|No| Skip[Skip ADR]
+    CreateADR --> End[Session End]
+    Skip --> End
+    
+    style Init fill:#d4edda
+    style Record fill:#fff3cd
+    style Finalize fill:#cce5ff
+    style CreateADR fill:#f8d7da
+```
+
+**Decision Point Pattern:**
+```mermaid
+flowchart LR
+    subgraph "During Session"
+        Decision[Decision Point] --> Capture[Capture in Journey]
+        Capture --> Rationale[Document Rationale]
+        Rationale --> Impact[Note Impact]
+        Impact --> Flag{Meets ADR<br/>Rubric?}
+        Flag -->|Yes| MarkADR[Flag for ADR]
+        Flag -->|No| JourneyOnly[Journey Only]
+    end
+    
+    subgraph "At Session End"
+        MarkADR --> Review[Review Flagged Decisions]
+        Review --> CreateADR[Create ADR Document]
+        JourneyOnly --> Finalize[Finalize Journey]
+        CreateADR --> Finalize
+    end
+    
+    style Decision fill:#fff3cd
+    style Capture fill:#d4edda
+    style CreateADR fill:#f8d7da
+```
+
 ## Three-Phase Lifecycle
 
 ### Phase 1: Session Initialization (Start)

@@ -13,7 +13,7 @@ Traditional ADRs are great at recording the *final decision*, but modern develop
 
 EJS exists to capture that reality with **low friction** and **high auditability**:
 
-- **One Session Journey per session end** (always) to preserve collaboration + evidence + learning.
+- **One Session Journey per session** (initialized at start, updated throughout, finalized at end) to preserve collaboration + evidence + learning in real-time.
 - **ADRs only when significant** (conditional, numbered) to keep the ADR ledger curated.
 - A **repo-portable, tool-agnostic** structure so the same workflow works in GitHub web, VS Code, and across teams.
 
@@ -37,6 +37,48 @@ EJS captures:
 - cross-platform engineering memory
 
 ## How to Use
+
+### Visual Overview
+
+```mermaid
+flowchart TD
+    Start([Start New Task]) --> Init[Initialize Session Journey<br/>ejs-session-YYYY-MM-DD-NNN.md]
+    Init --> Metadata[Populate Initial Metadata<br/>+ Problem/Intent]
+    Metadata --> Work[Work with Agent]
+    
+    Work --> Interact[Human ↔ Agent Interaction]
+    Interact --> Auto[Agent Auto-Updates Journey]
+    Auto --> Sections{What Changed?}
+    
+    Sections -->|Decision Made| DecSec[Update Decisions Section]
+    Sections -->|Experiment Run| ExpSec[Update Experiments Section]
+    Sections -->|Approach Pivot| IterSec[Update Iteration Log]
+    Sections -->|Insight Gained| LearnSec[Update Learnings Section]
+    
+    DecSec --> MoreWork{More Work?}
+    ExpSec --> MoreWork
+    IterSec --> MoreWork
+    LearnSec --> MoreWork
+    
+    MoreWork -->|Yes| Work
+    MoreWork -->|No| Finalize[Finalize Session]
+    
+    Finalize --> Complete[Complete All Sections]
+    Complete --> Extracts[Populate Machine Extracts]
+    Extracts --> ADRCheck{Significant<br/>Decision?}
+    
+    ADRCheck -->|Yes| CreateADR[Create ADR 00XX]
+    ADRCheck -->|No| NoADR[decision_detected: false]
+    
+    CreateADR --> Link[Link ADR ↔ Journey]
+    Link --> Done([Session Complete])
+    NoADR --> Done
+    
+    style Init fill:#d4edda
+    style Auto fill:#fff3cd
+    style Finalize fill:#cce5ff
+    style CreateADR fill:#f8d7da
+```
 
 ### New Session-Lifecycle Approach (Recommended)
 
