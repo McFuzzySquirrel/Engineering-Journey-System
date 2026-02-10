@@ -27,6 +27,7 @@ Includes:
 - `ejs-docs/adr/0010-engineering-journey-system-adoption.md` — example ADR
 - `.github/copilot/pull_request_template.md` — PR template with EJS checks
 - `ejs-docs/journey/_templates/journey-template.md` — Session Journey template
+- `game/` — 3D Asteroids game built with EJS sub-agents ([how to run](game/README.md))
 
 ## Purpose
 
@@ -35,6 +36,12 @@ EJS captures:
 - learning and decision evolution
 - reusable knowledge for future agents
 - cross-platform engineering memory
+
+## 3D Asteroids Game (EJS in Action)
+
+The `game/` folder contains a fully playable **3D Asteroids** game built entirely through human + AI collaboration using EJS with sub-agents. It's a fun demonstration that the Engineering Journey System works end-to-end with multi-agent workflows — and the game is genuinely enjoyable to play!
+
+See [`game/README.md`](game/README.md) for setup instructions and controls.
 
 ## How to Use
 
