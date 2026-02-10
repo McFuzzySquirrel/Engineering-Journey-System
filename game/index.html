@@ -35,6 +35,7 @@
     const STARTING_LIVES = 3;
     const SHIP_INVULN_TIME = 180; // frames
     const FIRE_COOLDOWN = 10; // frames
+    const TARGET_FRAME_MS = 16.67; // ms per frame at 60fps
 
     // ── Game State ──
     var state = {
@@ -300,7 +301,6 @@
         // Forward direction of ship
         var forward = new BABYLON.Vector3(0, 0, 1);
         var rotMatrix = new BABYLON.Matrix();
-        ship.getWorldMatrix().decompose(undefined, undefined, undefined);
         BABYLON.Matrix.RotationYawPitchRollToRef(ship.rotation.y, ship.rotation.x, ship.rotation.z, rotMatrix);
         var dir = BABYLON.Vector3.TransformNormal(forward, rotMatrix);
 
@@ -573,7 +573,7 @@
         }
 
         var k = state.keys;
-        var dt = engine.getDeltaTime() / 16.67; // normalize to ~60fps
+        var dt = engine.getDeltaTime() / TARGET_FRAME_MS;
 
         // ── Ship Controls ──
         // Rotation
