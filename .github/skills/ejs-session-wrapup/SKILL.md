@@ -103,6 +103,12 @@ As the session progresses, continuously update the Session Journey with:
 ### Update Key Learnings
 - Record insights as they emerge (technical, prompting, tooling)
 
+### Capture Sub-Agent Contributions
+When the main agent delegates to sub-agents:
+- Record what was delegated and to which sub-agent
+- After the sub-agent completes, capture its decisions, alternatives considered, and outcome in the **Sub-Agent Contributions** section
+- If the sub-agent's output feeds into another sub-agent's work, document the handoff
+
 ### Trigger ADR Creation If Needed
 - If a significant decision occurs mid-session, note it in the journey
 - Prepare ADR metadata for later creation if decision rubric is met
@@ -129,6 +135,7 @@ As the session progresses, continuously update the Session Journey with:
 - DECISIONS_EXTRACT
 - LEARNING_EXTRACT
 - AGENT_GUIDANCE_EXTRACT
+- SUB_AGENT_EXTRACT (if sub-agents were involved)
 - Update `decision_detected` field based on ADR criteria
 - Save final version to `ejs-docs/journey/YYYY/<session-id>.md`
 

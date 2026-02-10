@@ -63,7 +63,7 @@ sequenceDiagram
 
 ### Multi-Agent and Sub-Agent Scenario
 
-The following diagram shows a more complex scenario with multiple agents and sub-agents collaborating on a task:
+The following diagram shows a more complex scenario with multiple agents and sub-agents collaborating on a task. Note how the main agent captures each sub-agent's decisions and how inter-agent handoffs are traced:
 
 ```mermaid
 sequenceDiagram
@@ -89,20 +89,22 @@ sequenceDiagram
     
     Note over H,MA: Phase 2: Code Review (Delegate to Sub-Agent)
     H->>MA: "Review the changes"
-    MA->>SA1: Request code review
-    SA1->>SA1: Analyze changes
-    SA1->>MA: Review feedback: "Add input validation"
-    MA->>J: Update Interaction Summary<br/>(Sub-agent feedback)
+    MA->>SA1: Delegate: review auth changes
+    MA->>J: Record delegation in Interaction Summary
+    SA1->>SA1: Analyze changes<br/>(decides to flag missing validation)
+    SA1->>MA: Review feedback + decisions:<br/>"Add input validation" (chose depth-first<br/>review over breadth-first)
+    MA->>J: Capture SA1 decisions +<br/>alternatives in Sub-Agent Contributions
     MA->>H: "Code review suggests adding validation"
     H->>MA: "Good point, add it"
     MA->>MA: Add validation
     MA->>J: Update Iteration Log (refinement)
     
-    Note over H,MA: Phase 3: Testing (Delegate to Sub-Agent)
-    MA->>SA2: Run tests for auth changes
-    SA2->>SA2: Execute test suite
-    SA2->>MA: Test results: 2 failures
-    MA->>J: Update Experiments/Evidence
+    Note over H,MA: Phase 3: Testing (Delegate, with handoff from Code Review)
+    MA->>SA2: Delegate: test auth changes<br/>(include SA1 review findings as context)
+    MA->>J: Record delegation + handoff<br/>(SA1 output → SA2 input)
+    SA2->>SA2: Execute test suite<br/>(decides to add validation edge cases<br/>based on SA1 review feedback)
+    SA2->>MA: Test results + decisions:<br/>2 failures found, added 3 new edge-case tests
+    MA->>J: Capture SA2 decisions +<br/>SA1→SA2 handoff in Sub-Agent Contributions
     MA->>H: "Tests found 2 failures"
     H->>MA: "Fix those issues"
     MA->>MA: Fix test failures
@@ -111,19 +113,21 @@ sequenceDiagram
     SA2->>MA: All tests pass
     MA->>J: Update Experiments/Evidence<br/>(tests now passing)
     
-    Note over H,MA: Phase 4: Documentation (Delegate to Sub-Agent)
+    Note over H,MA: Phase 4: Documentation (Delegate, with handoff from Testing)
     H->>MA: "Update the API docs"
-    MA->>SA3: Update authentication docs
-    SA3->>SA3: Generate documentation
-    SA3->>MA: Documentation updated
-    MA->>J: Update Iteration Log
+    MA->>SA3: Delegate: update auth docs<br/>(include SA2 test results as context)
+    MA->>J: Record delegation + handoff<br/>(SA2 output → SA3 input)
+    SA3->>SA3: Generate documentation<br/>(decides to add validation examples<br/>based on SA2 edge-case tests)
+    SA3->>MA: Documentation updated + decisions:<br/>added validation examples section
+    MA->>J: Capture SA3 decisions +<br/>SA2→SA3 handoff in Sub-Agent Contributions
     MA->>H: "Documentation complete"
     
     Note over H,MA: Session End
     H->>MA: "Wrap up this session"
-    MA->>J: Finalize Interaction Summary<br/>(including all sub-agent interactions)
+    MA->>J: Finalize Sub-Agent Contributions<br/>(all delegations, decisions, handoffs)
+    MA->>J: Finalize Interaction Summary
     MA->>J: Complete all sections
-    MA->>J: Populate machine extracts
+    MA->>J: Populate machine extracts<br/>(including SUB_AGENT_EXTRACT)
     MA->>J: Apply ADR decision rubric
     MA->>J: Set decision_detected: true<br/>(security decision)
     MA->>J: Create ADR 00XX<br/>(JWT validation extraction)
@@ -138,8 +142,11 @@ sequenceDiagram
 | **Journey Updates** | Main agent updates directly | Main agent consolidates sub-agent inputs |
 | **Interaction Summary** | Human ↔ Agent only | Human ↔ Main Agent ↔ Sub-Agents |
 | **Agent Collaboration** | N/A | Captured in Agent Collaboration Summary |
+| **Sub-Agent Decisions** | N/A | Each sub-agent's decisions captured with rationale in Sub-Agent Contributions |
+| **Inter-Agent Handoffs** | N/A | Tracked when one sub-agent's output feeds into another's input |
 | **Decision Attribution** | Clear single source | Track which agent contributed to decision |
 | **Experiments** | Single agent's attempts | Multiple sub-agent experiments aggregated |
+| **Machine Extracts** | Standard 4 extracts | Standard 4 + SUB_AGENT_EXTRACT |
 | **Complexity** | Linear interaction flow | Parallel/delegated work streams |
 
 ### Flow Patterns
@@ -191,6 +198,71 @@ flowchart LR
     style Decision fill:#fff3cd
     style Capture fill:#d4edda
     style CreateADR fill:#f8d7da
+```
+
+## Sub-Agent Handoff Protocol
+
+When a main agent delegates work to sub-agents, follow this protocol to ensure sub-agent decisions and inter-agent collaboration are captured in the Session Journey.
+
+### When Delegating to a Sub-Agent
+
+1. **Record the delegation** in the Interaction Summary:
+   - What task was delegated
+   - Which sub-agent was invoked
+   - What context or constraints were provided
+
+2. **Provide the sub-agent with context** about prior sub-agent work when relevant (e.g., code review findings passed to the testing agent).
+
+### When a Sub-Agent Completes
+
+3. **Capture the sub-agent's contribution** in the **Sub-Agent Contributions** section:
+   - **Task delegated:** What was the sub-agent asked to do?
+   - **Decisions made:** What did the sub-agent decide, and why?
+   - **Alternatives considered:** What other approaches did the sub-agent evaluate?
+   - **Outcome:** What was the result?
+   - **Handoff to other agents:** Did this sub-agent's output feed into another sub-agent's work?
+
+### Inter-Agent Collaboration (Handoff Chains)
+
+When one sub-agent's output informs another sub-agent's work, document the chain:
+
+```
+SA1 (Code Review) → found missing input validation
+  ↓ handoff
+SA2 (Testing) → added edge-case tests based on SA1 findings
+  ↓ handoff
+SA3 (Documentation) → added validation examples based on SA2 test cases
+```
+
+Key points:
+- Trace the dependency: which sub-agent's output became another's input
+- Record if sub-agents disagreed and how conflicts were resolved
+- Note which agent ultimately influenced the final decision
+
+### At Session Finalization
+
+4. **Populate `SUB_AGENT_EXTRACT`** in the machine extracts with a structured summary:
+   - List each sub-agent involved
+   - Summarize their decisions and rationale
+   - Document inter-agent handoffs
+   - Note any disagreements or conflicts resolved
+
+### Example Sub-Agent Contributions Section
+
+```markdown
+## Sub-Agent: Code Review (explore agent)
+- **Task delegated:** Review authentication refactor for security and code quality
+- **Decisions made:** Flagged missing input validation on JWT claims (chose depth-first security review over breadth-first style review)
+- **Alternatives considered:** Could have focused on code style first, but prioritized security given auth context
+- **Outcome:** 3 security findings, 1 code quality suggestion
+- **Handoff to other agents:** Findings passed to Testing agent as context for edge-case test generation
+
+## Sub-Agent: Testing (task agent)
+- **Task delegated:** Run and extend test suite for auth changes, with Code Review findings as context
+- **Decisions made:** Added 3 new edge-case tests targeting validation gaps found by Code Review
+- **Alternatives considered:** Could have run existing tests only, but SA1 findings warranted new test cases
+- **Outcome:** 2 test failures found and fixed, 3 new tests added
+- **Handoff to other agents:** Test results and new test cases passed to Documentation agent
 ```
 
 ## Three-Phase Lifecycle
@@ -256,12 +328,18 @@ flowchart LR
    - Prompting strategies that worked well
    - Tooling insights
 
+6. **Sub-Agent Contributions** (multi-agent sessions) - Record after each sub-agent delegation
+   - What was delegated and to which sub-agent
+   - Sub-agent's decisions with rationale
+   - Handoffs between sub-agents
+
 **How Often to Update:**
 - After completing a meaningful subtask
 - When a decision is made
 - After an experiment yields results
 - When a pivot or iteration occurs
 - After learning something valuable
+- After a sub-agent completes delegated work
 
 **Benefits:**
 - Accurate collaboration trail (not from memory)
@@ -299,6 +377,7 @@ flowchart LR
    - DECISIONS_EXTRACT
    - LEARNING_EXTRACT
    - AGENT_GUIDANCE_EXTRACT
+   - SUB_AGENT_EXTRACT (if sub-agents were involved)
 4. Update `decision_detected` field based on ADR gate criteria
 5. Create ADR if decision rubric is met
 6. Update `adr_links` in Session Journey if ADR was created

@@ -163,6 +163,29 @@ All Journey ADRs must:
 - Avoid overfitting to current session
 
 
+## Multi-Agent Collaboration
+
+When delegating work to sub-agents (e.g., code review, testing, documentation agents):
+
+### Delegation Protocol
+- Before delegating, record the delegation in the Interaction Summary (what task, which sub-agent, what context was provided)
+- Instruct sub-agents to report back: decisions made, alternatives considered, and any handoffs to other agents
+- After each sub-agent completes, capture its contribution in the **Sub-Agent Contributions** section of the Session Journey
+
+### Sub-Agent Decision Capture
+- Each sub-agent's decisions must be recorded with rationale (not just outcomes)
+- If a sub-agent chose between alternatives, capture the alternatives and why one was selected
+- If a sub-agent's output fed into another sub-agent's work, document the handoff chain
+
+### Inter-Agent Collaboration
+- When multiple sub-agents collaborate (one's output informs another's input), trace the dependency
+- Record disagreements between sub-agents and how they were resolved
+- Note which agent influenced the final decision and why
+
+### Machine Extracts
+- Populate the `SUB_AGENT_EXTRACT` section at finalization with a structured summary of all sub-agent contributions, decisions, and handoffs
+
+
 ## Memory & Reuse Guidance
 
 When drafting Agent Guidance sections:
