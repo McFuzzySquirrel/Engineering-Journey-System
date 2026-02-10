@@ -3,6 +3,7 @@ dist/
 .parcel-cache/
 .DS_Store
 *.log
+*.tgz
 npm-debug.log*
 game/babylon.local.js
 game/babylon.gui.local.js
