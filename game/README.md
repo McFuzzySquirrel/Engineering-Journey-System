@@ -6,31 +6,11 @@ This game serves as a fun, playable proof that EJS works with multi-agent workfl
 
 ## How to Run
 
-The game is a single HTML file (`index.html`) with no build step required. You just need to serve it with the Babylon.js dependencies available.
+The game is a single HTML file with all dependencies included — no build step, no install, no internet required.
 
-### Option 1: Use CDN (quickest)
+**Just open `index.html` in your browser.**
 
-1. Open `index.html` in a text editor.
-2. Replace the two local script tags:
-   ```html
-   <script src="babylon.local.js"></script>
-   <script src="babylon.gui.local.js"></script>
-   ```
-   with the CDN versions:
-   ```html
-   <script src="https://cdn.babylonjs.com/babylon.js"></script>
-   <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-   ```
-3. Open `index.html` in your browser.
-
-### Option 2: Download Babylon.js locally
-
-1. Download the Babylon.js files into the `game/` folder:
-   - [babylon.js](https://cdn.babylonjs.com/babylon.js) → save as `babylon.local.js`
-   - [babylon.gui.min.js](https://cdn.babylonjs.com/gui/babylon.gui.min.js) → save as `babylon.gui.local.js`
-2. Open `index.html` in your browser.
-
-> **Note:** The local files (`babylon.local.js` and `babylon.gui.local.js`) are listed in `.gitignore` so they won't be committed to the repository.
+> Babylon.js v8.50.2 (Apache-2.0) is bundled as `babylon.local.js` and `babylon.gui.local.js`.
 
 ## Controls
 
