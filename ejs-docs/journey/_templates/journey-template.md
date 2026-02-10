@@ -35,6 +35,18 @@ Key prompts used
 Key suggestions
 Corrections required
 
+# Sub-Agent Contributions
+When the main agent delegates work to sub-agents, capture each sub-agent's contribution here.
+
+## Sub-Agent: <agent-name / agent-type>
+- **Task delegated:** What was the sub-agent asked to do?
+- **Decisions made:** What did the sub-agent decide (e.g., approach chosen, trade-offs weighed)?
+- **Alternatives considered:** What other approaches did the sub-agent evaluate?
+- **Outcome:** What was the result?
+- **Handoff to other agents:** Did this sub-agent's output feed into another sub-agent's work? If so, describe the handoff.
+
+(Repeat for each sub-agent involved. Remove this section if no sub-agents were used.)
+
 # Agent Influence (Required)
 Where did the agent influence the outcome?
 - Suggestions adopted:
@@ -77,3 +89,5 @@ Avoid:
 ### LEARNING_EXTRACT
 
 ### AGENT_GUIDANCE_EXTRACT
+
+### SUB_AGENT_EXTRACT

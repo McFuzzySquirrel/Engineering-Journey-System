@@ -19,6 +19,7 @@ Continuously update the Session Journey as work progresses:
 - Record experiments, outcomes, and learnings in real-time
 - Document decisions with rationale when made
 - Update iteration log with pivots and refinements
+- When delegating to sub-agents, capture each sub-agent's decisions, alternatives considered, and handoffs in the Sub-Agent Contributions section
 
 ### At Session End (wrap up / commit / push / ship)
 Finalize the Session Journey:
