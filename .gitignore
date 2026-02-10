@@ -5,7 +5,5 @@ dist/
 *.log
 *.tgz
 npm-debug.log*
-game/babylon.local.js
-game/babylon.gui.local.js
 game/package.json
 game/package-lock.json
