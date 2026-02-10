@@ -90,7 +90,7 @@ sequenceDiagram
     Note over H,MA: Phase 2: Code Review (Delegate to Sub-Agent)
     H->>MA: "Review the changes"
     MA->>SA1: Delegate: review auth changes
-    MA->>J: Record delegation in Sub-Agent Contributions
+    MA->>J: Record delegation in Interaction Summary
     SA1->>SA1: Analyze changes<br/>(decides to flag missing validation)
     SA1->>MA: Review feedback + decisions:<br/>"Add input validation" (chose depth-first<br/>review over breadth-first)
     MA->>J: Capture SA1 decisions +<br/>alternatives in Sub-Agent Contributions
