@@ -19,10 +19,8 @@ EJS exists to capture that reality with **low friction** and **high auditability
 
 Includes:
 - `.github/agents/ejs-journey.agent.md` — Copilot custom agent profile (canonical)
-- `.github/skills/ejs-session-wrapup/SKILL.md` — Copilot Agent Skill (canonical)
 - `.github/copilot-instructions.md` — Copilot repo-wide instructions (recommended)
 - `.github/ejs-agent.md` — legacy pointer (compat)
-- `.github/ejs-session-skill.md` — legacy pointer (compat)
 - `ejs-docs/adr/0000-adr-template.md` — ADR template for structured journey capture
 - `ejs-docs/adr/0010-engineering-journey-system-adoption.md` — example ADR
 - `.github/copilot/pull_request_template.md` — PR template with EJS checks
@@ -192,13 +190,11 @@ Bypass:
 
 ## Tooling integration (Copilot, Claude, Cursor)
 
-EJS is tool-agnostic. For GitHub Copilot, the canonical, auto-discoverable locations are:
+EJS is tool-agnostic. For GitHub Copilot, the canonical, auto-discoverable location is:
 - `.github/agents/ejs-journey.agent.md` (custom agent profile)
-- `.github/skills/ejs-session-wrapup/SKILL.md` (Agent Skill)
 
-Legacy human-readable pointers (kept for compatibility):
+Legacy human-readable pointer (kept for compatibility):
 - `.github/ejs-agent.md`
-- `.github/ejs-session-skill.md`
 
 Different agent tools auto-load instructions from different filenames. Recommended mapping:
 
@@ -206,27 +202,25 @@ Different agent tools auto-load instructions from different filenames. Recommend
 
 - Repo-wide instructions: `.github/copilot-instructions.md`.
 - Custom agent profiles: `.github/agents/*.agent.md` (selectable from the Copilot agent dropdown).
-- Agent Skills: `.github/skills/<skill-name>/SKILL.md` (loaded by Copilot when relevant to the prompt/description).
 
 This repo includes:
 - `.github/agents/ejs-journey.agent.md`
-- `.github/skills/ejs-session-wrapup/SKILL.md`
 
-Important: agents/skills don’t automatically trigger on `git commit`/`git push` events. They’re selected (agent profiles) or injected (skills) based on the chat context. For “fire on commit/push,” use the git hooks.
+Important: agent profiles don’t automatically trigger on `git commit`/`git push` events. They’re selected based on the chat context. For “fire on commit/push,” use the git hooks.
 
 ### Claude (e.g., Claude Code)
 
 - Use `CLAUDE.md` at the repository root.
-- Same approach: reference `.github/agents/ejs-journey.agent.md` and `.github/skills/ejs-session-wrapup/SKILL.md`.
+- Same approach: reference `.github/agents/ejs-journey.agent.md`.
 
 ### Cursor
 
 - Use either `.cursorrules` at the repository root (common/simple), or Cursor “rules” under `cursor/rules/` (newer setups).
-- Reference `.github/agents/ejs-journey.agent.md` and `.github/skills/ejs-session-wrapup/SKILL.md` and keep any Cursor-specific constraints separate.
+- Reference `.github/agents/ejs-journey.agent.md` and keep any Cursor-specific constraints separate.
 
 ## Using EJS in VS Code
 
-If you work primarily in VS Code, you can use the same custom agent + skill files.
+If you work primarily in VS Code, you can use the same custom agent profile.
 
 ### Custom agent (recommended)
 
@@ -234,11 +228,9 @@ If you work primarily in VS Code, you can use the same custom agent + skill file
 - Use the agent dropdown to select `ejs-journey`.
 - If you don’t see it, use the agent dropdown → “Configure Custom Agents…” and ensure the workspace agent profile exists at `.github/agents/ejs-journey.agent.md`.
 
-### Skill (session management)
+### Session management prompts
 
-Agent Skills support is evolving across Copilot surfaces. If your VS Code/Copilot build supports skills, Copilot can load `.github/skills/ejs-session-wrapup/SKILL.md` when relevant.
-
-If skills aren't loading automatically, you can still get the same behavior by explicitly prompting:
+The agent profile handles session lifecycle directly. Use these prompts:
 
 **At session start:**
 - "Initialize session"
@@ -251,7 +243,6 @@ If skills aren't loading automatically, you can still get the same behavior by e
 **At session end:**
 - "Wrap up this session"
 - "Finalize journey"
-- "Use the ejs-session-wrapup skill and wrap up this session"
 
 ### Commit/push reminders
 
@@ -265,7 +256,6 @@ If you’re copying this into an existing repo (e.g., photo-jumper), copy the fi
 ### Minimal copy (recommended)
 
 - `.github/agents/ejs-journey.agent.md`
-- `.github/skills/ejs-session-wrapup/SKILL.md`
 - `.github/copilot-instructions.md` (recommended)
 - `ejs-docs/journey/_templates/journey-template.md`
 - `ejs-docs/adr/0000-adr-template.md`
@@ -299,9 +289,6 @@ After copying, install hooks in the target repo:
 .github/
 ├─ agents/
 │  └─ ejs-journey.agent.md
-├─ skills/
-│  └─ ejs-session-wrapup/
-│     └─ SKILL.md
 ├─ copilot/
 │  └─ pull_request_template.md
 └─ copilot-instructions.md
@@ -314,7 +301,7 @@ ejs-docs/
 
 ### What to do in GitHub web (your next step)
 
-- Make sure the copied files are committed and merged to the target repo's default branch (so GitHub web can discover the agent/skill).
+- Make sure the copied files are committed and merged to the target repo's default branch (so GitHub web can discover the agent).
 - Start a Copilot coding session and select the `ejs-journey` custom agent.
 - **At session start**, say: "Initialize session" or "Let's start working on [task]" to create the initial Session Journey.
 - Work normally throughout the session. The agent will continuously update the Session Journey as you collaborate.

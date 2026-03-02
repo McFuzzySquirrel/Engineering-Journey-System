@@ -3,7 +3,6 @@
 Follow the Engineering Journey System (EJS) contracts in this repo:
 
 - Custom agent profile: `.github/agents/ejs-journey.agent.md`
-- Session management skill: `.github/skills/ejs-session-wrapup/SKILL.md`
 
 ## Session Lifecycle
 
@@ -12,6 +11,7 @@ When the user begins work, initialize the Session Journey:
 - Create Session Journey at `ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md`
 - Populate initial metadata and problem/intent
 - Prepare structure for continuous updates
+- Run `python scripts/adr-db.py sync` to ensure the SQLite index is fresh for referencing past decisions
 
 ### Throughout Session
 Continuously update the Session Journey as work progresses:
@@ -20,6 +20,7 @@ Continuously update the Session Journey as work progresses:
 - Document decisions with rationale when made
 - Update iteration log with pivots and refinements
 - When delegating to sub-agents, capture each sub-agent's decisions, alternatives considered, and handoffs in the Sub-Agent Contributions section
+- Use `python scripts/adr-db.py search <query>` to reference past decisions efficiently
 
 ### At Session End (wrap up / commit / push / ship)
 Finalize the Session Journey:

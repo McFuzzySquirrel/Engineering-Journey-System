@@ -186,6 +186,38 @@ When delegating work to sub-agents (e.g., code review, testing, documentation ag
 - Populate the `SUB_AGENT_EXTRACT` section at finalization with a structured summary of all sub-agent contributions, decisions, and handoffs
 
 
+## EJS Database Tool (SQLite)
+
+A SQLite-backed index (`scripts/adr-db.py`) is available for efficient ADR and Session Journey querying.
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `sync` | Parse ADR and journey markdown files and upsert into the local SQLite database |
+| `list` | List all ADRs (compact: id, title, status, date) |
+| `get <adr_id>` | Show full details for a specific ADR |
+| `search <query>` | Full-text search across all ADR and journey content |
+| `summary` | Agent-friendly compact summary of all ADRs |
+| `list-journeys` | List all Session Journeys (compact: id, date, decision status) |
+| `get-journey <session_id>` | Show full details for a specific journey |
+| `summary-journeys` | Agent-friendly compact summary of all journeys |
+
+### When to Use
+
+- **At session start**: run `python scripts/adr-db.py sync` to ensure the index is fresh
+- **When referencing past decisions**: use `summary` or `search` instead of reading all ADR files
+- **When checking for prior art**: use `search <concept>` to find relevant ADRs by topic
+- **When linking to existing ADRs**: use `get <id>` for full details on a specific decision
+
+### Best Practices
+
+- Always run `sync` before querying (database can become stale)
+- Prefer `summary` for a quick overview of all decisions
+- Markdown files remain the source of truth — the database is a generated index
+- The database file (`.ejs.db`) is gitignored and must be regenerated per-clone
+
+
 ## Memory & Reuse Guidance
 
 When drafting Agent Guidance sections:
