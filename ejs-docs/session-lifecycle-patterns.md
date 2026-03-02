@@ -16,10 +16,12 @@ The following diagram shows a typical EJS session with a single human user and o
 sequenceDiagram
     participant H as Human
     participant A as Agent
+    participant DB as EJS Database
     participant J as Session Journey
 
     Note over H,A: Session Start
     H->>A: "Let's start working on [task]"
+    A->>DB: Run adr-db.py sync<br/>(refresh SQLite index)
     A->>J: Create journey file<br/>ejs-session-YYYY-MM-DD-001.md
     A->>J: Write metadata + initial problem/intent
     A->>H: "Session initialized: ejs-session-YYYY-MM-DD-001"
@@ -27,6 +29,7 @@ sequenceDiagram
     Note over H,A: Active Collaboration (Continuous Updates)
     
     H->>A: "Implement feature X"
+    A->>DB: adr-db.py search "feature X"<br/>(check past decisions)
     A->>A: Work on implementation
     A->>J: Update Interaction Summary
     A->>J: Record decision made
@@ -39,6 +42,7 @@ sequenceDiagram
     A->>H: Refactoring complete
     
     H->>A: "Should we use approach A or B?"
+    A->>DB: adr-db.py search "approach"<br/>(reference past decisions)
     A->>H: Discuss trade-offs
     A->>J: Update Decisions Made
     A->>J: Flag potential ADR
@@ -72,16 +76,19 @@ sequenceDiagram
     participant SA1 as Sub-Agent 1<br/>(Code Review)
     participant SA2 as Sub-Agent 2<br/>(Testing)
     participant SA3 as Sub-Agent 3<br/>(Documentation)
+    participant DB as EJS Database
     participant J as Session Journey
 
     Note over H,MA: Session Start
     H->>MA: "Let's refactor the authentication system"
+    MA->>DB: Run adr-db.py sync<br/>(refresh SQLite index)
     MA->>J: Create journey file<br/>ejs-session-YYYY-MM-DD-001.md
     MA->>J: Write metadata<br/>agents_involved: [Main, Code Review, Testing, Docs]
     MA->>H: "Session initialized"
     
     Note over H,MA: Phase 1: Initial Implementation
     H->>MA: "Extract JWT validation logic"
+    MA->>DB: adr-db.py search "JWT auth"<br/>(check past decisions)
     MA->>MA: Implement extraction
     MA->>J: Update Interaction Summary
     MA->>J: Record implementation decision
@@ -154,13 +161,18 @@ sequenceDiagram
 **Continuous Update Pattern (Both Scenarios):**
 ```mermaid
 flowchart TD
-    Start[Session Start] --> Init[Initialize Journey]
+    Start[Session Start] --> Sync[Sync EJS Database<br/>adr-db.py sync]
+    Sync --> Init[Initialize Journey]
     Init --> Work[Work on Task]
     Work --> Update{Meaningful<br/>Progress?}
     Update -->|Yes| Record[Update Journey Section]
     Record --> Work
     Update -->|No| Continue[Continue Working]
     Continue --> Work
+    Work --> Ref{Need Past<br/>Context?}
+    Ref -->|Yes| Search[adr-db.py search]
+    Search --> Work
+    Ref -->|No| Work
     Work --> Done{Session<br/>Complete?}
     Done -->|No| Work
     Done -->|Yes| Finalize[Finalize Journey]
@@ -170,6 +182,7 @@ flowchart TD
     CreateADR --> End[Session End]
     Skip --> End
     
+    style Sync fill:#e2e3f1
     style Init fill:#d4edda
     style Record fill:#fff3cd
     style Finalize fill:#cce5ff
@@ -279,9 +292,10 @@ Key points:
 - Starting a new feature or refactor
 
 **Actions:**
-1. Generate unique session ID: `ejs-session-YYYY-MM-DD-<seq>`
-2. Create Session Journey file at `ejs-docs/journey/YYYY/<session-id>.md`
-3. Populate initial metadata:
+1. Run `python scripts/adr-db.py sync` to refresh the SQLite index for referencing past decisions
+2. Generate unique session ID: `ejs-session-YYYY-MM-DD-<seq>`
+3. Create Session Journey file at `ejs-docs/journey/YYYY/<session-id>.md`
+4. Populate initial metadata:
    - session_id
    - author
    - date
@@ -289,9 +303,9 @@ Key points:
    - branch
    - agents_involved
    - decision_detected: false (initial)
-4. Capture initial **Problem/Intent**
-5. Set up structure for continuous updates
-6. Inform user that journey is initialized
+5. Capture initial **Problem/Intent**
+6. Set up structure for continuous updates
+7. Inform user that journey is initialized
 
 **Benefits:**
 - Clear session boundaries established upfront
@@ -322,6 +336,7 @@ Key points:
    - Reason for choosing this approach
    - Expected impact
    - Whether it meets ADR criteria
+   - Use `python scripts/adr-db.py search <query>` to reference past decisions efficiently
 
 5. **Key Learnings** - Record insights as they emerge
    - Technical discoveries
@@ -443,12 +458,13 @@ No explicit prompt needed if the agent is following EJS contracts.
 ## Implementation Guidance for Agents
 
 ### Session Initialization
-1. Check for existing session journey for today
-2. Increment sequence number if needed
-3. Use template from `ejs-docs/journey/_templates/journey-template.md`
-4. Populate initial metadata accurately
-5. Write problem/intent clearly
-6. Confirm creation with user
+1. Run `python scripts/adr-db.py sync` to refresh the SQLite index
+2. Check for existing session journey for today
+3. Increment sequence number if needed
+4. Use template from `ejs-docs/journey/_templates/journey-template.md`
+5. Populate initial metadata accurately
+6. Write problem/intent clearly
+7. Confirm creation with user
 
 ### Continuous Updates
 1. Keep updates atomic and focused
@@ -471,19 +487,22 @@ No explicit prompt needed if the agent is following EJS contracts.
 
 ```
 Human: "Let's start working on refactoring the authentication module"
-Agent: Creates ejs-docs/journey/2026/ejs-session-2026-02-07-01.md
+Agent: Runs `adr-db.py sync` to refresh the index
+       Creates ejs-docs/journey/2026/ejs-session-2026-02-07-01.md
        Populates metadata and initial problem/intent
        "Session initialized: ejs-session-2026-02-07-01"
 
 [Work begins]
 Human: "Extract the JWT validation into a separate function"
-Agent: Implements the refactoring
+Agent: Runs `adr-db.py search "JWT"` to check past decisions
+       Implements the refactoring
        Updates Interaction Summary in session journey
        Updates Iteration Log
 
 [More work]
 Human: "Should we use bcrypt or argon2 for password hashing?"
-Agent: Discusses trade-offs (security vs. performance)
+Agent: Runs `adr-db.py search "password hashing"` for prior context
+       Discusses trade-offs (security vs. performance)
        Updates Decisions Made in session journey
        Flags as potential ADR candidate (security decision)
 
