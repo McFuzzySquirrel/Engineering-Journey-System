@@ -7,3 +7,5 @@ dist/
 npm-debug.log*
 game/package.json
 game/package-lock.json
+.ejs.db
+__pycache__/
