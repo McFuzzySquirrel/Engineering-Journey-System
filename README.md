@@ -249,6 +249,103 @@ The agent profile handles session lifecycle directly. Use these prompts:
 VS Code doesn’t change the git hook behavior. If you copy the optional `.githooks/` + install scripts into your repo and install them, you’ll still get reminders on `git commit` and `git push`.
 
 
+## Using EJS with CLI Tools
+
+EJS works with terminal-based AI assistants — GitHub Copilot CLI, Claude Code, aider, and similar tools. The same session lifecycle applies: initialize a journey at the start, update it as you work, and finalize at the end.
+
+### General approach
+
+Most CLI tools support a custom instructions file or system prompt. Point them at the EJS agent profile so the tool knows about the session lifecycle:
+
+```bash
+# Ensure the ADR/journey index is fresh before starting
+python scripts/adr-db.py sync
+```
+
+Then start your CLI tool with EJS context and use the same session management prompts you would in an IDE:
+
+- "Initialize session" / "Create session journey"
+- "Wrap up this session" / "Finalize journey"
+
+### GitHub Copilot CLI
+
+[GitHub Copilot in the CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli) (`gh copilot`) provides AI assistance directly in the terminal. It focuses on command suggestions and explanations rather than long-form coding sessions, so EJS integration is lighter:
+
+- Use `gh copilot explain` or `gh copilot suggest` for quick, standalone queries — no session journey needed.
+- For multi-step tasks where you're iterating on a problem, manually create a session journey and record your prompts, commands, and outcomes:
+
+```bash
+# Start a session journey manually
+cp ejs-docs/journey/_templates/journey-template.md \
+   ejs-docs/journey/$(date +%Y)/ejs-session-$(date +%Y-%m-%d)-001.md
+
+# Use Copilot CLI as part of your workflow
+gh copilot suggest "awk command to extract error counts from log"
+gh copilot explain "git rebase --onto main feature~3 feature"
+
+# Record what you learned in the session journey
+```
+
+### Claude Code (CLI)
+
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) (`claude`) runs as an interactive terminal agent. It reads `CLAUDE.md` at the repository root for project instructions.
+
+To integrate EJS:
+
+1. Create or update `CLAUDE.md` to reference the EJS agent profile:
+
+```markdown
+# Project Instructions
+
+Follow the Engineering Journey System (EJS) contracts in this repo.
+See `.github/agents/ejs-journey.agent.md` for the full agent profile.
+
+At session start: create a Session Journey under `ejs-docs/journey/YYYY/`.
+At session end: finalize the journey and create an ADR if a significant decision was made.
+Run `python scripts/adr-db.py sync` at session start to refresh the index.
+```
+
+2. Start Claude Code in the repository and use the same lifecycle prompts:
+
+```bash
+cd your-repo
+claude  # starts interactive session
+# "Initialize session" → agent creates the journey file
+# Work normally...
+# "Wrap up this session" → agent finalizes
+```
+
+### Aider
+
+[Aider](https://aider.chat/) is a terminal-based AI pair-programming tool. It doesn't auto-discover agent profiles, but you can pass EJS context via its conventions file or command-line flags:
+
+```bash
+# Option 1: Add EJS instructions to .aider.conf.yml
+# Option 2: Pass context directly
+aider --read .github/agents/ejs-journey.agent.md
+```
+
+Once aider has the EJS context, use the same session prompts to initialize and finalize journeys.
+
+### Other CLI tools
+
+For any CLI-based AI tool that supports custom instructions or system prompts:
+
+1. **Point it at the agent profile** — feed `.github/agents/ejs-journey.agent.md` as context (via a config file, `--system-prompt` flag, or piped input).
+2. **Sync the index** — run `python scripts/adr-db.py sync` before starting so the tool can query past decisions.
+3. **Use the same lifecycle** — "Initialize session" at start, work normally, "Finalize journey" at end.
+4. **Manual fallback** — if the tool can't create files, copy the journey template yourself and fill it in as you work:
+
+```bash
+YEAR=$(date +%Y)
+mkdir -p ejs-docs/journey/$YEAR
+cp ejs-docs/journey/_templates/journey-template.md \
+   ejs-docs/journey/$YEAR/ejs-session-$(date +%Y-%m-%d)-001.md
+# Edit the journey file as you work
+```
+
+The key principle is the same regardless of tool: **capture context incrementally while it's fresh**, not reconstructed after the fact.
+
 ## Adopt EJS in another repository (copy/paste kit)
 
 If you’re copying this into an existing repo (e.g., photo-jumper), copy the files below. This repo uses a strict, collision-resistant docs root: `ejs-docs/`.
