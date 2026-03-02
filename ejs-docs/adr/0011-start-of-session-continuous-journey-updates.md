@@ -166,7 +166,7 @@ EJS will shift to a three-phase session lifecycle:
 - **Learning curve** - Agents need guidance on when/what to update
 
 ### Mitigation
-- Clear documentation in `ejs-docs/agent-memory/session-lifecycle-patterns.md`
+- Clear documentation in `ejs-docs/session-lifecycle-patterns.md`
 - Updated agent instructions in `.github/agents/ejs-journey.agent.md`
 - Updated skill instructions in `.github/skills/ejs-session-wrapup/SKILL.md`
 - Updated README with workflow guidance
@@ -181,7 +181,7 @@ Files updated:
 - `.github/skills/ejs-session-wrapup/SKILL.md` - Session lifecycle management
 - `.github/copilot-instructions.md` - Lifecycle workflow
 - `README.md` - User-facing documentation
-- `ejs-docs/agent-memory/session-lifecycle-patterns.md` - NEW: Detailed patterns guide
+- `ejs-docs/session-lifecycle-patterns.md` - Detailed patterns guide
 
 ---
 

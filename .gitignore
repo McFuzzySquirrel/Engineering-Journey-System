@@ -9,3 +9,4 @@ game/package.json
 game/package-lock.json
 .ejs.db
 __pycache__/
+.pytest_cache/
