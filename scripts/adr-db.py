@@ -67,7 +67,10 @@ def _parse_frontmatter(text: str) -> dict[str, Any]:
     raw = m.group(1)
     if yaml is not None:
         return yaml.safe_load(raw) or {}
-    # Minimal fallback when PyYAML is absent — extract flat key: value pairs
+    # Minimal fallback when PyYAML is absent — only extracts flat top-level
+    # key: value pairs.  Nested structures (ejs, actors, context) will not
+    # be parsed correctly, so adr-db features that depend on them will
+    # degrade.  Install PyYAML for full functionality.
     result: dict[str, Any] = {}
     for line in raw.splitlines():
         if ":" in line and not line.startswith(" "):
@@ -250,21 +253,18 @@ def cmd_sync(conn: sqlite3.Connection, adr_dir: Path) -> int:
 
     now = datetime.now(timezone.utc).isoformat()
     count = 0
+    disk_ids: set[str] = set()
     for fp in sorted(adr_dir.glob("*.md")):
         record = parse_adr_file(fp)
         if record is None:
             continue
+        disk_ids.add(record["adr_id"])
         record["last_synced"] = now
         conn.execute(_UPSERT, record)
         count += 1
 
     # Remove ADRs that no longer exist on disk
     db_ids = {row["adr_id"] for row in conn.execute("SELECT adr_id FROM adrs")}
-    disk_ids: set[str] = set()
-    for fp in adr_dir.glob("*.md"):
-        rec = parse_adr_file(fp)
-        if rec:
-            disk_ids.add(rec["adr_id"])
     stale = db_ids - disk_ids
     for sid in stale:
         conn.execute("DELETE FROM adrs WHERE adr_id = ?", (sid,))
