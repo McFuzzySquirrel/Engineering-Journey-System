@@ -190,7 +190,7 @@ def parse_journey_file(filepath: Path) -> dict[str, Any] | None:
         "repo": meta.get("repo", ""),
         "branch": meta.get("branch", ""),
         "agents_involved": meta.get("agents_involved", ""),
-        "decision_detected": meta.get("decision_detected", "false"),
+        "decision_detected": str(meta.get("decision_detected", "false")).lower(),
         "adr_links": meta.get("adr_links", ""),
         "tags": meta.get("tags", ""),
         "problem_intent": _extract_section(text, "Problem / Intent"),
@@ -513,6 +513,8 @@ def _sanitise_fts_query(query: str) -> str:
     if '"' in query:
         return query  # Already contains explicit quoting
     tokens = query.split()
+    # Quote bare words that contain FTS5 special chars (hyphens, dots, etc.)
+    # so that e.g. "sub-agent" is not interpreted as "sub NOT agent".
     out: list[str] = []
     for t in tokens:
         if re.search(r"[^\w*]", t):

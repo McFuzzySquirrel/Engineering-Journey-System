@@ -522,7 +522,7 @@ class TestParseJourneyFile(_JourneyTempDirMixin, unittest.TestCase):
         self.assertIsNotNone(record)
         self.assertEqual(record["session_id"], "ejs-session-2026-02-10-01")
         self.assertEqual(record["date"], "2026-02-10")
-        self.assertEqual(record["decision_detected"], "True")
+        self.assertEqual(record["decision_detected"], "true")
         self.assertIn("sub-agents capture", record["problem_intent"])
 
     def test_plain_metadata_journey(self) -> None:
