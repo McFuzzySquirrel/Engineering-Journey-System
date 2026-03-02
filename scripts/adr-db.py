@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 """
-EJS ADR Database — SQLite-backed index for Architecture Decision Records.
+EJS Database — SQLite-backed index for ADRs and Session Journeys.
 
-Parses ADR markdown files from ejs-docs/adr/, extracts YAML frontmatter and
+Parses ADR and journey markdown files from ejs-docs/, extracts metadata and
 key content sections, and stores them in a local SQLite database for fast
 agent-friendly querying when full-file context would be too expensive.
 
 Usage:
-    python scripts/adr-db.py sync              # Parse ADR files → database
-    python scripts/adr-db.py list              # List all ADRs (compact)
-    python scripts/adr-db.py get <adr_id>      # Full details for one ADR
-    python scripts/adr-db.py search <query>    # Full-text search across ADRs
-    python scripts/adr-db.py summary           # Agent-friendly compact summary
+    python scripts/adr-db.py sync                   # Parse ADR + journey files → database
+    python scripts/adr-db.py list                   # List all ADRs (compact)
+    python scripts/adr-db.py get <adr_id>           # Full details for one ADR
+    python scripts/adr-db.py search <query>         # Full-text search across ADRs and journeys
+    python scripts/adr-db.py summary                # Agent-friendly compact summary of ADRs
+    python scripts/adr-db.py list-journeys          # List all journeys (compact)
+    python scripts/adr-db.py get-journey <id>       # Full details for one journey
+    python scripts/adr-db.py summary-journeys       # Agent-friendly compact summary of journeys
 
-The database is stored at <repo_root>/.ejs-adr.db (gitignored).
+The database is stored at <repo_root>/.ejs.db (gitignored).
 """
 
 from __future__ import annotations
@@ -44,11 +47,15 @@ def _repo_root() -> Path:
 
 
 def _default_db_path() -> Path:
-    return _repo_root() / ".ejs-adr.db"
+    return _repo_root() / ".ejs.db"
 
 
 def _default_adr_dir() -> Path:
     return _repo_root() / "ejs-docs" / "adr"
+
+
+def _default_journey_dir() -> Path:
+    return _repo_root() / "ejs-docs" / "journey"
 
 
 # ---------------------------------------------------------------------------
@@ -131,6 +138,67 @@ def parse_adr_file(filepath: Path) -> dict[str, Any] | None:
         "consequences": _extract_section(text, "Consequences"),
         "key_learnings": _extract_section(text, "Key Learnings"),
         "agent_guidance": _extract_section(text, "Agent Guidance"),
+        "file_path": str(filepath.relative_to(_repo_root())),
+    }
+
+
+# Session ID regex for raw-text extraction from journey metadata
+_SESSION_ID_RE = re.compile(r"^\s*session_id:\s*(\S+)", re.MULTILINE)
+
+
+def _parse_journey_metadata(text: str) -> dict[str, str]:
+    """Extract flat key: value metadata from the top of a journey file.
+
+    Journey files may use YAML frontmatter (``---`` delimiters) or plain
+    ``key: value`` lines before the first ``#`` heading.  This helper
+    normalises both formats into a flat dict of string values.
+    """
+    fm_match = _FRONTMATTER_RE.match(text)
+    if fm_match:
+        raw = fm_match.group(1)
+    else:
+        # Plain key: value lines before the first heading
+        first_heading = re.search(r"^#", text, re.MULTILINE)
+        raw = text[: first_heading.start()] if first_heading else text
+
+    if yaml is not None and fm_match:
+        parsed = yaml.safe_load(raw) or {}
+        # Flatten to strings for uniform handling
+        return {k: str(v) if not isinstance(v, str) else v for k, v in parsed.items()}
+
+    result: dict[str, str] = {}
+    for line in raw.splitlines():
+        if ":" in line and not line.startswith(" ") and not line.startswith("#"):
+            key, _, value = line.partition(":")
+            result[key.strip()] = value.strip()
+    return result
+
+
+def parse_journey_file(filepath: Path) -> dict[str, Any] | None:
+    """Parse a single Session Journey markdown file into a dict."""
+    text = filepath.read_text(encoding="utf-8")
+
+    meta = _parse_journey_metadata(text)
+    session_id = meta.get("session_id", "").strip()
+    if not session_id:
+        return None  # Skip template or invalid files
+
+    return {
+        "session_id": session_id,
+        "author": meta.get("author", ""),
+        "date": meta.get("date", ""),
+        "repo": meta.get("repo", ""),
+        "branch": meta.get("branch", ""),
+        "agents_involved": meta.get("agents_involved", ""),
+        "decision_detected": meta.get("decision_detected", "false"),
+        "adr_links": meta.get("adr_links", ""),
+        "tags": meta.get("tags", ""),
+        "problem_intent": _extract_section(text, "Problem / Intent"),
+        "interaction_summary": _extract_section(text, "Interaction Summary")
+        or _extract_section(text, "Interaction Summary (Required)"),
+        "decisions_made": _extract_section(text, "Decisions Made"),
+        "key_learnings": _extract_section(text, "Key Learnings"),
+        "future_agent_guidance": _extract_section(text, "Future Agent Guidance"),
         "file_path": str(filepath.relative_to(_repo_root())),
     }
 
@@ -232,12 +300,100 @@ ON CONFLICT(adr_id) DO UPDATE SET
     last_synced     = excluded.last_synced;
 """
 
+_JOURNEYS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS journeys (
+    session_id              TEXT PRIMARY KEY,
+    author                  TEXT,
+    date                    TEXT,
+    repo                    TEXT,
+    branch                  TEXT,
+    agents_involved         TEXT,
+    decision_detected       TEXT,
+    adr_links               TEXT,
+    tags                    TEXT,
+    problem_intent          TEXT,
+    interaction_summary     TEXT,
+    decisions_made          TEXT,
+    key_learnings           TEXT,
+    future_agent_guidance   TEXT,
+    file_path               TEXT,
+    last_synced             TEXT
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS journeys_fts USING fts5(
+    session_id,
+    problem_intent,
+    interaction_summary,
+    decisions_made,
+    key_learnings,
+    future_agent_guidance,
+    content='journeys',
+    content_rowid='rowid'
+);
+
+CREATE TRIGGER IF NOT EXISTS journeys_ai AFTER INSERT ON journeys BEGIN
+    INSERT INTO journeys_fts(rowid, session_id, problem_intent, interaction_summary,
+                             decisions_made, key_learnings, future_agent_guidance)
+    VALUES (new.rowid, new.session_id, new.problem_intent, new.interaction_summary,
+            new.decisions_made, new.key_learnings, new.future_agent_guidance);
+END;
+
+CREATE TRIGGER IF NOT EXISTS journeys_ad AFTER DELETE ON journeys BEGIN
+    INSERT INTO journeys_fts(journeys_fts, rowid, session_id, problem_intent, interaction_summary,
+                             decisions_made, key_learnings, future_agent_guidance)
+    VALUES ('delete', old.rowid, old.session_id, old.problem_intent, old.interaction_summary,
+            old.decisions_made, old.key_learnings, old.future_agent_guidance);
+END;
+
+CREATE TRIGGER IF NOT EXISTS journeys_au AFTER UPDATE ON journeys BEGIN
+    INSERT INTO journeys_fts(journeys_fts, rowid, session_id, problem_intent, interaction_summary,
+                             decisions_made, key_learnings, future_agent_guidance)
+    VALUES ('delete', old.rowid, old.session_id, old.problem_intent, old.interaction_summary,
+            old.decisions_made, old.key_learnings, old.future_agent_guidance);
+    INSERT INTO journeys_fts(rowid, session_id, problem_intent, interaction_summary,
+                             decisions_made, key_learnings, future_agent_guidance)
+    VALUES (new.rowid, new.session_id, new.problem_intent, new.interaction_summary,
+            new.decisions_made, new.key_learnings, new.future_agent_guidance);
+END;
+"""
+
+_JOURNEY_UPSERT = """
+INSERT INTO journeys (
+    session_id, author, date, repo, branch, agents_involved,
+    decision_detected, adr_links, tags, problem_intent,
+    interaction_summary, decisions_made, key_learnings,
+    future_agent_guidance, file_path, last_synced
+) VALUES (
+    :session_id, :author, :date, :repo, :branch, :agents_involved,
+    :decision_detected, :adr_links, :tags, :problem_intent,
+    :interaction_summary, :decisions_made, :key_learnings,
+    :future_agent_guidance, :file_path, :last_synced
+)
+ON CONFLICT(session_id) DO UPDATE SET
+    author                  = excluded.author,
+    date                    = excluded.date,
+    repo                    = excluded.repo,
+    branch                  = excluded.branch,
+    agents_involved         = excluded.agents_involved,
+    decision_detected       = excluded.decision_detected,
+    adr_links               = excluded.adr_links,
+    tags                    = excluded.tags,
+    problem_intent          = excluded.problem_intent,
+    interaction_summary     = excluded.interaction_summary,
+    decisions_made          = excluded.decisions_made,
+    key_learnings           = excluded.key_learnings,
+    future_agent_guidance   = excluded.future_agent_guidance,
+    file_path               = excluded.file_path,
+    last_synced             = excluded.last_synced;
+"""
+
 
 def init_db(db_path: Path) -> sqlite3.Connection:
     """Open (or create) the database and ensure schema exists."""
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     conn.executescript(_SCHEMA)
+    conn.executescript(_JOURNEYS_SCHEMA)
     return conn
 
 
@@ -245,8 +401,19 @@ def init_db(db_path: Path) -> sqlite3.Connection:
 # Commands
 # ---------------------------------------------------------------------------
 
-def cmd_sync(conn: sqlite3.Connection, adr_dir: Path) -> int:
-    """Parse ADR files and upsert into the database."""
+def cmd_sync(conn: sqlite3.Connection, adr_dir: Path,
+             journey_dir: Path | None = None) -> int:
+    """Parse ADR (and optionally journey) files and upsert into the database."""
+    rc = _sync_adrs(conn, adr_dir)
+    if journey_dir is not None and journey_dir.is_dir():
+        rc2 = _sync_journeys(conn, journey_dir)
+        if rc == 0:
+            rc = rc2
+    return rc
+
+
+def _sync_adrs(conn: sqlite3.Connection, adr_dir: Path) -> int:
+    """Sync ADR markdown files into the database."""
     if not adr_dir.is_dir():
         print(f"ADR directory not found: {adr_dir}", file=sys.stderr)
         return 1
@@ -271,6 +438,38 @@ def cmd_sync(conn: sqlite3.Connection, adr_dir: Path) -> int:
 
     conn.commit()
     print(f"Synced {count} ADR(s). Removed {len(stale)} stale record(s).")
+    return 0
+
+
+def _sync_journeys(conn: sqlite3.Connection, journey_dir: Path) -> int:
+    """Sync Session Journey markdown files into the database."""
+    if not journey_dir.is_dir():
+        print(f"Journey directory not found: {journey_dir}", file=sys.stderr)
+        return 1
+
+    now = datetime.now(timezone.utc).isoformat()
+    count = 0
+    disk_ids: set[str] = set()
+    for fp in sorted(journey_dir.rglob("*.md")):
+        # Skip template files
+        if "_templates" in fp.parts:
+            continue
+        record = parse_journey_file(fp)
+        if record is None:
+            continue
+        disk_ids.add(record["session_id"])
+        record["last_synced"] = now
+        conn.execute(_JOURNEY_UPSERT, record)
+        count += 1
+
+    # Remove journeys that no longer exist on disk
+    db_ids = {row["session_id"] for row in conn.execute("SELECT session_id FROM journeys")}
+    stale = db_ids - disk_ids
+    for sid in stale:
+        conn.execute("DELETE FROM journeys WHERE session_id = ?", (sid,))
+
+    conn.commit()
+    print(f"Synced {count} journey(s). Removed {len(stale)} stale record(s).")
     return 0
 
 
@@ -303,9 +502,30 @@ def cmd_get(conn: sqlite3.Connection, adr_id: str) -> int:
     return 0
 
 
+def _sanitise_fts_query(query: str) -> str:
+    """Quote bare words that contain FTS5 special characters (e.g. hyphens).
+
+    FTS5 interprets ``-`` as the NOT operator.  This helper wraps tokens
+    that contain such characters in double-quotes so that a plain search
+    like ``sub-agent`` works as expected without requiring the caller to
+    know FTS5 syntax.
+    """
+    if '"' in query:
+        return query  # Already contains explicit quoting
+    tokens = query.split()
+    out: list[str] = []
+    for t in tokens:
+        if re.search(r"[^\w*]", t):
+            out.append(f'"{t}"')
+        else:
+            out.append(t)
+    return " ".join(out)
+
+
 def cmd_search(conn: sqlite3.Connection, query: str) -> int:
-    """Full-text search across ADR content."""
-    rows = conn.execute(
+    """Full-text search across ADR and journey content."""
+    fts_query = _sanitise_fts_query(query)
+    adr_rows = conn.execute(
         """
         SELECT a.adr_id, a.title, a.status, a.date,
                snippet(adrs_fts, 2, '>>>', '<<<', '...', 32) AS snippet
@@ -314,13 +534,29 @@ def cmd_search(conn: sqlite3.Connection, query: str) -> int:
         WHERE adrs_fts MATCH ?
         ORDER BY rank
         """,
-        (query,),
+        (fts_query,),
     ).fetchall()
-    if not rows:
+    journey_rows = conn.execute(
+        """
+        SELECT j.session_id, j.date, j.decision_detected,
+               snippet(journeys_fts, 1, '>>>', '<<<', '...', 32) AS snippet
+        FROM journeys_fts
+        JOIN journeys j ON j.rowid = journeys_fts.rowid
+        WHERE journeys_fts MATCH ?
+        ORDER BY rank
+        """,
+        (fts_query,),
+    ).fetchall()
+    if not adr_rows and not journey_rows:
         print("No results.")
         return 0
-    for r in rows:
-        print(f"[{r['adr_id']}] {r['title']}  ({r['status']}, {r['date']})")
+    for r in adr_rows:
+        print(f"[ADR {r['adr_id']}] {r['title']}  ({r['status']}, {r['date']})")
+        if r["snippet"]:
+            print(f"  …{r['snippet']}…")
+        print()
+    for r in journey_rows:
+        print(f"[Journey {r['session_id']}]  (decision: {r['decision_detected']}, {r['date']})")
         if r["snippet"]:
             print(f"  …{r['snippet']}…")
         print()
@@ -353,19 +589,71 @@ def cmd_summary(conn: sqlite3.Connection) -> int:
     return 0
 
 
+def cmd_list_journeys(conn: sqlite3.Connection) -> int:
+    """List all journeys in compact format."""
+    rows = conn.execute(
+        "SELECT session_id, date, decision_detected, repo, branch FROM journeys ORDER BY date, session_id"
+    ).fetchall()
+    if not rows:
+        print("No journeys in database. Run 'sync' first.")
+        return 0
+    for r in rows:
+        print(f"[{r['session_id']}]  (decision: {r['decision_detected']}, {r['date']}, {r['repo']})")
+    return 0
+
+
+def cmd_get_journey(conn: sqlite3.Connection, session_id: str) -> int:
+    """Show full details for a single journey."""
+    row = conn.execute("SELECT * FROM journeys WHERE session_id = ?", (session_id,)).fetchone()
+    if not row:
+        print(f"Journey {session_id} not found.", file=sys.stderr)
+        return 1
+    for key in row.keys():
+        print(f"--- {key} ---")
+        print(row[key])
+        print()
+    return 0
+
+
+def cmd_summary_journeys(conn: sqlite3.Connection) -> int:
+    """Produce a compact, agent-friendly summary of all journeys."""
+    rows = conn.execute(
+        "SELECT session_id, date, decision_detected, problem_intent, "
+        "key_learnings, future_agent_guidance FROM journeys ORDER BY date, session_id"
+    ).fetchall()
+    if not rows:
+        print("No journeys in database. Run 'sync' first.")
+        return 0
+
+    parts: list[str] = []
+    for r in rows:
+        intent_short = (r["problem_intent"] or "")[:300]
+        learnings_short = (r["key_learnings"] or "")[:200]
+        guidance_short = (r["future_agent_guidance"] or "")[:200]
+        parts.append(
+            f"### {r['session_id']}\n"
+            f"Date: {r['date']} | Decision: {r['decision_detected']}\n"
+            f"Intent: {intent_short}\n"
+            f"Learnings: {learnings_short}\n"
+            f"Agent Guidance: {guidance_short}\n"
+        )
+    print("\n".join(parts))
+    return 0
+
+
 # ---------------------------------------------------------------------------
 # CLI entry-point
 # ---------------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="EJS ADR Database — SQLite index for Architecture Decision Records",
+        description="EJS Database — SQLite index for ADRs and Session Journeys",
     )
     parser.add_argument(
         "--db",
         type=Path,
         default=None,
-        help="Path to SQLite database (default: <repo>/.ejs-adr.db)",
+        help="Path to SQLite database (default: <repo>/.ejs.db)",
     )
     parser.add_argument(
         "--adr-dir",
@@ -373,18 +661,31 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to ADR markdown directory (default: <repo>/ejs-docs/adr)",
     )
+    parser.add_argument(
+        "--journey-dir",
+        type=Path,
+        default=None,
+        help="Path to journey markdown directory (default: <repo>/ejs-docs/journey)",
+    )
     sub = parser.add_subparsers(dest="command")
 
-    sub.add_parser("sync", help="Parse ADR files and update the database")
+    sub.add_parser("sync", help="Parse ADR and journey files and update the database")
     sub.add_parser("list", help="List all ADRs")
 
     p_get = sub.add_parser("get", help="Show full details for an ADR")
     p_get.add_argument("adr_id", help="ADR identifier (e.g. 0010)")
 
-    p_search = sub.add_parser("search", help="Full-text search across ADRs")
+    p_search = sub.add_parser("search", help="Full-text search across ADRs and journeys")
     p_search.add_argument("query", help="Search query")
 
-    sub.add_parser("summary", help="Agent-friendly compact summary")
+    sub.add_parser("summary", help="Agent-friendly compact summary of ADRs")
+
+    sub.add_parser("list-journeys", help="List all journeys")
+
+    p_get_j = sub.add_parser("get-journey", help="Show full details for a journey")
+    p_get_j.add_argument("session_id", help="Session identifier (e.g. ejs-session-2026-02-10-01)")
+
+    sub.add_parser("summary-journeys", help="Agent-friendly compact summary of journeys")
 
     return parser
 
@@ -399,11 +700,12 @@ def main(argv: list[str] | None = None) -> int:
 
     db_path = args.db or _default_db_path()
     adr_dir = args.adr_dir or _default_adr_dir()
+    journey_dir = args.journey_dir or _default_journey_dir()
 
     conn = init_db(db_path)
     try:
         if args.command == "sync":
-            return cmd_sync(conn, adr_dir)
+            return cmd_sync(conn, adr_dir, journey_dir)
         if args.command == "list":
             return cmd_list(conn)
         if args.command == "get":
@@ -412,6 +714,12 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_search(conn, args.query)
         if args.command == "summary":
             return cmd_summary(conn)
+        if args.command == "list-journeys":
+            return cmd_list_journeys(conn)
+        if args.command == "get-journey":
+            return cmd_get_journey(conn, args.session_id)
+        if args.command == "summary-journeys":
+            return cmd_summary_journeys(conn)
         parser.print_help()
         return 1
     finally:

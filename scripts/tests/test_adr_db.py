@@ -216,6 +216,11 @@ class TestDatabaseSchema(_TempDirMixin, unittest.TestCase):
         self.assertIn("adrs_ai", tables)
         self.assertIn("adrs_ad", tables)
         self.assertIn("adrs_au", tables)
+        self.assertIn("journeys", tables)
+        self.assertIn("journeys_fts", tables)
+        self.assertIn("journeys_ai", tables)
+        self.assertIn("journeys_ad", tables)
+        self.assertIn("journeys_au", tables)
 
 
 class TestSync(_TempDirMixin, unittest.TestCase):
@@ -390,6 +395,275 @@ class TestMainEntryPoint(_TempDirMixin, unittest.TestCase):
         with redirect_stdout(buf):
             rc = adr_db.main([])
         self.assertEqual(rc, 1)
+
+
+# ---------------------------------------------------------------------------
+# Journey test fixtures and helpers
+# ---------------------------------------------------------------------------
+
+SAMPLE_JOURNEY_FRONTMATTER = textwrap.dedent("""\
+    ---
+    session_id: ejs-session-2026-02-10-01
+    author: github-copilot
+    date: 2026-02-10
+    repo: Engineering-Journey-System
+    branch: copilot/capture-sub-agent-decisions
+    agents_involved:
+      - GitHub Copilot (main agent)
+      - explore agent (codebase analysis)
+    decision_detected: true
+    adr_links:
+      - ../../adr/0012-sub-agent-decision-capture-protocol.md
+    tags:
+      - ejs
+      - multi-agent
+    refs:
+      - .github/agents/ejs-journey.agent.md
+    ---
+
+    # Problem / Intent
+
+    Ensure sub-agents capture their decisions and collaboration.
+
+    # Interaction Summary (Required)
+
+    - Human: Asked how to ensure sub-agent decisions are captured
+      - Agent: Explored the repository, identified the gap
+      - Outcome: Implemented sub-agent contribution protocol
+
+    # Decisions Made
+
+    - Decision: Add Sub-Agent Contributions section
+      - Reason: Sub-agent decisions were being lost
+      - Impact: Better traceability
+
+    # Key Learnings
+
+    Sub-agent decisions are a distinct data category.
+
+    # Future Agent Guidance
+
+    Prefer recording sub-agent decisions in structured sections.
+""")
+
+SAMPLE_JOURNEY_PLAIN = textwrap.dedent("""\
+    session_id: ejs-session-2026-03-02-01
+    author: github-copilot
+    date: 2026-03-02
+    repo: Engineering-Journey-System
+    branch: copilot/add-sqlite
+    agents_involved: [github-copilot, explore-agent]
+    decision_detected: false
+    adr_links: []
+    tags: [sqlite, adr-tracking]
+    refs: []
+
+    # Problem / Intent
+
+    Create a SQLite-backed tool for ADR tracking.
+
+    # Interaction Summary (Required)
+
+    - Human: Requested SQLite implementation
+      - Agent: Implemented CLI tool with FTS5
+      - Outcome: Tool working with 5 commands
+
+    # Key Learnings
+
+    YAML octal parsing can silently corrupt IDs.
+
+    # Future Agent Guidance
+
+    Prefer database queries over file scanning.
+""")
+
+
+class _JourneyTempDirMixin:
+    """Mixin providing a temp dir with both adr and journey subdirs."""
+
+    def setUp(self) -> None:
+        import tempfile
+
+        self._tmpdir_obj = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmpdir_obj.name)
+        self.adr_dir = self.tmp / "adr"
+        self.adr_dir.mkdir()
+        self.journey_dir = self.tmp / "journey" / "2026"
+        self.journey_dir.mkdir(parents=True)
+        # Also add a _templates dir to ensure it's skipped
+        (self.tmp / "journey" / "_templates").mkdir()
+        self.db_path = self.tmp / "test.db"
+        self.conn = adr_db.init_db(self.db_path)
+        self._orig_root = adr_db._repo_root
+        adr_db._repo_root = lambda: self.tmp  # type: ignore[assignment]
+
+    def tearDown(self) -> None:
+        adr_db._repo_root = self._orig_root
+        self.conn.close()
+        self._tmpdir_obj.cleanup()
+
+
+def _write_journey(d: Path, filename: str, content: str) -> Path:
+    fp = d / filename
+    fp.write_text(content, encoding="utf-8")
+    return fp
+
+
+# ---------------------------------------------------------------------------
+# Journey tests
+# ---------------------------------------------------------------------------
+
+
+class TestParseJourneyFile(_JourneyTempDirMixin, unittest.TestCase):
+    def test_frontmatter_journey(self) -> None:
+        fp = _write_journey(self.journey_dir, "ejs-session-2026-02-10-01.md",
+                            SAMPLE_JOURNEY_FRONTMATTER)
+        record = adr_db.parse_journey_file(fp)
+        self.assertIsNotNone(record)
+        self.assertEqual(record["session_id"], "ejs-session-2026-02-10-01")
+        self.assertEqual(record["date"], "2026-02-10")
+        self.assertEqual(record["decision_detected"], "True")
+        self.assertIn("sub-agents capture", record["problem_intent"])
+
+    def test_plain_metadata_journey(self) -> None:
+        fp = _write_journey(self.journey_dir, "ejs-session-2026-03-02-01.md",
+                            SAMPLE_JOURNEY_PLAIN)
+        record = adr_db.parse_journey_file(fp)
+        self.assertIsNotNone(record)
+        self.assertEqual(record["session_id"], "ejs-session-2026-03-02-01")
+        self.assertEqual(record["date"], "2026-03-02")
+        self.assertIn("SQLite-backed tool", record["problem_intent"])
+
+    def test_no_session_id_returns_none(self) -> None:
+        fp = _write_journey(self.journey_dir, "bad.md", "# Just a heading\n")
+        self.assertIsNone(adr_db.parse_journey_file(fp))
+
+    def test_template_skipped(self) -> None:
+        template = "session_id:\nauthor:\ndate:\n\n# Problem / Intent\nDescribe.\n"
+        fp = _write_journey(self.journey_dir, "template.md", template)
+        self.assertIsNone(adr_db.parse_journey_file(fp))
+
+
+class TestJourneySync(_JourneyTempDirMixin, unittest.TestCase):
+    def test_sync_inserts_journeys(self) -> None:
+        _write_journey(self.journey_dir, "ejs-session-2026-02-10-01.md",
+                       SAMPLE_JOURNEY_FRONTMATTER)
+        _write_journey(self.journey_dir, "ejs-session-2026-03-02-01.md",
+                       SAMPLE_JOURNEY_PLAIN)
+        rc = adr_db._sync_journeys(self.conn, self.tmp / "journey")
+        self.assertEqual(rc, 0)
+        rows = self.conn.execute("SELECT * FROM journeys").fetchall()
+        self.assertEqual(len(rows), 2)
+
+    def test_sync_removes_stale_journeys(self) -> None:
+        _write_journey(self.journey_dir, "ejs-session-2026-02-10-01.md",
+                       SAMPLE_JOURNEY_FRONTMATTER)
+        adr_db._sync_journeys(self.conn, self.tmp / "journey")
+        self.assertEqual(
+            self.conn.execute("SELECT count(*) FROM journeys").fetchone()[0], 1)
+
+        (self.journey_dir / "ejs-session-2026-02-10-01.md").unlink()
+        adr_db._sync_journeys(self.conn, self.tmp / "journey")
+        self.assertEqual(
+            self.conn.execute("SELECT count(*) FROM journeys").fetchone()[0], 0)
+
+    def test_sync_skips_templates_dir(self) -> None:
+        template_dir = self.tmp / "journey" / "_templates"
+        _write_journey(template_dir, "journey-template.md",
+                       "session_id: test\n# Problem / Intent\nTemplate.\n")
+        adr_db._sync_journeys(self.conn, self.tmp / "journey")
+        rows = self.conn.execute("SELECT * FROM journeys").fetchall()
+        self.assertEqual(len(rows), 0)
+
+    def test_cmd_sync_includes_journeys(self) -> None:
+        _write_adr(self.adr_dir, "0042-test.md", SAMPLE_ADR)
+        _write_journey(self.journey_dir, "ejs-session-2026-03-02-01.md",
+                       SAMPLE_JOURNEY_PLAIN)
+        rc = adr_db.cmd_sync(self.conn, self.adr_dir, self.tmp / "journey")
+        self.assertEqual(rc, 0)
+        self.assertEqual(
+            self.conn.execute("SELECT count(*) FROM adrs").fetchone()[0], 1)
+        self.assertEqual(
+            self.conn.execute("SELECT count(*) FROM journeys").fetchone()[0], 1)
+
+
+class TestJourneyFTS(_JourneyTempDirMixin, unittest.TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        _write_journey(self.journey_dir, "ejs-session-2026-03-02-01.md",
+                       SAMPLE_JOURNEY_PLAIN)
+        adr_db._sync_journeys(self.conn, self.tmp / "journey")
+
+    def test_fts_finds_journey(self) -> None:
+        rows = self.conn.execute(
+            "SELECT session_id FROM journeys_fts WHERE journeys_fts MATCH 'SQLite'"
+        ).fetchall()
+        self.assertEqual(len(rows), 1)
+
+    def test_fts_no_match(self) -> None:
+        rows = self.conn.execute(
+            "SELECT session_id FROM journeys_fts WHERE journeys_fts MATCH 'nonexistent_xyzzy'"
+        ).fetchall()
+        self.assertEqual(len(rows), 0)
+
+
+class TestJourneyCLICommands(_JourneyTempDirMixin, unittest.TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        _write_journey(self.journey_dir, "ejs-session-2026-03-02-01.md",
+                       SAMPLE_JOURNEY_PLAIN)
+        adr_db._sync_journeys(self.conn, self.tmp / "journey")
+
+    def test_cmd_list_journeys(self) -> None:
+        import io
+        from contextlib import redirect_stdout
+
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = adr_db.cmd_list_journeys(self.conn)
+        self.assertEqual(rc, 0)
+        self.assertIn("ejs-session-2026-03-02-01", buf.getvalue())
+
+    def test_cmd_get_journey_found(self) -> None:
+        import io
+        from contextlib import redirect_stdout
+
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = adr_db.cmd_get_journey(self.conn, "ejs-session-2026-03-02-01")
+        self.assertEqual(rc, 0)
+        self.assertIn("SQLite-backed tool", buf.getvalue())
+
+    def test_cmd_get_journey_not_found(self) -> None:
+        rc = adr_db.cmd_get_journey(self.conn, "nonexistent")
+        self.assertEqual(rc, 1)
+
+    def test_cmd_summary_journeys(self) -> None:
+        import io
+        from contextlib import redirect_stdout
+
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = adr_db.cmd_summary_journeys(self.conn)
+        self.assertEqual(rc, 0)
+        output = buf.getvalue()
+        self.assertIn("ejs-session-2026-03-02-01", output)
+        self.assertIn("SQLite-backed tool", output)
+
+    def test_search_across_both(self) -> None:
+        import io
+        from contextlib import redirect_stdout
+
+        _write_adr(self.adr_dir, "0042-test.md", SAMPLE_ADR)
+        adr_db._sync_adrs(self.conn, self.adr_dir)
+
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = adr_db.cmd_search(self.conn, "SQLite")
+        self.assertEqual(rc, 0)
+        output = buf.getvalue()
+        self.assertIn("[ADR 0042]", output)
+        self.assertIn("[Journey ejs-session-2026-03-02-01]", output)
 
 
 if __name__ == "__main__":
