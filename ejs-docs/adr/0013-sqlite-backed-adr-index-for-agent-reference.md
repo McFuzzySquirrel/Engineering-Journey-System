@@ -3,7 +3,7 @@ ejs:
   type: journey-adr
   version: 1.1
   adr_id: "0013"
-  title: SQLite-Backed ADR Index for Agent Reference
+  title: SQLite-Backed EJS Index for Agent Reference
   date: 2026-03-02
   status: accepted
   session_id: ejs-session-2026-03-02-01
@@ -37,7 +37,7 @@ As the number of ADRs grows, agents reading all ADR markdown files to reference 
 
 # Session Intent
 
-Create a SQLite-backed tool to index ADR files, enabling agents to quickly reference past architecture decisions when full-file context would be too expensive.
+Create a SQLite-backed tool to index ADR and Session Journey files, enabling agents to quickly reference past architecture decisions and session context when full-file context would be too expensive.
 
 ---
 
@@ -104,20 +104,25 @@ Create a Python CLI tool that parses ADR markdown, stores metadata in SQLite, an
 Adopt **Option C: SQLite with FTS5 Full-Text Search**
 
 ### What was added:
-1. **`scripts/adr-db.py`** — Python CLI tool with 5 commands:
-   - `sync` — Parse ADR files and upsert into SQLite database
+1. **`scripts/adr-db.py`** — Python CLI tool with 8 commands:
+   - `sync` — Parse ADR and journey files and upsert into SQLite database
    - `list` — List all ADRs with compact metadata
    - `get <id>` — Show full details for a specific ADR
-   - `search <query>` — Full-text search across all ADR content
+   - `search <query>` — Full-text search across all ADR and journey content
    - `summary` — Agent-friendly compact summary of all ADRs
+   - `list-journeys` — List all session journeys
+   - `get-journey <id>` — Show full details for a specific journey
+   - `summary-journeys` — Agent-friendly compact summary of all journeys
 
-2. **`scripts/tests/test_adr_db.py`** — 24 unit tests covering parsing, database operations, and CLI commands
+2. **`scripts/tests/test_adr_db.py`** — 39 unit tests covering ADR and journey parsing, database operations, and CLI commands
 
-3. **`.gitignore`** — Added `.ejs-adr.db` and `__pycache__/`
+3. **`.gitignore`** — Added `.ejs.db` and `__pycache__/`
 
 ### Database schema:
 - `adrs` table with 18 columns (metadata + key content sections)
 - `adrs_fts` FTS5 virtual table for full-text search
+- `journeys` table with 16 columns (metadata + key content sections)
+- `journeys_fts` FTS5 virtual table for full-text search
 - Auto-sync triggers (INSERT/UPDATE/DELETE) for index maintenance
 
 ---
@@ -135,8 +140,8 @@ Adopt **Option C: SQLite with FTS5 Full-Text Search**
 # Consequences
 
 ### Positive
-- **Reduced context consumption** — agents query specific ADRs instead of reading all files
-- **Rich search capability** — full-text search across decisions, rationale, learnings, and guidance
+- **Reduced context consumption** — agents query specific ADRs or journeys instead of reading all files
+- **Rich search capability** — full-text search across decisions, rationale, learnings, guidance, and session history
 - **Agent-friendly output** — compact formats designed for context windows
 - **Zero new dependencies** — uses Python stdlib (sqlite3 built-in)
 - **Idempotent syncing** — upsert pattern makes re-syncing safe and efficient
