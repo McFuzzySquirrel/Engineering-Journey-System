@@ -130,7 +130,7 @@ flowchart TD
 ```
 ### Data Flows
 
-To see the data flow of how this works both in a **single user and agent interaction** and a **multi-agent / sub-agent ineraction** check the [Session Lifecycle Patterns](https://github.com/McFuzzySquirrel/Engineering-Journey-System/blob/main/ejs-docs/session-lifecycle-patterns.md)
+To see the data flow of how this works both in a **single user and agent interaction** and a **multi-agent / sub-agent interaction** check the [Session Lifecycle Patterns](https://github.com/McFuzzySquirrel/Engineering-Journey-System/blob/main/ejs-docs/session-lifecycle-patterns.md)
 
 ### New Session-Lifecycle Approach (Recommended)
 
