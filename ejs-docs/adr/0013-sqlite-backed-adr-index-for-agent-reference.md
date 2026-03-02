@@ -199,6 +199,5 @@ reuse:
     - yaml-octal-id-parsing
   future_considerations:
     - auto-sync on ADR file changes (file watcher or git hook)
-    - session journey indexing (extend to journey files)
     - web API wrapper for remote agent access
 ```

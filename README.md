@@ -27,6 +27,7 @@ Includes:
 - `ejs-docs/adr/0010-engineering-journey-system-adoption.md` — example ADR
 - `.github/copilot/pull_request_template.md` — PR template with EJS checks
 - `ejs-docs/journey/_templates/journey-template.md` — Session Journey template
+- `scripts/adr-db.py` — SQLite-backed index for ADRs and Session Journeys ([details below](#ejs-database-tool))
 - `game/` — 3D Asteroids game built with EJS sub-agents ([how to run](game/README.md))
 
 ## Purpose
@@ -42,6 +43,48 @@ EJS captures:
 The `game/` folder contains a fully playable **3D Asteroids** game built entirely through human + AI collaboration using EJS with sub-agents. It's a fun demonstration that the Engineering Journey System works end-to-end with multi-agent workflows — and the game is genuinely enjoyable to play!
 
 See [`game/README.md`](game/README.md) for setup instructions and controls.
+
+## EJS Database Tool
+
+`scripts/adr-db.py` is a SQLite-backed index that lets agents (and humans) efficiently query ADRs and Session Journeys without reading every markdown file into context.
+
+### Quick start
+
+```bash
+python scripts/adr-db.py sync          # Index all ADRs + journeys into .ejs.db
+python scripts/adr-db.py summary       # Compact ADR digest (great for agent context)
+python scripts/adr-db.py search "auth" # Full-text search across ADRs and journeys
+```
+
+### All commands
+
+| Command | Description |
+|---------|-------------|
+| `sync` | Parse ADR and journey markdown files and upsert into the local SQLite database |
+| `list` | List all ADRs (compact: id, title, status, date) |
+| `get <adr_id>` | Show full details for a specific ADR |
+| `search <query>` | Full-text search across all ADR **and** journey content |
+| `summary` | Agent-friendly compact summary of all ADRs |
+| `list-journeys` | List all Session Journeys (compact: id, date, decision status) |
+| `get-journey <session_id>` | Show full details for a specific journey |
+| `summary-journeys` | Agent-friendly compact summary of all journeys |
+
+### How it works
+
+- **Two tables** — `adrs` (18 columns) and `journeys` (16 columns) store extracted metadata and key content sections.
+- **FTS5 full-text search** — virtual tables with auto-sync triggers enable fast concept-based queries across decisions, rationale, learnings, and session history.
+- **No external dependencies** — uses Python stdlib `sqlite3`; PyYAML is optional for richer YAML frontmatter parsing.
+- **Database is gitignored** — `.ejs.db` is a generated artifact. Run `sync` after cloning or when files change.
+
+### Agent workflow
+
+Agents should run `sync` at the start of a session to ensure the index is fresh, then use `summary`, `search`, or `get` to reference past decisions efficiently:
+
+```bash
+python scripts/adr-db.py sync && python scripts/adr-db.py summary
+```
+
+See [ADR 0013](ejs-docs/adr/0013-sqlite-backed-adr-index-for-agent-reference.md) for the full design rationale.
 
 ## How to Use
 
@@ -234,6 +277,7 @@ Do not copy any existing `ejs-docs/journey/YYYY/` files from this starter repo i
 - `.github/copilot/pull_request_template.md` (PR checklist)
 - `ejs-docs/agent-memory/` (prompt/pattern reference library)
 - `ejs-docs/adr/0010-engineering-journey-system-adoption.md` (example ADR)
+- `scripts/adr-db.py` + `scripts/tests/test_adr_db.py` (SQLite index for ADR/journey querying)
 
 If you copy example ADRs, treat them as reference material (not “your repo’s decisions”).
 
