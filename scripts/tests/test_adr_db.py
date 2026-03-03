@@ -161,6 +161,69 @@ SAMPLE_ADR_EXTERNAL = textwrap.dedent("""\
     Always scan the full repo tree for ADR files.
 """)
 
+# Plain / Nygard-style ADR — no YAML frontmatter
+SAMPLE_PLAIN_ADR = textwrap.dedent("""\
+    # ADR-001: Use Markdown for Documentation
+
+    ## Status
+
+    Accepted
+
+    ## Context
+
+    We need a lightweight format for project documentation that is easy to
+    read in plain text and renders well on GitHub.
+
+    ## Decision
+
+    We will use Markdown for all project documentation.
+
+    ## Consequences
+
+    Markdown is widely supported and familiar to most developers.
+    Some complex layouts may require HTML fallbacks.
+""")
+
+SAMPLE_PLAIN_ADR_NUMBERED = textwrap.dedent("""\
+    # 2. Use PostgreSQL as Primary Database
+
+    ## Status
+
+    Proposed
+
+    ## Context
+
+    The application needs a reliable relational database.
+
+    ## Decision
+
+    We will use PostgreSQL as the primary database.
+
+    ## Consequences
+
+    Strong ACID compliance and excellent ecosystem support.
+""")
+
+SAMPLE_PLAIN_ADR_TEMPLATE = textwrap.dedent("""\
+    # ADR-000: ADR Template
+
+    ## Status
+
+    [Proposed | Accepted | Deprecated]
+
+    ## Context
+
+    Describe the context here.
+
+    ## Decision
+
+    Describe the decision here.
+
+    ## Consequences
+
+    Describe the consequences here.
+""")
+
 
 def _write_adr(tmp: Path, filename: str, content: str) -> Path:
     fp = tmp / filename
@@ -255,6 +318,84 @@ class TestParseAdrFile(_TempDirMixin, unittest.TestCase):
             self.assertIsNone(adr_db.parse_adr_file(fp))
         finally:
             adr_db._repo_root = original
+
+
+class TestParsePlainAdr(_TempDirMixin, unittest.TestCase):
+    """Tests for parsing plain / Nygard-style ADRs without YAML frontmatter."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._orig_root = adr_db._repo_root
+        adr_db._repo_root = lambda: self.tmp  # type: ignore[assignment]
+
+    def tearDown(self) -> None:
+        adr_db._repo_root = self._orig_root
+        super().tearDown()
+
+    def test_plain_adr_parsed(self) -> None:
+        """A plain Nygard-style ADR is parsed successfully."""
+        fp = _write_adr(self.adr_dir, "ADR-001-use-markdown.md", SAMPLE_PLAIN_ADR)
+        record = adr_db.parse_adr_file(fp)
+        self.assertIsNotNone(record)
+        self.assertEqual(record["adr_id"], "ADR-001")
+        self.assertEqual(record["title"], "Use Markdown for Documentation")
+        self.assertEqual(record["status"], "accepted")
+        self.assertIn("lightweight format", record["context_section"])
+        self.assertIn("Markdown for all project", record["decision"])
+        self.assertIn("widely supported", record["consequences"])
+
+    def test_plain_adr_numbered_heading(self) -> None:
+        """A plain ADR with '# 2. Title' heading is parsed."""
+        fp = _write_adr(self.adr_dir, "0002-use-postgres.md", SAMPLE_PLAIN_ADR_NUMBERED)
+        record = adr_db.parse_adr_file(fp)
+        self.assertIsNotNone(record)
+        self.assertEqual(record["adr_id"], "ADR-002")
+        self.assertEqual(record["title"], "Use PostgreSQL as Primary Database")
+        self.assertEqual(record["status"], "proposed")
+        self.assertIn("PostgreSQL", record["decision"])
+
+    def test_plain_template_skipped(self) -> None:
+        """A plain ADR-000 template is skipped."""
+        fp = _write_adr(self.adr_dir, "ADR-000-template.md", SAMPLE_PLAIN_ADR_TEMPLATE)
+        record = adr_db.parse_adr_file(fp)
+        self.assertIsNone(record)
+
+    def test_plain_adr_no_heading_skipped(self) -> None:
+        """A file with no heading is skipped."""
+        fp = _write_adr(self.adr_dir, "notes.md", "Some notes without headings.\n")
+        record = adr_db.parse_adr_file(fp)
+        self.assertIsNone(record)
+
+    def test_plain_adr_no_decision_or_context_skipped(self) -> None:
+        """A markdown file with a heading but no Decision/Context sections is skipped."""
+        content = "# Some Title\n\n## Introduction\n\nJust some text.\n"
+        fp = _write_adr(self.adr_dir, "readme.md", content)
+        record = adr_db.parse_adr_file(fp)
+        self.assertIsNone(record)
+
+    def test_plain_adr_sync_into_db(self) -> None:
+        """Plain ADRs found during sync are inserted into the database."""
+        _write_adr(self.adr_dir, "0042-test.md", SAMPLE_ADR)
+        other_dir = self.tmp / "docs" / "adr"
+        other_dir.mkdir(parents=True)
+        _write_adr(other_dir, "ADR-001-use-markdown.md", SAMPLE_PLAIN_ADR)
+
+        rc = adr_db.cmd_sync(self.conn, self.adr_dir)
+        self.assertEqual(rc, 0)
+        rows = self.conn.execute("SELECT adr_id FROM adrs ORDER BY adr_id").fetchall()
+        ids = [r["adr_id"] for r in rows]
+        self.assertEqual(len(ids), 2)
+        self.assertIn("0042", ids)
+        self.assertIn("ADR-001", ids)
+
+    def test_plain_adr_ejs_still_preferred(self) -> None:
+        """EJS-format ADRs are still parsed with the EJS parser (not the fallback)."""
+        fp = _write_adr(self.adr_dir, "0042-test.md", SAMPLE_ADR)
+        record = adr_db.parse_adr_file(fp)
+        self.assertIsNotNone(record)
+        # EJS parser fills session_id; plain parser leaves it empty
+        self.assertEqual(record["session_id"], "ejs-session-2026-03-02-01")
+        self.assertEqual(record["context_repo"], "my-repo")
 
 
 class TestDatabaseSchema(_TempDirMixin, unittest.TestCase):
