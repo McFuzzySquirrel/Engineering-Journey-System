@@ -171,6 +171,7 @@ When delegating work to sub-agents (e.g., code review, testing, documentation ag
 - Before delegating, record the delegation in the Interaction Summary (what task, which sub-agent, what context was provided)
 - Instruct sub-agents to report back: decisions made, alternatives considered, and any handoffs to other agents
 - After each sub-agent completes, capture its contribution in the **Sub-Agent Contributions** section of the Session Journey
+- When delegating repo scaffolding, instruct sub-agents to follow the EJS conventions below (do not let them invent their own ADR templates or agent instruction files)
 
 ### Sub-Agent Decision Capture
 - Each sub-agent's decisions must be recorded with rationale (not just outcomes)
@@ -184,6 +185,13 @@ When delegating work to sub-agents (e.g., code review, testing, documentation ag
 
 ### Machine Extracts
 - Populate the `SUB_AGENT_EXTRACT` section at finalization with a structured summary of all sub-agent contributions, decisions, and handoffs
+
+### Sub-Agent ADR & Instruction Conventions
+When sub-agents scaffold repositories, create documentation structure, or generate ADR templates:
+- **Use the EJS ADR template** (`ejs-docs/adr/0000-adr-template.md`) — do not create plain Nygard-style ADR templates (e.g. `ADR-000-template.md` with only `# Title / ## Status / ## Context / ## Decision`)
+- **Place ADRs under `ejs-docs/adr/`** — do not create alternative ADR directories (e.g. `docs/adr/`)
+- **Do not create standalone agent instruction files** (e.g. `ai-agent-instructions.md`) that duplicate or conflict with `.github/copilot-instructions.md` or `.github/agents/ejs-journey.agent.md`
+- If the sub-agent has no knowledge of EJS, explicitly pass it the EJS ADR template path and format requirements
 
 
 ## EJS Database Tool (SQLite)
