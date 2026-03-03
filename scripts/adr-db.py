@@ -58,6 +58,52 @@ def _default_journey_dir() -> Path:
     return _repo_root() / "ejs-docs" / "journey"
 
 
+# Directories to skip when recursively scanning the repo for ADR files.
+_SCAN_SKIP_DIRS = frozenset({
+    ".git", "node_modules", "dist", ".parcel-cache", "__pycache__",
+    ".pytest_cache", ".mypy_cache", ".tox", ".venv", "venv",
+    "_templates",
+})
+
+
+def _discover_adr_files(repo_root: Path, adr_dir: Path) -> list[Path]:
+    """Discover all ADR markdown files across the entire repository.
+
+    Starts with files in the canonical *adr_dir*, then walks the rest of
+    the repository tree to find ADR files that live outside that directory.
+    Directories listed in ``_SCAN_SKIP_DIRS`` are pruned for performance.
+    """
+    seen_paths: set[Path] = set()
+    ordered: list[Path] = []
+
+    # 1. Canonical ADR directory (non-recursive, preserves existing behaviour)
+    if adr_dir.is_dir():
+        for fp in sorted(adr_dir.glob("*.md")):
+            resolved = fp.resolve()
+            if resolved not in seen_paths:
+                seen_paths.add(resolved)
+                ordered.append(fp)
+
+    # 2. Walk the whole repo for additional ADR files
+    for dirpath, dirnames, filenames in os.walk(repo_root):
+        # Prune skipped directories (modifying dirnames in-place)
+        dirnames[:] = [
+            d for d in dirnames if d not in _SCAN_SKIP_DIRS
+        ]
+        dp = Path(dirpath)
+        for fn in sorted(filenames):
+            if not fn.endswith(".md"):
+                continue
+            fp = dp / fn
+            resolved = fp.resolve()
+            if resolved in seen_paths:
+                continue
+            seen_paths.add(resolved)
+            ordered.append(fp)
+
+    return ordered
+
+
 # ---------------------------------------------------------------------------
 # Markdown / YAML parsing
 # ---------------------------------------------------------------------------
@@ -413,15 +459,24 @@ def cmd_sync(conn: sqlite3.Connection, adr_dir: Path,
 
 
 def _sync_adrs(conn: sqlite3.Connection, adr_dir: Path) -> int:
-    """Sync ADR markdown files into the database."""
+    """Sync ADR markdown files into the database.
+
+    Scans the canonical *adr_dir* **and** the entire repository tree so
+    that ADRs placed in non-standard locations are also discovered and
+    indexed.
+    """
     if not adr_dir.is_dir():
         print(f"ADR directory not found: {adr_dir}", file=sys.stderr)
         return 1
 
+    repo_root = _repo_root()
+    all_files = _discover_adr_files(repo_root, adr_dir)
+
     now = datetime.now(timezone.utc).isoformat()
     count = 0
+    extra = 0
     disk_ids: set[str] = set()
-    for fp in sorted(adr_dir.glob("*.md")):
+    for fp in all_files:
         record = parse_adr_file(fp)
         if record is None:
             continue
@@ -429,6 +484,11 @@ def _sync_adrs(conn: sqlite3.Connection, adr_dir: Path) -> int:
         record["last_synced"] = now
         conn.execute(_UPSERT, record)
         count += 1
+        # Track ADRs found outside the canonical directory
+        try:
+            fp.resolve().relative_to(adr_dir.resolve())
+        except ValueError:
+            extra += 1
 
     # Remove ADRs that no longer exist on disk
     db_ids = {row["adr_id"] for row in conn.execute("SELECT adr_id FROM adrs")}
@@ -437,7 +497,10 @@ def _sync_adrs(conn: sqlite3.Connection, adr_dir: Path) -> int:
         conn.execute("DELETE FROM adrs WHERE adr_id = ?", (sid,))
 
     conn.commit()
-    print(f"Synced {count} ADR(s). Removed {len(stale)} stale record(s).")
+    msg = f"Synced {count} ADR(s). Removed {len(stale)} stale record(s)."
+    if extra:
+        msg += f" ({extra} found outside {adr_dir})"
+    print(msg)
     return 0
 
 
