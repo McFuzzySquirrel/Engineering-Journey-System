@@ -76,8 +76,10 @@ def _discover_adr_files(repo_root: Path, adr_dir: Path) -> list[Path]:
     seen_paths: set[Path] = set()
     ordered: list[Path] = []
 
+    resolved_adr_dir = adr_dir.resolve() if adr_dir.is_dir() else None
+
     # 1. Canonical ADR directory (non-recursive, preserves existing behaviour)
-    if adr_dir.is_dir():
+    if resolved_adr_dir is not None:
         for fp in sorted(adr_dir.glob("*.md")):
             resolved = fp.resolve()
             if resolved not in seen_paths:
@@ -91,6 +93,9 @@ def _discover_adr_files(repo_root: Path, adr_dir: Path) -> list[Path]:
             d for d in dirnames if d not in _SCAN_SKIP_DIRS
         ]
         dp = Path(dirpath)
+        # Skip the canonical ADR directory — already processed above
+        if resolved_adr_dir is not None and dp.resolve() == resolved_adr_dir:
+            continue
         for fn in sorted(filenames):
             if not fn.endswith(".md"):
                 continue
@@ -475,6 +480,7 @@ def _sync_adrs(conn: sqlite3.Connection, adr_dir: Path) -> int:
     now = datetime.now(timezone.utc).isoformat()
     count = 0
     extra = 0
+    resolved_adr_dir = adr_dir.resolve()
     disk_ids: set[str] = set()
     for fp in all_files:
         record = parse_adr_file(fp)
@@ -486,7 +492,7 @@ def _sync_adrs(conn: sqlite3.Connection, adr_dir: Path) -> int:
         count += 1
         # Track ADRs found outside the canonical directory
         try:
-            fp.resolve().relative_to(adr_dir.resolve())
+            fp.resolve().relative_to(resolved_adr_dir)
         except ValueError:
             extra += 1
 
