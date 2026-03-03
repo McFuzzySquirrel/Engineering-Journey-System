@@ -116,10 +116,10 @@ def _discover_adr_files(repo_root: Path, adr_dir: Path) -> list[Path]:
 _FRONTMATTER_RE = re.compile(r"\A---\n(.*?\n)---\n", re.DOTALL)
 _ADR_ID_RE = re.compile(r"^\s*adr_id:\s*(\S+)", re.MULTILINE)
 
-# Regex to extract an ADR identifier from a filename.
+# Regex to extract a numeric ADR identifier from a filename.
 # Matches patterns like: ADR-001-title.md, adr-001-title.md, 0042-title.md
 _FILENAME_ADR_ID_RE = re.compile(
-    r"^(?:adr[_-]?)?([\w-]+?)(?:-[a-zA-Z].*)?\.md$", re.IGNORECASE,
+    r"^(?:adr[_-]?)?(\d+)(?:-[a-zA-Z].*)?\.md$", re.IGNORECASE,
 )
 
 
@@ -253,12 +253,12 @@ def _parse_plain_adr(text: str, filepath: Path) -> dict[str, Any] | None:
         fn_match = _FILENAME_ADR_ID_RE.match(filepath.name)
         if not fn_match:
             return None  # Cannot determine an id — skip
-        adr_id = fn_match.group(1).upper()
+        adr_id = f"ADR-{fn_match.group(1).zfill(3)}"
         title = raw_title
 
     # Skip obvious template files
     lower_title = title.lower()
-    if "template" in lower_title and adr_id.endswith("000"):
+    if "template" in lower_title and adr_id == "ADR-000":
         return None
 
     # A valid plain ADR must have at least a Decision or Context section
@@ -268,10 +268,12 @@ def _parse_plain_adr(text: str, filepath: Path) -> dict[str, Any] | None:
         return None
 
     # Extract Status from the ## Status section
-    status_text = _extract_section(text, "Status").strip().split("\n")[0].strip()
+    status_raw = _extract_section(text, "Status")
+    status_text = status_raw.split("\n", 1)[0].strip() if status_raw else ""
 
     # Extract date from ## Date section if present
-    date_text = _extract_section(text, "Date").strip().split("\n")[0].strip()
+    date_raw = _extract_section(text, "Date")
+    date_text = date_raw.split("\n", 1)[0].strip() if date_raw else ""
 
     return {
         "adr_id": adr_id,

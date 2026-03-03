@@ -374,7 +374,11 @@ class TestParsePlainAdr(_TempDirMixin, unittest.TestCase):
         self.assertIsNone(record)
 
     def test_plain_adr_sync_into_db(self) -> None:
-        """Plain ADRs found during sync are inserted into the database."""
+        """Plain ADRs found during sync are inserted into the database.
+
+        Uses an EJS-format ADR (SAMPLE_ADR) alongside a plain ADR to verify
+        both formats coexist in the same database after sync.
+        """
         _write_adr(self.adr_dir, "0042-test.md", SAMPLE_ADR)
         other_dir = self.tmp / "docs" / "adr"
         other_dir.mkdir(parents=True)
