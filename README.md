@@ -390,10 +390,10 @@ The fastest way to add EJS to an existing repo:
 ```
 
 The script:
-- Copies the agent profile, journey template, and ADR template
+- Copies the agent profile, journey template, ADR template, and database tool (`adr-db.py`)
 - **Appends** the EJS Silent Recording Contract to your existing `.github/copilot-instructions.md` (does not replace it)
 - Is fully idempotent — safe to run multiple times
-- Optionally installs git hooks (`--with-hooks`), the database tool (`--with-db`), and PR template (`--with-pr`)
+- Optionally installs git hooks (`--with-hooks`) and PR template (`--with-pr`)
 
 ### Manual copy (alternative)
 
@@ -405,6 +405,7 @@ If you prefer to copy files manually, this repo uses a strict, collision-resista
 - `.github/copilot-instructions.md` — **Append** the `## EJS Silent Recording Contract (Always-On)` block to your **existing** copilot-instructions.md (do not replace it). If you don't have one, copy the whole file.
 - `ejs-docs/journey/_templates/journey-template.md` — Session Journey template
 - `ejs-docs/adr/0000-adr-template.md` — ADR template
+- `scripts/adr-db.py` + `scripts/tests/test_adr_db.py` — SQLite index for ADR/journey querying (add `.ejs.db` to `.gitignore`)
 
 Do not copy any existing `ejs-docs/journey/YYYY/` files from this starter repo into your target repo. Those are session artifacts; your target repo should generate its own.
 
@@ -421,7 +422,6 @@ Do not copy any existing `ejs-docs/journey/YYYY/` files from this starter repo i
 - `.github/copilot/pull_request_template.md` (PR checklist)
 - `ejs-docs/session-lifecycle-patterns.md` (session flow reference with diagrams)
 - `ejs-docs/adr/0010-engineering-journey-system-adoption.md` (example ADR)
-- `scripts/adr-db.py` + `scripts/tests/test_adr_db.py` (SQLite index for ADR/journey querying)
 
 If you copy example ADRs, treat them as reference material (not “your repo’s decisions”).
 

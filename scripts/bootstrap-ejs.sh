@@ -66,9 +66,8 @@ Arguments:
 
 Options:
   --with-hooks     Also install git commit/push reminder hooks
-  --with-db        Also copy the adr-db.py SQLite tool
   --with-pr        Also copy the PR template
-  --full           Copy everything (hooks + db + PR template)
+  --full           Copy everything (hooks + PR template)
   --dry-run        Show what would be done without making changes
   -h, --help       Show this help message
 
@@ -87,16 +86,15 @@ EOF
 
 TARGET=""
 WITH_HOOKS=false
-WITH_DB=false
 WITH_PR=false
 DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --with-hooks) WITH_HOOKS=true; shift ;;
-    --with-db)    WITH_DB=true; shift ;;
+    --with-db)    shift ;;  # ignored — database tool is now always included
     --with-pr)    WITH_PR=true; shift ;;
-    --full)       WITH_HOOKS=true; WITH_DB=true; WITH_PR=true; shift ;;
+    --full)       WITH_HOOKS=true; WITH_PR=true; shift ;;
     --dry-run)    DRY_RUN=true; shift ;;
     -h|--help)    usage ;;
     -*)           echo "EJS: unknown option: $1"; usage ;;
@@ -206,6 +204,23 @@ copy_file ".github/agents/ejs-journey.agent.md" ".github/agents/ejs-journey.agen
 append_recording_contract
 copy_file "ejs-docs/journey/_templates/journey-template.md" "ejs-docs/journey/_templates/journey-template.md" "Journey template (ejs-docs/journey/_templates/journey-template.md)"
 copy_file "ejs-docs/adr/0000-adr-template.md" "ejs-docs/adr/0000-adr-template.md" "ADR template (ejs-docs/adr/0000-adr-template.md)"
+copy_file "scripts/adr-db.py" "scripts/adr-db.py" "adr-db.py (scripts/adr-db.py)"
+copy_file "scripts/tests/test_adr_db.py" "scripts/tests/test_adr_db.py" "Tests (scripts/tests/test_adr_db.py)"
+
+# Add .ejs.db to .gitignore if not already there
+if [[ "$DRY_RUN" != true ]]; then
+  if [[ -f "$TARGET/.gitignore" ]]; then
+    if ! grep -qF ".ejs.db" "$TARGET/.gitignore" 2>/dev/null; then
+      echo ".ejs.db" >> "$TARGET/.gitignore"
+      echo "  [done] Added .ejs.db to .gitignore"
+    fi
+  else
+    echo ".ejs.db" > "$TARGET/.gitignore"
+    echo "  [done] Created .gitignore with .ejs.db"
+  fi
+else
+  echo "  [append] .ejs.db → .gitignore"
+fi
 echo ""
 
 # ── Optional: PR template ──────────────────────────────────────────
@@ -213,30 +228,6 @@ echo ""
 if [[ "$WITH_PR" == true ]]; then
   echo "PR template:"
   copy_file ".github/copilot/pull_request_template.md" ".github/copilot/pull_request_template.md" "PR template (.github/copilot/pull_request_template.md)"
-  echo ""
-fi
-
-# ── Optional: adr-db.py ────────────────────────────────────────────
-
-if [[ "$WITH_DB" == true ]]; then
-  echo "Database tool:"
-  copy_file "scripts/adr-db.py" "scripts/adr-db.py" "adr-db.py (scripts/adr-db.py)"
-  copy_file "scripts/tests/test_adr_db.py" "scripts/tests/test_adr_db.py" "Tests (scripts/tests/test_adr_db.py)"
-
-  # Add .ejs.db to .gitignore if not already there
-  if [[ "$DRY_RUN" != true ]]; then
-    if [[ -f "$TARGET/.gitignore" ]]; then
-      if ! grep -qF ".ejs.db" "$TARGET/.gitignore" 2>/dev/null; then
-        echo ".ejs.db" >> "$TARGET/.gitignore"
-        echo "  [done] Added .ejs.db to .gitignore"
-      fi
-    else
-      echo ".ejs.db" > "$TARGET/.gitignore"
-      echo "  [done] Created .gitignore with .ejs.db"
-    fi
-  else
-    echo "  [append] .ejs.db → .gitignore"
-  fi
   echo ""
 fi
 

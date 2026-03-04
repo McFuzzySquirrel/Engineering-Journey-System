@@ -16,14 +16,11 @@
 .PARAMETER WithHooks
     Also install git commit/push reminder hooks.
 
-.PARAMETER WithDb
-    Also copy the adr-db.py SQLite tool.
-
 .PARAMETER WithPr
     Also copy the PR template.
 
 .PARAMETER Full
-    Copy everything (hooks + db + PR template).
+    Copy everything (hooks + PR template).
 
 .PARAMETER DryRun
     Show what would be done without making changes.
@@ -44,7 +41,6 @@ param(
     [string]$Target,
 
     [switch]$WithHooks,
-    [switch]$WithDb,
     [switch]$WithPr,
     [switch]$Full,
     [switch]$DryRun
@@ -56,7 +52,6 @@ $ErrorActionPreference = 'Stop'
 
 if ($Full) {
     $WithHooks = $true
-    $WithDb    = $true
     $WithPr    = $true
 }
 
@@ -213,6 +208,25 @@ Copy-EjsFile '.github\agents\ejs-journey.agent.md' '.github\agents\ejs-journey.a
 Append-RecordingContract
 Copy-EjsFile 'ejs-docs\journey\_templates\journey-template.md' 'ejs-docs\journey\_templates\journey-template.md' 'Journey template (ejs-docs/journey/_templates/journey-template.md)'
 Copy-EjsFile 'ejs-docs\adr\0000-adr-template.md' 'ejs-docs\adr\0000-adr-template.md' 'ADR template (ejs-docs/adr/0000-adr-template.md)'
+Copy-EjsFile 'scripts\adr-db.py' 'scripts\adr-db.py' 'adr-db.py (scripts/adr-db.py)'
+Copy-EjsFile 'scripts\tests\test_adr_db.py' 'scripts\tests\test_adr_db.py' 'Tests (scripts/tests/test_adr_db.py)'
+
+# Add .ejs.db to .gitignore if not already there
+if (-not $DryRun) {
+    $gitignorePath = Join-Path $Target '.gitignore'
+    if (Test-Path $gitignorePath) {
+        $gitignoreContent = Get-Content $gitignorePath -Raw -ErrorAction SilentlyContinue
+        if (-not $gitignoreContent -or -not $gitignoreContent.Contains('.ejs.db')) {
+            Add-Content -Path $gitignorePath -Value '.ejs.db'
+            Write-Host '  [done] Added .ejs.db to .gitignore'
+        }
+    } else {
+        Set-Content -Path $gitignorePath -Value '.ejs.db'
+        Write-Host '  [done] Created .gitignore with .ejs.db'
+    }
+} else {
+    Write-Host '  [append] .ejs.db -> .gitignore'
+}
 Write-Host ''
 
 # ── Optional: PR template ──────────────────────────────────────────
@@ -220,31 +234,6 @@ Write-Host ''
 if ($WithPr) {
     Write-Host 'PR template:'
     Copy-EjsFile '.github\copilot\pull_request_template.md' '.github\copilot\pull_request_template.md' 'PR template (.github/copilot/pull_request_template.md)'
-    Write-Host ''
-}
-
-# ── Optional: adr-db.py ────────────────────────────────────────────
-
-if ($WithDb) {
-    Write-Host 'Database tool:'
-    Copy-EjsFile 'scripts\adr-db.py' 'scripts\adr-db.py' 'adr-db.py (scripts/adr-db.py)'
-    Copy-EjsFile 'scripts\tests\test_adr_db.py' 'scripts\tests\test_adr_db.py' 'Tests (scripts/tests/test_adr_db.py)'
-
-    if (-not $DryRun) {
-        $gitignorePath = Join-Path $Target '.gitignore'
-        if (Test-Path $gitignorePath) {
-            $gitignoreContent = Get-Content $gitignorePath -Raw -ErrorAction SilentlyContinue
-            if (-not $gitignoreContent -or -not $gitignoreContent.Contains('.ejs.db')) {
-                Add-Content -Path $gitignorePath -Value '.ejs.db'
-                Write-Host '  [done] Added .ejs.db to .gitignore'
-            }
-        } else {
-            Set-Content -Path $gitignorePath -Value '.ejs.db'
-            Write-Host '  [done] Created .gitignore with .ejs.db'
-        }
-    } else {
-        Write-Host '  [append] .ejs.db -> .gitignore'
-    }
     Write-Host ''
 }
 
