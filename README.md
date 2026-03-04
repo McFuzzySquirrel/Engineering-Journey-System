@@ -16,16 +16,19 @@ EJS exists to capture that reality with **low friction** and **high auditability
 - **One Session Journey per session** (initialized at start, updated throughout, finalized at end) to preserve collaboration + evidence + learning in real-time.
 - **ADRs only when significant** (conditional, numbered) to keep the ADR ledger curated.
 - A **repo-portable, tool-agnostic** structure so the same workflow works in GitHub web, VS Code, and across teams.
+- **Non-competing observer model** — EJS injects silent recording into whatever agents are already active in your repo. It never competes with or overrides existing agent instructions.
 
 Includes:
-- `.github/agents/ejs-journey.agent.md` — Copilot custom agent profile (canonical)
-- `.github/copilot-instructions.md` — Copilot repo-wide instructions (recommended)
+- `.github/agents/ejs-journey.agent.md` — Copilot custom agent profile (observer + coordinator)
+- `.github/copilot-instructions.md` — Always-on silent recording contract (append to your existing instructions)
 - `.github/ejs-agent.md` — legacy pointer (compat)
 - `ejs-docs/adr/0000-adr-template.md` — ADR template for structured journey capture
 - `ejs-docs/adr/0010-engineering-journey-system-adoption.md` — example ADR
 - `.github/copilot/pull_request_template.md` — PR template with EJS checks
 - `ejs-docs/journey/_templates/journey-template.md` — Session Journey template
 - `scripts/adr-db.py` — SQLite-backed index for ADRs and Session Journeys ([details below](#ejs-database-tool))
+- `scripts/bootstrap-ejs.sh` — Bootstrap script to add EJS to any existing repo ([details below](#adopt-ejs-in-another-repository))
+- `scripts/bootstrap-ejs.ps1` — PowerShell bootstrap script for Windows users ([details below](#adopt-ejs-in-another-repository))
 - `game/` — 3D Asteroids game built with EJS sub-agents ([how to run](game/README.md))
 
 ## Purpose
@@ -190,8 +193,9 @@ Bypass:
 
 ## Tooling integration (Copilot, Claude, Cursor)
 
-EJS is tool-agnostic. For GitHub Copilot, the canonical, auto-discoverable location is:
-- `.github/agents/ejs-journey.agent.md` (custom agent profile)
+EJS is tool-agnostic and **non-competing** — it layers silent recording onto whatever agents are already active. For GitHub Copilot, the canonical, auto-discoverable location is:
+- `.github/copilot-instructions.md` (always-on silent recording — Tier 1)
+- `.github/agents/ejs-journey.agent.md` (explicit invocation — Tier 2/3)
 
 Legacy human-readable pointer (kept for compatibility):
 - `.github/ejs-agent.md`
@@ -220,29 +224,37 @@ Important: agent profiles don’t automatically trigger on `git commit`/`git pus
 
 ## Using EJS in VS Code
 
-If you work primarily in VS Code, you can use the same custom agent profile.
+EJS supports three adoption tiers. Use whichever fits your workflow — they can be combined.
 
-### Custom agent (recommended)
+### Tier 1 — Always-On Recording (recommended, zero friction)
 
-- Open GitHub Copilot Chat.
-- Use the agent dropdown to select `ejs-journey`.
-- If you don’t see it, use the agent dropdown → “Configure Custom Agents…” and ensure the workspace agent profile exists at `.github/agents/ejs-journey.agent.md`.
+Append the EJS recording block from `.github/copilot-instructions.md` to your repo’s existing copilot-instructions.md. This injects silent recording behavior into **whatever agent is currently active** — no agent selection needed. Every Copilot conversation in the repo automatically records interactions, decisions, and sub-agent handoffs to the Session Journey.
 
-### Session management prompts
+- No agent switching required
+- Works alongside any existing agents
+- Recording happens as a side-effect of normal work
 
-The agent profile handles session lifecycle directly. Use these prompts:
+### Tier 2 — Bookend Invocation (explicit start/end)
+
+Invoke `@ejs-journey` at session boundaries, then work with your normal agents in between:
 
 **At session start:**
-- "Initialize session"
-- "Let's start working on [task]"
-- "Create session journey"
+- `@ejs-journey initialize session`
+- `@ejs-journey start EJS session for [task]`
 
 **During session:**
-- The agent automatically updates the Session Journey as work progresses
+- Work with your normal implementation agents — Tier 1 instructions ensure they record automatically
 
 **At session end:**
-- "Wrap up this session"
-- "Finalize journey"
+- `@ejs-journey finalize session`
+- `@ejs-journey wrap up`
+
+### Tier 3 — Coordinator Mode (full observability)
+
+- Open GitHub Copilot Chat
+- Use the agent dropdown to select `ejs-journey`
+- EJS acts as the primary agent, delegating implementation to sub-agents and recording everything directly
+- If you don’t see it, use the agent dropdown → “Configure Custom Agents…” and ensure the workspace agent profile exists at `.github/agents/ejs-journey.agent.md`
 
 ### Commit/push reminders
 
@@ -292,7 +304,7 @@ gh copilot explain "git rebase --onto main feature~3 feature"
 
 To integrate EJS:
 
-1. Create or update `CLAUDE.md` to reference the EJS agent profile:
+1. Create or update `CLAUDE.md` to include the EJS silent recording contract:
 
 ```markdown
 # Project Instructions
@@ -300,8 +312,11 @@ To integrate EJS:
 Follow the Engineering Journey System (EJS) contracts in this repo.
 See `.github/agents/ejs-journey.agent.md` for the full agent profile.
 
-At session start: create a Session Journey under `ejs-docs/journey/YYYY/`.
-At session end: finalize the journey and create an ADR if a significant decision was made.
+As you work, silently record to the Session Journey file:
+- Create/update `ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md`
+- Log each interaction as: Human: → Agent [your-name]: → Outcome:
+- Record decisions with rationale and alternatives automatically
+- At session end: finalize the journey and create an ADR if a significant decision was made
 Run `python scripts/adr-db.py sync` at session start to refresh the index.
 ```
 
@@ -346,18 +361,64 @@ cp ejs-docs/journey/_templates/journey-template.md \
 
 The key principle is the same regardless of tool: **capture context incrementally while it's fresh**, not reconstructed after the fact.
 
-## Adopt EJS in another repository (copy/paste kit)
+## Adopt EJS in another repository
 
-If you’re copying this into an existing repo (e.g., photo-jumper), copy the files below. This repo uses a strict, collision-resistant docs root: `ejs-docs/`.
+**EJS is additive and non-competing.** It does not replace your existing agents or instructions — it injects silent recording behavior alongside them.
 
-### Minimal copy (recommended)
+### Bootstrap script (recommended)
 
-- `.github/agents/ejs-journey.agent.md`
-- `.github/copilot-instructions.md` (recommended)
-- `ejs-docs/journey/_templates/journey-template.md`
-- `ejs-docs/adr/0000-adr-template.md`
+The fastest way to add EJS to an existing repo:
+
+```bash
+# From a local clone of the EJS starter repo:
+./scripts/bootstrap-ejs.sh /path/to/your-repo
+
+# With all optional extras (hooks, database tool, PR template):
+./scripts/bootstrap-ejs.sh --full /path/to/your-repo
+
+# Preview what would change without modifying anything:
+./scripts/bootstrap-ejs.sh --dry-run --full /path/to/your-repo
+```
+
+**Windows (PowerShell):**
+
+```powershell
+# From a local clone of the EJS starter repo:
+.\scripts\bootstrap-ejs.ps1 -Target C:\repos\your-repo
+
+# With all optional extras:
+.\scripts\bootstrap-ejs.ps1 -Target C:\repos\your-repo -Full
+
+# Preview what would change:
+.\scripts\bootstrap-ejs.ps1 -Target C:\repos\your-repo -Full -DryRun
+```
+
+The script:
+- Copies the agent profile, journey template, and ADR template
+- **Appends** the EJS Silent Recording Contract to your existing `.github/copilot-instructions.md` (does not replace it)
+- Is fully idempotent — safe to run multiple times
+- Optionally installs git hooks (`--with-hooks`), the database tool (`--with-db`), and PR template (`--with-pr`)
+
+### Manual copy (alternative)
+
+If you prefer to copy files manually, this repo uses a strict, collision-resistant docs root: `ejs-docs/`.
+
+#### Minimal copy
+
+- `.github/agents/ejs-journey.agent.md` — EJS observer agent (for Tier 2 bookend invocation and Tier 3 coordinator mode)
+- `.github/copilot-instructions.md` — **Append** the `## EJS Silent Recording Contract (Always-On)` block to your **existing** copilot-instructions.md (do not replace it). If you don't have one, copy the whole file.
+- `ejs-docs/journey/_templates/journey-template.md` — Session Journey template
+- `ejs-docs/adr/0000-adr-template.md` — ADR template
 
 Do not copy any existing `ejs-docs/journey/YYYY/` files from this starter repo into your target repo. Those are session artifacts; your target repo should generate its own.
+
+### How the tiers activate
+
+| Tier | What to copy | How it activates | Agent selection needed? |
+|------|-------------|-----------------|------------------------|
+| **Tier 1** (always-on) | Append copilot-instructions.md block | Automatically — every agent records silently | No |
+| **Tier 2** (bookend) | + agent profile | User says `@ejs-journey initialize/finalize` | Only at start/end |
+| **Tier 3** (coordinator) | + agent profile | User selects `ejs-journey` from dropdown | Yes, for full session |
 
 ### Optional (nice-to-have)
 
@@ -396,13 +457,12 @@ ejs-docs/
    └─ _templates/
       └─ journey-template.md
 
-### What to do in GitHub web (your next step)
+### What to do after copying (your next step)
 
-- Make sure the copied files are committed and merged to the target repo's default branch (so GitHub web can discover the agent).
-- Start a Copilot coding session and select the `ejs-journey` custom agent.
-- **At session start**, say: "Initialize session" or "Let's start working on [task]" to create the initial Session Journey.
-- Work normally throughout the session. The agent will continuously update the Session Journey as you collaborate.
-- **At session end**, say: "Wrap up this session" or "Finalize journey" to complete the Session Journey.
+- Make sure the copied files are committed and merged to the target repo's default branch.
+- **Tier 1 activates automatically** — every Copilot conversation in the repo will silently record to Session Journey files. No agent selection needed.
+- **For Tier 2**, invoke `@ejs-journey initialize session` at the start of a work session, then work with your normal agents, then invoke `@ejs-journey finalize session` at the end.
+- **For Tier 3**, select `ejs-journey` from the Copilot agent dropdown and it will coordinate the full session.
 - Expect outputs under:
   - `ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md` (created at start, updated throughout, finalized at end)
   - `ejs-docs/adr/NNNN-<kebab-title>.md` (only if decision rubric triggers)
