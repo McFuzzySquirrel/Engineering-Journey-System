@@ -21,7 +21,6 @@ EJS exists to capture that reality with **low friction** and **high auditability
 Includes:
 - `.github/agents/ejs-journey.agent.md` — Copilot custom agent profile (observer + coordinator)
 - `.github/copilot-instructions.md` — Always-on silent recording contract (append to your existing instructions)
-- `.github/ejs-agent.md` — legacy pointer (compat)
 - `ejs-docs/adr/0000-adr-template.md` — ADR template for structured journey capture
 - `ejs-docs/adr/0010-engineering-journey-system-adoption.md` — example ADR
 - `.github/copilot/pull_request_template.md` — PR template with EJS checks
@@ -196,9 +195,6 @@ Bypass:
 EJS is tool-agnostic and **non-competing** — it layers silent recording onto whatever agents are already active. For GitHub Copilot, the canonical, auto-discoverable location is:
 - `.github/copilot-instructions.md` (always-on silent recording — Tier 1)
 - `.github/agents/ejs-journey.agent.md` (explicit invocation — Tier 2/3)
-
-Legacy human-readable pointer (kept for compatibility):
-- `.github/ejs-agent.md`
 
 Different agent tools auto-load instructions from different filenames. Recommended mapping:
 
