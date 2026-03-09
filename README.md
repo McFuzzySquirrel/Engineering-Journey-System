@@ -89,47 +89,9 @@ See [ADR 0013](ejs-docs/adr/0013-sqlite-backed-adr-index-for-agent-reference.md)
 ## How to Use
 
 ### Visual Overview
-A quick visual flowchart to show the new flow:
+[A quick visual flowchart to show the new flow](https://github.com/McFuzzySquirrel/Engineering-Journey-System/blob/main/ejs-docs/session-lifecycle-patterns.md):
 
-```mermaid
-flowchart TD
-    Start([Start New Task]) --> Init[Initialize Session Journey<br/>ejs-session-YYYY-MM-DD-NNN.md]
-    Init --> Metadata[Populate Initial Metadata<br/>+ Problem/Intent]
-    Metadata --> Work[Work with Agent]
-    
-    Work --> Interact[Human ↔ Agent Interaction]
-    Interact --> Auto[Agent Auto-Updates Journey]
-    Auto --> Sections{What Changed?}
-    
-    Sections -->|Decision Made| DecSec[Update Decisions Section]
-    Sections -->|Experiment Run| ExpSec[Update Experiments Section]
-    Sections -->|Approach Pivot| IterSec[Update Iteration Log]
-    Sections -->|Insight Gained| LearnSec[Update Learnings Section]
-    
-    DecSec --> MoreWork{More Work?}
-    ExpSec --> MoreWork
-    IterSec --> MoreWork
-    LearnSec --> MoreWork
-    
-    MoreWork -->|Yes| Work
-    MoreWork -->|No| Finalize[Finalize Session]
-    
-    Finalize --> Complete[Complete All Sections]
-    Complete --> Extracts[Populate Machine Extracts]
-    Extracts --> ADRCheck{Significant<br/>Decision?}
-    
-    ADRCheck -->|Yes| CreateADR[Create ADR 00XX]
-    ADRCheck -->|No| NoADR[decision_detected: false]
-    
-    CreateADR --> Link[Link ADR ↔ Journey]
-    Link --> Done([Session Complete])
-    NoADR --> Done
-    
-    style Init fill:#d4edda
-    style Auto fill:#fff3cd
-    style Finalize fill:#cce5ff
-    style CreateADR fill:#f8d7da
-```
+
 ### Data Flows
 
 To see the data flow of how this works both in a **single user and agent interaction** and a **multi-agent / sub-agent interaction** check the [Session Lifecycle Patterns](https://github.com/McFuzzySquirrel/Engineering-Journey-System/blob/main/ejs-docs/session-lifecycle-patterns.md)
