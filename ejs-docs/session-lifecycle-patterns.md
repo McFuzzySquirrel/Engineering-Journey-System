@@ -16,6 +16,35 @@ EJS is a **non-competing observer** — it records what agents and humans do wit
 
 The lifecycle phases below apply to all tiers — the difference is which agent performs the recording.
 
+## Agent Skills Integration
+
+EJS uses three complementary GitHub Copilot customization mechanisms:
+
+| Mechanism | File | Trigger | Purpose |
+|-----------|------|---------|---------|
+| **Custom Instructions** | `.github/copilot-instructions.md` | Automatic (always-on) | Tier 1 silent recording contract |
+| **Custom Agent** | `.github/agents/ejs-journey.agent.md` | Manual selection | Observer persona, coordination, Tier 2/3 |
+| **Agent Skills** | `.github/skills/<name>/SKILL.md` | Automatic (Copilot loads when relevant) | Task-specific lifecycle workflows |
+
+### How Skills Map to the Lifecycle
+
+Each lifecycle phase has a corresponding agent skill that Copilot can auto-load when it recognizes the task:
+
+| Lifecycle Phase | Agent Skill | Auto-loads when… |
+|-----------------|-------------|------------------|
+| **Session Initialization** | `ejs-session-init` | User starts a session or begins a new task |
+| **Continuous Recording** | (handled by custom instructions) | Always active — no skill needed |
+| **Sub-Agent Capture** | `ejs-sub-agent-capture` | Main agent delegates to sub-agents |
+| **Session Wrap-Up** | `ejs-session-wrapup` | User signals session end (wrap up, finalize, commit) |
+
+### Skills vs. Custom Instructions vs. Agent
+
+- **Custom Instructions** define the always-on recording contract (lightweight, every session)
+- **Agent Skills** provide detailed workflow steps that load only when relevant (context-efficient)
+- **Custom Agent** provides the observer persona and coordination capabilities (Tier 2/3)
+
+Skills are **additive** — they enhance each tier without requiring changes to the agent profile or custom instructions. See [ADR 0014](../adr/0014-agent-skills-for-session-lifecycle.md) for the full rationale.
+
 ## Flow Diagrams
 
 ### Single User-Agent Interaction

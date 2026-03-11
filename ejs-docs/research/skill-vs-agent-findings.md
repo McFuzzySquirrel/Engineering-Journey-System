@@ -3,7 +3,7 @@
 **Date:** 2026-03-11
 **Session:** ejs-session-2026-03-11-01
 **Branch:** copilot/research-skill-vs-agent
-**Status:** Research complete — awaiting decision
+**Status:** Accepted — implemented in ADR 0014
 
 ---
 

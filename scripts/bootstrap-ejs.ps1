@@ -3,9 +3,9 @@
     Bootstrap the Engineering Journey System into an existing repository.
 
 .DESCRIPTION
-    Adds EJS to an existing repo by copying the agent profile, templates,
-    and tooling. Appends the EJS Silent Recording Contract to your existing
-    copilot-instructions.md (does NOT replace it).
+    Adds EJS to an existing repo by copying the agent profile, agent skills,
+    templates, and tooling. Appends the EJS Silent Recording Contract to your
+    existing copilot-instructions.md (does NOT replace it).
 
     EJS is additive and non-competing — it layers silent collaboration
     recording onto whatever agents you already have.
@@ -206,6 +206,9 @@ function Append-RecordingContract {
 Write-Host 'Core files:'
 Copy-EjsFile '.github\agents\ejs-journey.agent.md' '.github\agents\ejs-journey.agent.md' 'Agent profile (.github/agents/ejs-journey.agent.md)'
 Append-RecordingContract
+Copy-EjsFile '.github\skills\ejs-session-init\SKILL.md' '.github\skills\ejs-session-init\SKILL.md' 'Agent skill (.github/skills/ejs-session-init/SKILL.md)'
+Copy-EjsFile '.github\skills\ejs-session-wrapup\SKILL.md' '.github\skills\ejs-session-wrapup\SKILL.md' 'Agent skill (.github/skills/ejs-session-wrapup/SKILL.md)'
+Copy-EjsFile '.github\skills\ejs-sub-agent-capture\SKILL.md' '.github\skills\ejs-sub-agent-capture\SKILL.md' 'Agent skill (.github/skills/ejs-sub-agent-capture/SKILL.md)'
 Copy-EjsFile 'ejs-docs\journey\_templates\journey-template.md' 'ejs-docs\journey\_templates\journey-template.md' 'Journey template (ejs-docs/journey/_templates/journey-template.md)'
 Copy-EjsFile 'ejs-docs\adr\0000-adr-template.md' 'ejs-docs\adr\0000-adr-template.md' 'ADR template (ejs-docs/adr/0000-adr-template.md)'
 Copy-EjsFile 'scripts\adr-db.py' 'scripts\adr-db.py' 'adr-db.py (scripts/adr-db.py)'
@@ -273,6 +276,7 @@ if ($DryRun) {
     Write-Host 'What happens now:'
     Write-Host '  * Tier 1 (always-on): Active immediately -- every Copilot agent'
     Write-Host '    in this repo will silently record to Session Journey files.'
+    Write-Host '    Agent skills auto-load for session init, wrap-up, and sub-agent capture.'
     Write-Host '  * Tier 2 (bookend): Say ''@ejs-journey initialize session'' to start'
     Write-Host '    and ''@ejs-journey finalize session'' to end.'
     Write-Host '  * Tier 3 (coordinator): Select ejs-journey from the agent dropdown.'

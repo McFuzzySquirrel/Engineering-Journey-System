@@ -13,7 +13,7 @@ set -euo pipefail
 #     curl -sL https://raw.githubusercontent.com/McFuzzySquirrel/Engineering-Journey-System/main/scripts/bootstrap-ejs.sh | bash -s -- /path/to/target-repo
 #
 # What it does:
-#   1. Copies the EJS agent profile, templates, and tooling
+#   1. Copies the EJS agent profile, agent skills, templates, and tooling
 #   2. Appends the EJS Silent Recording Contract to your existing
 #      copilot-instructions.md (does NOT replace it)
 #   3. Optionally installs git hooks for commit/push reminders
@@ -202,6 +202,9 @@ append_recording_contract() {
 echo "Core files:"
 copy_file ".github/agents/ejs-journey.agent.md" ".github/agents/ejs-journey.agent.md" "Agent profile (.github/agents/ejs-journey.agent.md)"
 append_recording_contract
+copy_file ".github/skills/ejs-session-init/SKILL.md" ".github/skills/ejs-session-init/SKILL.md" "Agent skill (.github/skills/ejs-session-init/SKILL.md)"
+copy_file ".github/skills/ejs-session-wrapup/SKILL.md" ".github/skills/ejs-session-wrapup/SKILL.md" "Agent skill (.github/skills/ejs-session-wrapup/SKILL.md)"
+copy_file ".github/skills/ejs-sub-agent-capture/SKILL.md" ".github/skills/ejs-sub-agent-capture/SKILL.md" "Agent skill (.github/skills/ejs-sub-agent-capture/SKILL.md)"
 copy_file "ejs-docs/journey/_templates/journey-template.md" "ejs-docs/journey/_templates/journey-template.md" "Journey template (ejs-docs/journey/_templates/journey-template.md)"
 copy_file "ejs-docs/adr/0000-adr-template.md" "ejs-docs/adr/0000-adr-template.md" "ADR template (ejs-docs/adr/0000-adr-template.md)"
 copy_file "scripts/adr-db.py" "scripts/adr-db.py" "adr-db.py (scripts/adr-db.py)"
@@ -265,6 +268,7 @@ else
   echo "What happens now:"
   echo "  • Tier 1 (always-on): Active immediately — every Copilot agent"
   echo "    in this repo will silently record to Session Journey files."
+  echo "    Agent skills auto-load for session init, wrap-up, and sub-agent capture."
   echo "  • Tier 2 (bookend): Say '@ejs-journey initialize session' to start"
   echo "    and '@ejs-journey finalize session' to end."
   echo "  • Tier 3 (coordinator): Select ejs-journey from the agent dropdown."
