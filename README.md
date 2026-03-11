@@ -21,6 +21,9 @@ EJS exists to capture that reality with **low friction** and **high auditability
 Includes:
 - `.github/agents/ejs-journey.agent.md` — Copilot custom agent profile (observer + coordinator)
 - `.github/copilot-instructions.md` — Always-on silent recording contract (append to your existing instructions)
+- `.github/skills/ejs-session-init/SKILL.md` — Agent skill for session initialization workflow
+- `.github/skills/ejs-session-wrapup/SKILL.md` — Agent skill for session finalization workflow
+- `.github/skills/ejs-sub-agent-capture/SKILL.md` — Agent skill for multi-agent contribution capture
 - `ejs-docs/adr/0000-adr-template.md` — ADR template for structured journey capture
 - `ejs-docs/adr/0010-engineering-journey-system-adoption.md` — example ADR
 - `.github/copilot/pull_request_template.md` — PR template with EJS checks
@@ -154,9 +157,12 @@ Bypass:
 
 ## Tooling integration (Copilot, Claude, Cursor)
 
-EJS is tool-agnostic and **non-competing** — it layers silent recording onto whatever agents are already active. For GitHub Copilot, the canonical, auto-discoverable location is:
+EJS is tool-agnostic and **non-competing** — it layers silent recording onto whatever agents are already active. For GitHub Copilot, the canonical, auto-discoverable locations are:
 - `.github/copilot-instructions.md` (always-on silent recording — Tier 1)
 - `.github/agents/ejs-journey.agent.md` (explicit invocation — Tier 2/3)
+- `.github/skills/ejs-session-init/SKILL.md` (auto-loads for session initialization)
+- `.github/skills/ejs-session-wrapup/SKILL.md` (auto-loads for session finalization)
+- `.github/skills/ejs-sub-agent-capture/SKILL.md` (auto-loads for multi-agent workflows)
 
 Different agent tools auto-load instructions from different filenames. Recommended mapping:
 
@@ -164,11 +170,15 @@ Different agent tools auto-load instructions from different filenames. Recommend
 
 - Repo-wide instructions: `.github/copilot-instructions.md`.
 - Custom agent profiles: `.github/agents/*.agent.md` (selectable from the Copilot agent dropdown).
+- Agent skills: `.github/skills/<name>/SKILL.md` (auto-loaded by Copilot when relevant to the task).
 
 This repo includes:
 - `.github/agents/ejs-journey.agent.md`
+- `.github/skills/ejs-session-init/SKILL.md`
+- `.github/skills/ejs-session-wrapup/SKILL.md`
+- `.github/skills/ejs-sub-agent-capture/SKILL.md`
 
-Important: agent profiles don’t automatically trigger on `git commit`/`git push` events. They’re selected based on the chat context. For “fire on commit/push,” use the git hooks.
+Important: agent profiles don’t automatically trigger on `git commit`/`git push` events. They’re selected based on the chat context. Agent skills are auto-loaded by Copilot when it determines they’re relevant to the current task. For “fire on commit/push,” use the git hooks.
 
 ### Claude (e.g., Claude Code)
 
@@ -352,7 +362,7 @@ The fastest way to add EJS to an existing repo:
 ```
 
 The script:
-- Copies the agent profile, journey template, ADR template, and database tool (`adr-db.py`)
+- Copies the agent profile, agent skills, journey template, ADR template, and database tool (`adr-db.py`)
 - **Appends** the EJS Silent Recording Contract to your existing `.github/copilot-instructions.md` (does not replace it)
 - Is fully idempotent — safe to run multiple times
 - Optionally installs git hooks (`--with-hooks`) and PR template (`--with-pr`)
@@ -365,6 +375,9 @@ If you prefer to copy files manually, this repo uses a strict, collision-resista
 
 - `.github/agents/ejs-journey.agent.md` — EJS observer agent (for Tier 2 bookend invocation and Tier 3 coordinator mode)
 - `.github/copilot-instructions.md` — **Append** the `## EJS Silent Recording Contract (Always-On)` block to your **existing** copilot-instructions.md (do not replace it). If you don't have one, copy the whole file.
+- `.github/skills/ejs-session-init/SKILL.md` — Agent skill for session initialization (auto-loaded by Copilot)
+- `.github/skills/ejs-session-wrapup/SKILL.md` — Agent skill for session finalization (auto-loaded by Copilot)
+- `.github/skills/ejs-sub-agent-capture/SKILL.md` — Agent skill for multi-agent workflows (auto-loaded by Copilot)
 - `ejs-docs/journey/_templates/journey-template.md` — Session Journey template
 - `ejs-docs/adr/0000-adr-template.md` — ADR template
 - `scripts/adr-db.py` + `scripts/tests/test_adr_db.py` — SQLite index for ADR/journey querying (add `.ejs.db` to `.gitignore`)
@@ -375,7 +388,7 @@ Do not copy any existing `ejs-docs/journey/YYYY/` files from this starter repo i
 
 | Tier | What to copy | How it activates | Agent selection needed? |
 |------|-------------|-----------------|------------------------|
-| **Tier 1** (always-on) | Append copilot-instructions.md block | Automatically — every agent records silently | No |
+| **Tier 1** (always-on) | Append copilot-instructions.md block + skills | Automatically — every agent records silently; skills auto-load when relevant | No |
 | **Tier 2** (bookend) | + agent profile | User says `@ejs-journey initialize/finalize` | Only at start/end |
 | **Tier 3** (coordinator) | + agent profile | User selects `ejs-journey` from dropdown | Yes, for full session |
 
@@ -407,6 +420,13 @@ After copying, install hooks in the target repo:
 │  └─ ejs-journey.agent.md
 ├─ copilot/
 │  └─ pull_request_template.md
+├─ skills/
+│  ├─ ejs-session-init/
+│  │  └─ SKILL.md
+│  ├─ ejs-session-wrapup/
+│  │  └─ SKILL.md
+│  └─ ejs-sub-agent-capture/
+│     └─ SKILL.md
 └─ copilot-instructions.md
 ejs-docs/
 ├─ adr/
