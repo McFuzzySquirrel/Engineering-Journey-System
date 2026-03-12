@@ -473,10 +473,10 @@ Key points:
 Context-threshold checkpointing is a proactive save mechanism that prevents documentation loss when agent context is consumed faster than the session completes. Instead of relying solely on an explicit session-end signal, agents perform lightweight checkpoint saves during the session.
 
 **Triggers (any one is sufficient):**
-- **3+ unsaved interactions** have accumulated since the last journey file write
+- **3+ unsaved interactions** have accumulated since the last journey file write (an interaction is one human prompt and the corresponding agent response)
 - A **significant decision** was made but not yet written to the journey file
 - A **large, context-intensive operation** is about to start (e.g., reading many files, complex builds, sub-agent delegation)
-- The **session context is getting large** — many exchanges have occurred since the last save
+- **5+ exchanges have occurred** since the last journey file save
 - **Substantial work has been completed** but the user has not signalled session end
 
 **Actions:**
@@ -500,11 +500,13 @@ flowchart TD
     Check -->|3+ unsaved interactions| Save[Write Pending to Journey]
     Check -->|Significant decision unsaved| Save
     Check -->|Large operation upcoming| Save
-    Check -->|Context getting large| Save
+    Check -->|5+ exchanges since last save| Save
     Check -->|No trigger| Continue[Continue Working]
     Save --> Resume[Resume Working]
-    Resume --> Work
-    Continue --> Work
+    Resume --> Done{Session<br/>Complete?}
+    Done -->|No| Work
+    Done -->|Yes| Finalize[Phase 3: Finalize]
+    Continue --> Done
 
     style Save fill:#fff3cd
     style Check fill:#e2e3f1

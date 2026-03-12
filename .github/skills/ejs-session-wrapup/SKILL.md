@@ -80,15 +80,15 @@ not a full reconstruction effort.
 
 | Aspect | Checkpoint (mid-session) | Full Finalization (session end) |
 |--------|--------------------------|-------------------------------|
-| **Trigger** | Context getting large, 3+ unsaved interactions, before heavy operations | User signals session end |
+| **Trigger** | Context getting large, 3+ unsaved interactions, before heavy operations, 5+ exchanges since last save | User signals session end |
 | **Sections updated** | Interaction Summary, Decisions Made, Experiments, Iteration Log, Key Learnings | All sections reviewed and completed |
 | **Machine extracts** | Not populated | Populated in full |
 | **ADR rubric** | Not evaluated | Evaluated; ADR created if warranted |
 | **Goal** | Preserve work-in-progress against context loss | Produce a coherent, complete record |
 
 ### When to Perform a Checkpoint
-- **3+ unsaved interactions** have accumulated since the last save
+- **3+ unsaved interactions** have accumulated since the last save (an interaction is one human prompt and the corresponding agent response)
 - A **significant decision** has been made but not yet written to the journey
 - A **large, context-intensive operation** is about to start
-- The **session context is getting large** (many exchanges since last save)
+- **5+ exchanges** have occurred since the last journey file save
 - Substantial work completed but user has not signalled session end

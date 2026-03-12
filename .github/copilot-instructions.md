@@ -93,10 +93,10 @@ Do not rely solely on session-end signals to save EJS documentation. Perform **c
 
 #### When to Checkpoint
 Perform an EJS checkpoint save when **any** of the following are true:
-- You have accumulated **3 or more unsaved interactions** in your working memory
+- You have accumulated **3 or more unsaved interactions** in your working memory (an interaction is one human prompt and the corresponding agent response)
 - You have made a **significant decision** that is not yet written to the journey file
 - You are about to start a **large, context-intensive operation** (e.g., reading many files, running complex builds, delegating to sub-agents)
-- You sense that the **session context is getting large** (many exchanges have occurred since the last save)
+- **5 or more exchanges** have occurred since the last journey file save
 - The user has not explicitly ended the session, but substantial work has been completed
 
 #### How to Checkpoint
