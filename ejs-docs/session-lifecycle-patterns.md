@@ -209,9 +209,16 @@ flowchart TD
     Update -->|No| Continue[Continue Working]
     Continue --> Work
     Work --> Ref{Need Past<br/>Context?}
-    Ref -->|Yes| Search[adr-db.py search]
-    Search --> Work
+    Ref -->|Yes| DBSearch[DB Search First<br/>adr-db.py search]
+    DBSearch --> DBSufficient{DB Result<br/>Sufficient?}
+    DBSufficient -->|Yes| Work
+    DBSufficient -->|No| ReadMD[Read Markdown<br/>— fallback]
+    ReadMD --> Work
     Ref -->|No| Work
+    Work --> Checkpoint{Checkpoint<br/>Trigger?}
+    Checkpoint -->|Yes| Save[Write Pending<br/>to Journey]
+    Save --> Work
+    Checkpoint -->|No| Work
     Work --> Done{Session<br/>Complete?}
     Done -->|No| Work
     Done -->|Yes| Finalize[Finalize Journey]
@@ -224,8 +231,11 @@ flowchart TD
     style Sync fill:#e2e3f1
     style Init fill:#d4edda
     style Record fill:#fff3cd
+    style Save fill:#fff3cd
     style Finalize fill:#cce5ff
     style CreateADR fill:#f8d7da
+    style DBSearch fill:#d4edda
+    style ReadMD fill:#f8d7da
 ```
 
 **Decision Point Pattern:**
@@ -250,6 +260,55 @@ flowchart LR
     style Decision fill:#fff3cd
     style Capture fill:#d4edda
     style CreateADR fill:#f8d7da
+```
+
+## DB-First Lookup Protocol
+
+When agents need to reference past decisions, journeys, or context, they **must** query the EJS database first. Reading raw markdown files should only be a fallback for additional detail.
+
+### Lookup Order
+
+```
+1. adr-db.py search <query>     ← Primary: fast, context-efficient
+2. adr-db.py summary            ← Overview of all ADRs
+3. adr-db.py get <id>           ← Full DB record for one ADR/journey
+4. Read ejs-docs/adr/*.md       ← Fallback only: when DB results need more detail
+5. Read ejs-docs/journey/**/*.md ← Fallback only: when DB results need more detail
+```
+
+### Why DB-First?
+
+| Approach | Context cost | Speed | Use when |
+|----------|-------------|-------|----------|
+| `adr-db.py search` | Low (returns snippets) | Fast | Looking for specific topics, keywords, or decisions |
+| `adr-db.py summary` | Medium (compact list) | Fast | Need an overview of all ADRs or journeys |
+| `adr-db.py get <id>` | Medium (single record) | Fast | Need full details on a specific known ADR or journey |
+| Read markdown files | High (full file content) | Slow | DB results insufficient; need additional sections, formatting, or context not indexed |
+
+### Rules
+
+1. **Always run `adr-db.py sync` at session start** before any queries
+2. **Never read markdown files as a first step** when looking for past decisions or context
+3. **Use `search` for discovery** — find which ADRs or journeys are relevant before requesting full details
+4. **Use `get` for depth** — retrieve full DB record for a specific ADR or journey identified via search
+5. **Fall back to markdown files only when** the database record lacks the detail you need (e.g., custom sections, embedded diagrams, full narrative context)
+
+### Flow Diagram
+
+```mermaid
+flowchart TD
+    Need[Need Past Context] --> DBSearch[adr-db.py search query]
+    DBSearch --> Sufficient{DB Result<br/>Sufficient?}
+    Sufficient -->|Yes| Use[Use DB Result]
+    Sufficient -->|No| DBGet[adr-db.py get id]
+    DBGet --> Enough{Enough<br/>Detail?}
+    Enough -->|Yes| Use
+    Enough -->|No| ReadMD[Read Markdown File<br/>— fallback only]
+    ReadMD --> Use
+
+    style DBSearch fill:#d4edda
+    style DBGet fill:#fff3cd
+    style ReadMD fill:#f8d7da
 ```
 
 ## Sub-Agent Handoff Protocol
@@ -407,6 +466,58 @@ Key points:
 - Better multi-step/multi-agent session documentation
 - Reduced burden at session end
 
+### Phase 2.5: Context-Threshold Checkpointing (Proactive Save)
+
+**When:** During the session, before context runs out
+
+Context-threshold checkpointing is a proactive save mechanism that prevents documentation loss when agent context is consumed faster than the session completes. Instead of relying solely on an explicit session-end signal, agents perform lightweight checkpoint saves during the session.
+
+**Triggers (any one is sufficient):**
+- **3+ unsaved interactions** have accumulated since the last journey file write (an interaction is one human prompt and the corresponding agent response)
+- A **significant decision** was made but not yet written to the journey file
+- A **large, context-intensive operation** is about to start (e.g., reading many files, complex builds, sub-agent delegation)
+- **5+ exchanges have occurred** since the last journey file save
+- **Substantial work has been completed** but the user has not signalled session end
+
+**Actions:**
+1. Write all pending interactions to the **Interaction Summary**
+2. Write any pending decisions to the **Decisions Made** section
+3. Write any experiments, pivots, or learnings to their respective sections
+4. Append only — do not rewrite the entire file
+5. Do **not** populate machine extracts (those are finalization-only)
+6. Do **not** evaluate the ADR rubric (that is finalization-only)
+7. Resume normal work after the checkpoint
+
+**What a Checkpoint Is NOT:**
+- Not a full finalization — no machine extracts, no ADR rubric evaluation
+- Not a disruption — should be invisible to the user
+- Not a replacement for Phase 3 — full finalization still happens at session end
+
+**Flow Diagram:**
+```mermaid
+flowchart TD
+    Work[Working on Task] --> Check{Checkpoint<br/>Trigger?}
+    Check -->|3+ unsaved interactions| Save[Write Pending to Journey]
+    Check -->|Significant decision unsaved| Save
+    Check -->|Large operation upcoming| Save
+    Check -->|5+ exchanges since last save| Save
+    Check -->|No trigger| Continue[Continue Working]
+    Save --> Resume[Resume Working]
+    Resume --> Done{Session<br/>Complete?}
+    Done -->|No| Work
+    Done -->|Yes| Finalize[Phase 3: Finalize]
+    Continue --> Done
+
+    style Save fill:#fff3cd
+    style Check fill:#e2e3f1
+```
+
+**Benefits:**
+- Documentation survives unexpected context exhaustion
+- No reliance on explicit session-end signals for basic capture
+- Lightweight — adds minimal overhead to the workflow
+- Insurance policy — if the session ends abruptly, partial documentation exists
+
 ### Phase 3: Journey Finalization (End)
 
 **When:** Session is complete and ready to commit
@@ -510,6 +621,12 @@ No explicit prompt needed — the agent records automatically without asking the
 6. Write problem/intent clearly
 7. Confirm creation with user
 
+### Referencing Past Decisions (DB-First)
+1. Always query `adr-db.py search <query>` before reading raw markdown files
+2. Use `adr-db.py summary` or `adr-db.py summary-journeys` for overviews
+3. Use `adr-db.py get <id>` for full details on a specific record
+4. Fall back to reading markdown files **only** when DB results lack the needed detail
+
 ### Continuous Updates
 1. Keep updates atomic and focused
 2. Don't rewrite entire journey each time
@@ -517,6 +634,13 @@ No explicit prompt needed — the agent records automatically without asking the
 4. Maintain chronological order in Interaction Summary
 5. Keep format consistent
 6. Save after each meaningful update
+
+### Context-Threshold Checkpointing
+1. Monitor for checkpoint triggers (3+ unsaved interactions, unsaved decisions, large operations upcoming, context getting large)
+2. Write all pending content to the journey file when a trigger fires
+3. Append only — do not rewrite the entire file
+4. Do not populate machine extracts or evaluate the ADR rubric during checkpoints
+5. Resume normal work after the checkpoint
 
 ### Journey Finalization
 1. Read current journey state
@@ -588,6 +712,14 @@ Agent [Copilot]: Finalizes Session Journey
 ### Don't Ignore Mid-Session Pivots
 ❌ **Wrong:** Only document the final approach
 ✅ **Right:** Capture what was tried, why it changed, what evidence led to the pivot
+
+### Don't Read Markdown Files First
+❌ **Wrong:** Read `ejs-docs/adr/*.md` or `ejs-docs/journey/**/*.md` to find past context
+✅ **Right:** Query `adr-db.py search` first; only read markdown files when the DB result needs more detail
+
+### Don't Rely Solely on Session-End Signals
+❌ **Wrong:** Wait for "wrap up" or "commit" before writing any documentation to the journey file
+✅ **Right:** Perform checkpoint saves during the session when context is accumulating
 
 ## Success Metrics
 
