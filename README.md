@@ -20,7 +20,7 @@ EJS exists to capture that reality with **low friction** and **high auditability
 
 Includes:
 - `.github/agents/ejs-journey.agent.md` — Copilot custom agent profile (observer + coordinator)
-- `.github/copilot-instructions.md` — Always-on silent recording contract (append to your existing instructions)
+- `.github/copilot-instructions.md` — Compact micro-instruction (~30 lines, always-on; append to your existing instructions)
 - `.github/skills/ejs-session-init/SKILL.md` — Agent skill for session initialization workflow
 - `.github/skills/ejs-session-wrapup/SKILL.md` — Agent skill for session finalization workflow
 - `.github/skills/ejs-sub-agent-capture/SKILL.md` — Agent skill for multi-agent contribution capture
@@ -158,7 +158,7 @@ Bypass:
 ## Tooling integration (Copilot, Claude, Cursor)
 
 EJS is tool-agnostic and **non-competing** — it layers silent recording onto whatever agents are already active. For GitHub Copilot, the canonical, auto-discoverable locations are:
-- `.github/copilot-instructions.md` (always-on silent recording — Tier 1)
+- `.github/copilot-instructions.md` (compact micro-instruction, always-on — Tier 1)
 - `.github/agents/ejs-journey.agent.md` (explicit invocation — Tier 2/3)
 - `.github/skills/ejs-session-init/SKILL.md` (auto-loads for session initialization)
 - `.github/skills/ejs-session-wrapup/SKILL.md` (auto-loads for session finalization)
@@ -196,7 +196,7 @@ EJS supports three adoption tiers. Use whichever fits your workflow — they can
 
 ### Tier 1 — Always-On Recording (recommended, zero friction)
 
-Append the EJS recording block from `.github/copilot-instructions.md` to your repo’s existing copilot-instructions.md. This injects silent recording behavior into **whatever agent is currently active** — no agent selection needed. Every Copilot conversation in the repo automatically records interactions, decisions, and sub-agent handoffs to the Session Journey.
+Append the compact EJS micro-instruction from `.github/copilot-instructions.md` to your repo's existing copilot-instructions.md. This injects silent recording behavior into **whatever agent is currently active** — no agent selection needed. Every Copilot conversation in the repo automatically records interactions, decisions, and sub-agent handoffs to the Session Journey.
 
 - No agent switching required
 - Works alongside any existing agents

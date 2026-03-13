@@ -161,13 +161,13 @@ copy_file() {
 append_recording_contract() {
   local target_file="$TARGET/.github/copilot-instructions.md"
   local source_file="$EJS_SOURCE/.github/copilot-instructions.md"
-  local marker="## EJS Silent Recording Contract (Always-On)"
+  local marker="## EJS Recording Contract"
 
   if [[ "$DRY_RUN" == true ]]; then
     if [[ -f "$target_file" ]] && grep -qF "$marker" "$target_file" 2>/dev/null; then
       echo "  [skip] .github/copilot-instructions.md (EJS block already present)"
     elif [[ -f "$target_file" ]]; then
-      echo "  [append] EJS Silent Recording Contract → .github/copilot-instructions.md"
+      echo "  [append] EJS Recording Contract (micro-instruction) → .github/copilot-instructions.md"
     else
       echo "  [create] .github/copilot-instructions.md (with EJS recording contract)"
     fi
@@ -189,7 +189,7 @@ append_recording_contract() {
   if [[ -f "$target_file" ]]; then
     # Append to existing file
     printf '\n\n%s\n' "$contract" >> "$target_file"
-    echo "  [done] Appended EJS Silent Recording Contract to .github/copilot-instructions.md"
+    echo "  [done] Appended EJS Recording Contract (micro-instruction) to .github/copilot-instructions.md"
   else
     # Create new file with the full contents
     cp "$source_file" "$target_file"

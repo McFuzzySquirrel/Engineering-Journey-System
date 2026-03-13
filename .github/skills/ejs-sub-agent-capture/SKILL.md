@@ -84,6 +84,20 @@ and their decisions and outputs need to be captured in the Session Journey.
 - **Handoff to other agents:** Test results and new test cases passed to Documentation agent
 ```
 
+## Sub-Agent Instruction Fragment
+
+When delegating to a sub-agent, include this in the delegation prompt to close
+the sub-agent EJS blind spot — sub-agents have no automatic awareness of EJS:
+
+```
+EJS: Append your work to [journey-file-path] under "Sub-Agent Contributions".
+Record: task, decisions (with rationale), alternatives considered, outcome.
+Attribute all entries to your agent name.
+```
+
+Replace `[journey-file-path]` with the actual path, e.g.
+`ejs-docs/journey/2026/ejs-session-2026-03-13-01.md`.
+
 ## Contextual References
 
 - Session Journey template: `ejs-docs/journey/_templates/journey-template.md`

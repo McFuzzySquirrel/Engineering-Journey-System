@@ -148,7 +148,7 @@ function Copy-EjsFile {
 function Append-RecordingContract {
     $targetFile = Join-Path $Target '.github\copilot-instructions.md'
     $sourceFile = Join-Path $EjsSource '.github\copilot-instructions.md'
-    $marker     = '## EJS Silent Recording Contract (Always-On)'
+    $marker     = '## EJS Recording Contract'
 
     $alreadyPresent = $false
     if (Test-Path $targetFile) {
@@ -162,7 +162,7 @@ function Append-RecordingContract {
         if ($alreadyPresent) {
             Write-Host '  [skip] .github/copilot-instructions.md (EJS block already present)'
         } elseif (Test-Path $targetFile) {
-            Write-Host '  [append] EJS Silent Recording Contract -> .github/copilot-instructions.md'
+            Write-Host '  [append] EJS Recording Contract (micro-instruction) -> .github/copilot-instructions.md'
         } else {
             Write-Host '  [create] .github/copilot-instructions.md (with EJS recording contract)'
         }
@@ -194,7 +194,7 @@ function Append-RecordingContract {
             $contract = "`n`n$sourceContent"
         }
         Add-Content -Path $targetFile -Value "`n$contract" -NoNewline
-        Write-Host '  [done] Appended EJS Silent Recording Contract to .github/copilot-instructions.md'
+        Write-Host '  [done] Appended EJS Recording Contract (micro-instruction) to .github/copilot-instructions.md'
     } else {
         Copy-Item $sourceFile $targetFile -Force
         Write-Host '  [done] Created .github/copilot-instructions.md (with EJS recording contract)'
