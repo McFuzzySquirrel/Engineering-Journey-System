@@ -22,7 +22,7 @@ EJS uses three complementary GitHub Copilot customization mechanisms:
 
 | Mechanism | File | Trigger | Purpose |
 |-----------|------|---------|---------|
-| **Custom Instructions** | `.github/copilot-instructions.md` | Automatic (always-on) | Tier 1 silent recording contract |
+| **Custom Instructions** | `.github/copilot-instructions.md` | Automatic (always-on) | Compact micro-instruction (~30 lines) — always-on recording contract |
 | **Custom Agent** | `.github/agents/ejs-journey.agent.md` | Manual selection | Observer persona, coordination, Tier 2/3 |
 | **Agent Skills** | `.github/skills/<name>/SKILL.md` | Automatic (Copilot loads when relevant) | Task-specific lifecycle workflows |
 
@@ -39,7 +39,7 @@ Each lifecycle phase has a corresponding agent skill that Copilot can auto-load 
 
 ### Skills vs. Custom Instructions vs. Agent
 
-- **Custom Instructions** define the always-on recording contract (lightweight, every session)
+- **Custom Instructions** define the always-on recording contract as a compact micro-instruction (~30 lines); templates and skills carry structural detail
 - **Agent Skills** provide detailed workflow steps that load only when relevant (context-efficient)
 - **Custom Agent** provides the observer persona and coordination capabilities (Tier 2/3)
 
