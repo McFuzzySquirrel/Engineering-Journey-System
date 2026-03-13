@@ -123,7 +123,7 @@ You are recording this session to the Engineering Journey System.
 ```
 
 **What this achieves:**
-- **~25 lines / ~200 words** vs. current 112 lines / ~940 words (78% reduction in always-on context)
+- **~25 lines / ~200 words** vs. current 112 lines / ~940 words (79% reduction in always-on context)
 - All 6 core behaviors are covered
 - Templates carry the structural detail (section headers, formatting guides)
 - The agent profile retains the ADR rubric and coordination logic (loaded only when @ejs-journey is selected)
@@ -211,7 +211,7 @@ The most effective approach combines:
 
 | Concern | How the micro-instruction addresses it |
 |---------|---------------------------------------|
-| **Context efficiency** | 78% reduction in always-on instruction size (~940 → ~200 words) |
+| **Context efficiency** | 79% reduction in always-on instruction size (~940 → ~200 words) |
 | **Sub-agent capture** | Fragment can be included in delegation prompts; sub-agents write directly |
 | **Redundancy** | Single source of truth: templates define structure, instructions define behavior |
 | **Core principle preservation** | All 6 principles covered in ~25 lines |
