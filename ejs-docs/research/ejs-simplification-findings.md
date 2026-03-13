@@ -308,14 +308,202 @@ The key insight: **tell agents WHAT to capture and WHERE to put it; let template
 
 ---
 
-## 7. Next Steps (if this research is accepted)
+## 7. Implementation Plan
 
-1. **Draft** the micro-instruction block as a replacement for `copilot-instructions.md`
-2. **Draft** the sub-agent fragment for inclusion in delegation prompts
-3. **Simplify** the 3 skills to remove content now covered by the micro-instruction
-4. **Test** with a real session to validate that agents produce equivalent-quality journeys
-5. **Create ADR** documenting the simplification decision (if the rubric triggers)
-6. **Update** bootstrap scripts to use the new micro-instruction
+This plan is structured as five phases plus a pre-implementation baseline. Each phase is independently shippable — if any phase reveals issues, work can pause without leaving the system in a broken state.
+
+### Pre-Implementation: Snapshot Current State
+
+Before any changes, record baseline metrics for comparison:
+
+- [ ] Word count of `copilot-instructions.md` (currently ~940 words, 112 lines)
+- [ ] Word count of each skill SKILL.md (currently ~420 + ~650 + ~700 = ~1,770 words, 255 lines)
+- [ ] Run a baseline session using the current instructions and save the journey for quality comparison
+- [ ] Confirm all existing tests pass: `python scripts/tests/test_adr_db.py`
+
+---
+
+### Phase 1: Replace `copilot-instructions.md` with Micro-Instruction
+
+**Goal:** Reduce always-on context from ~940 words → ~200 words while preserving all 6 core behaviors.
+
+**Files changed:**
+
+| File | Change | Lines before → after |
+|------|--------|---------------------|
+| `.github/copilot-instructions.md` | **Rewrite** — replace 112-line contract with ~25-line micro-instruction | 112 → ~30 |
+
+**Specific steps:**
+
+1. [ ] Draft the micro-instruction block (use the draft from Section 3, Option A as starting point)
+2. [ ] Preserve the header comment that links to the full agent profile (`Full agent profile: .github/agents/ejs-journey.agent.md`)
+3. [ ] Ensure these 6 behaviors are covered in the new block:
+   - Find/create journey file
+   - Append interactions, decisions, learnings
+   - Attribute by agent name
+   - Record sub-agent delegations and outcomes
+   - At session end: complete sections, populate machine extracts, evaluate ADR rubric
+   - DB-first lookup (`adr-db.py sync` + query before reading markdown)
+4. [ ] Remove content that is now redundant with templates:
+   - Detailed interaction format examples (template has them)
+   - Checkpoint trigger rules (move to wrapup skill)
+   - Extended DB-first protocol (single line is sufficient)
+   - "What You Must NOT Do" section (core rules cover this)
+   - Context-Threshold Checkpointing section (move to wrapup skill)
+5. [ ] Validate: new file is ≤30 lines and ≤250 words
+6. [ ] Run `python scripts/tests/test_adr_db.py` — should still pass (no DB changes)
+
+**Acceptance criteria:**
+- `copilot-instructions.md` is ≤30 lines / ≤250 words
+- All 6 core behaviors are explicitly stated
+- No content duplicated from `journey-template.md`
+- Existing tests pass
+
+**Rollback:** `git checkout main -- .github/copilot-instructions.md`
+
+---
+
+### Phase 2: Simplify Skills (Remove Redundancy)
+
+**Goal:** Skills become additive enrichment, not duplications of the micro-instruction. Remove content from skills that the micro-instruction or templates already cover.
+
+**Files changed:**
+
+| File | Change |
+|------|--------|
+| `.github/skills/ejs-session-init/SKILL.md` | Remove interaction format examples and DB protocol (covered by micro-instruction). Keep: session ID generation, file creation steps, metadata population. |
+| `.github/skills/ejs-session-wrapup/SKILL.md` | Absorb checkpoint triggers from old copilot-instructions.md. Remove duplicated interaction format and DB lookup steps. Keep: finalization checklist, machine extract population, ADR rubric evaluation. |
+| `.github/skills/ejs-sub-agent-capture/SKILL.md` | Remove duplicated sub-agent format (template has it). Add: the sub-agent instruction fragment (~3 lines) that main agents should include in delegation prompts. Keep: handoff chain documentation, example. |
+
+**Specific steps:**
+
+1. [ ] **ejs-session-init/SKILL.md**: Remove the DB-first protocol details (already a one-liner in micro-instruction). Keep the step-by-step init workflow. Expected reduction: ~15 lines.
+2. [ ] **ejs-session-wrapup/SKILL.md**: Move the "Checkpoint vs. Full Finalization" table and checkpoint triggers here from the old copilot-instructions.md (this is the right home — loaded on-demand, not always-on). Remove duplicated format examples. Expected: roughly same size, but different content.
+3. [ ] **ejs-sub-agent-capture/SKILL.md**: Add the sub-agent instruction fragment as a documented convention:
+   ```
+   ### Sub-Agent Instruction Fragment
+   When delegating to a sub-agent, include this in the prompt:
+
+   EJS: Append your work to [journey-file-path] under "Sub-Agent Contributions".
+   Record: task, decisions (with rationale), alternatives considered, outcome.
+   Attribute all entries to your agent name.
+   ```
+   Remove duplicated sub-agent section format (the journey template already defines this).
+4. [ ] Verify no content is lost — every piece of removed content must exist in either the micro-instruction, a template, or another skill
+5. [ ] Run `python scripts/tests/test_adr_db.py` — should still pass
+
+**Acceptance criteria:**
+- No content duplicated between micro-instruction and skills
+- Checkpoint rules live in wrapup skill (not always-on)
+- Sub-agent fragment is documented in the capture skill
+- Every piece of content from the old instructions exists in exactly one place
+- Existing tests pass
+
+**Rollback:** `git checkout main -- .github/skills/`
+
+---
+
+### Phase 3: Update Supporting Files
+
+**Goal:** Ensure bootstrap scripts, README, and documentation reflect the new simplified structure.
+
+**Files changed:**
+
+| File | Change |
+|------|--------|
+| `scripts/bootstrap-ejs.sh` | Update the `append_copilot_instructions` function to use the new micro-instruction block. Update summary messages. |
+| `scripts/bootstrap-ejs.ps1` | Same changes as the bash script, in PowerShell. |
+| `README.md` | Update the "What's Included" table, the "Adopt EJS" section, and the description of `copilot-instructions.md` to reflect the micro-instruction approach. |
+| `ejs-docs/session-lifecycle-patterns.md` | Update the "Agent Skills Integration" section to reflect the new instruction hierarchy (micro-instruction → skills → sub-agent fragment → templates). |
+
+**Specific steps:**
+
+1. [ ] **bootstrap-ejs.sh**: Update the EJS block detection and append logic for the new, shorter micro-instruction. The `append_copilot_instructions` function currently looks for `## EJS Silent Recording Contract` as the marker — keep this marker or choose a new one and update detection.
+2. [ ] **bootstrap-ejs.ps1**: Mirror the bash changes in PowerShell.
+3. [ ] **README.md**: Update these sections:
+   - "What's Included" component table: describe copilot-instructions.md as "Compact micro-instruction (~25 lines)" instead of "Always-on silent recording contract"
+   - "Tier 1" description: mention micro-instruction instead of "full recording contract"
+   - "Manual Setup" section: update the description of what to append
+4. [ ] **session-lifecycle-patterns.md**: Update the "Agent Skills Integration" table and the instruction hierarchy description to reflect the 4-layer model (micro-instruction → skills → sub-agent fragment → templates).
+5. [ ] Dry-run the bootstrap script to verify it works: `./scripts/bootstrap-ejs.sh --dry-run /tmp/test-repo`
+6. [ ] Run `python scripts/tests/test_adr_db.py` — should still pass
+
+**Acceptance criteria:**
+- Bootstrap scripts correctly append the new micro-instruction (not the old 112-line block)
+- README accurately describes the new structure
+- Documentation is internally consistent (no references to the old "Silent Recording Contract" as a 112-line block)
+- Dry-run of bootstrap produces expected output
+- Existing tests pass
+
+**Rollback:** `git checkout main -- scripts/ README.md ejs-docs/session-lifecycle-patterns.md`
+
+---
+
+### Phase 4: Validation Session
+
+**Goal:** Run a real session using the new simplified instructions and compare journey quality against the baseline.
+
+**Steps:**
+
+1. [ ] Start a new session using the simplified `copilot-instructions.md`
+2. [ ] Perform a mix of single-agent and multi-agent work (to test sub-agent fragment)
+3. [ ] Wrap up the session and compare the resulting journey against the Phase 0 baseline:
+   - Are all sections populated?
+   - Is agent attribution present?
+   - Are sub-agent contributions captured?
+   - Are machine extracts populated?
+4. [ ] If quality is equivalent or better: proceed to Phase 5
+5. [ ] If quality degraded: identify which core behavior was missed and adjust the micro-instruction
+
+**Acceptance criteria:**
+- Journey produced with new instructions is at least as complete as baseline
+- Sub-agent contributions are captured (the blind spot is closed)
+- No user intervention needed for recording (silent recording still works)
+
+---
+
+### Phase 5: ADR Decision
+
+**Goal:** Evaluate whether this simplification warrants an ADR (using the existing rubric).
+
+**ADR Rubric Evaluation:**
+
+| Criterion | Applies? | Reasoning |
+|-----------|----------|-----------|
+| Introduces or changes a system boundary | No | Same components, fewer words |
+| Changes a public contract | **Yes** | The `copilot-instructions.md` is a public contract that all agents consume |
+| Alters security, privacy, or compliance | No | No security implications |
+| Requires choosing among credible alternatives | **Yes** | Three options analyzed (Micro-Instruction, Consolidated, Hybrid) |
+| Has long-lived or hard-to-reverse consequences | **Yes** | Changes the always-on instruction surface for all future sessions |
+| Changes engineering process or workflow | **Yes** | Fundamentally simplifies how EJS instructs agents |
+
+**Verdict: ADR is warranted.** At least 4 of 6 criteria are met.
+
+**Steps:**
+
+1. [ ] Create ADR `ejs-docs/adr/0015-micro-instruction-simplification.md` using the ADR template
+2. [ ] Link it to the implementation session journey
+3. [ ] Update `adr_links` in the session journey frontmatter
+4. [ ] Run `python scripts/adr-db.py sync` to index the new ADR
+
+---
+
+### Implementation Summary
+
+| Phase | Files Changed | Estimated Effort | Can Ship Independently? |
+|-------|---------------|-----------------|------------------------|
+| **0: Baseline** | None (read-only) | ~5 min | N/A |
+| **1: Micro-Instruction** | `copilot-instructions.md` | ~15 min | ✅ Yes — standalone improvement |
+| **2: Simplify Skills** | 3 × `SKILL.md` | ~20 min | ✅ Yes — but better after Phase 1 |
+| **3: Supporting Files** | Bootstrap scripts, README, lifecycle docs | ~25 min | ✅ Yes — but should follow Phase 1–2 |
+| **4: Validation** | New journey file (artifact) | ~15 min | ✅ Yes — proves the changes work |
+| **5: ADR** | `0015-*.md`, journey frontmatter | ~10 min | ✅ Yes — records the decision |
+
+**Total estimated effort:** ~90 minutes across 1–2 sessions.
+
+**Recommended execution order:** Phases 0→1→4 (validate early), then 2→3→5.
+
+By validating after Phase 1 (the core change), we get early feedback before investing in the cascading updates in Phases 2–3.
 
 ---
 
