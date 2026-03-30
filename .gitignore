@@ -8,5 +8,8 @@ npm-debug.log*
 game/package.json
 game/package-lock.json
 .ejs.db
+.ejs-session-active
+.ejs-session-incomplete
 __pycache__/
 .pytest_cache/
+logs/*.jsonl

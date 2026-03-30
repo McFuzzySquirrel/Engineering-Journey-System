@@ -213,22 +213,52 @@ Copy-EjsFile 'ejs-docs\journey\_templates\journey-template.md' 'ejs-docs\journey
 Copy-EjsFile 'ejs-docs\adr\0000-adr-template.md' 'ejs-docs\adr\0000-adr-template.md' 'ADR template (ejs-docs/adr/0000-adr-template.md)'
 Copy-EjsFile 'scripts\adr-db.py' 'scripts\adr-db.py' 'adr-db.py (scripts/adr-db.py)'
 Copy-EjsFile 'scripts\tests\test_adr_db.py' 'scripts\tests\test_adr_db.py' 'Tests (scripts/tests/test_adr_db.py)'
+Write-Host ''
 
-# Add .ejs.db to .gitignore if not already there
+# ── Copilot hooks (Layer 0 — guaranteed structural automation) ──────
+
+Write-Host 'Copilot hooks (Layer 0):'
+Copy-EjsFile '.github\hooks\ejs-hooks.json' '.github\hooks\ejs-hooks.json' 'Hook config (.github/hooks/ejs-hooks.json)'
+Copy-EjsFile 'scripts\hooks\session-start.sh' 'scripts\hooks\session-start.sh' 'Hook script (scripts/hooks/session-start.sh)'
+Copy-EjsFile 'scripts\hooks\session-end.sh' 'scripts\hooks\session-end.sh' 'Hook script (scripts/hooks/session-end.sh)'
+Copy-EjsFile 'scripts\hooks\subagent-stop.sh' 'scripts\hooks\subagent-stop.sh' 'Hook script (scripts/hooks/subagent-stop.sh)'
+Copy-EjsFile 'scripts\hooks\log-prompt.sh' 'scripts\hooks\log-prompt.sh' 'Hook script (scripts/hooks/log-prompt.sh)'
+
+# Create logs directory for audit JSONL files
 if (-not $DryRun) {
-    $gitignorePath = Join-Path $Target '.gitignore'
-    if (Test-Path $gitignorePath) {
-        $gitignoreContent = Get-Content $gitignorePath -Raw -ErrorAction SilentlyContinue
-        if (-not $gitignoreContent -or -not $gitignoreContent.Contains('.ejs.db')) {
-            Add-Content -Path $gitignorePath -Value '.ejs.db'
-            Write-Host '  [done] Added .ejs.db to .gitignore'
-        }
-    } else {
-        Set-Content -Path $gitignorePath -Value '.ejs.db'
-        Write-Host '  [done] Created .gitignore with .ejs.db'
+    $logsDir = Join-Path $Target 'logs'
+    if (-not (Test-Path $logsDir)) {
+        New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
+    }
+    $gitkeep = Join-Path $logsDir '.gitkeep'
+    if (-not (Test-Path $gitkeep)) {
+        New-Item -ItemType File -Path $gitkeep -Force | Out-Null
+        Write-Host '  [done] Created logs/.gitkeep'
     }
 } else {
-    Write-Host '  [append] .ejs.db -> .gitignore'
+    Write-Host '  [create] logs/.gitkeep'
+}
+Write-Host ''
+
+# Add EJS entries to .gitignore
+if (-not $DryRun) {
+    $gitignorePath = Join-Path $Target '.gitignore'
+    $entriesToAdd = @('.ejs.db', '.ejs-session-active', '.ejs-session-incomplete', 'logs/*.jsonl')
+
+    if (Test-Path $gitignorePath) {
+        $gitignoreContent = Get-Content $gitignorePath -Raw -ErrorAction SilentlyContinue
+        foreach ($entry in $entriesToAdd) {
+            if (-not $gitignoreContent -or -not $gitignoreContent.Contains($entry)) {
+                Add-Content -Path $gitignorePath -Value $entry
+                Write-Host "  [done] Added $entry to .gitignore"
+            }
+        }
+    } else {
+        Set-Content -Path $gitignorePath -Value ($entriesToAdd -join "`n")
+        Write-Host '  [done] Created .gitignore with EJS entries'
+    }
+} else {
+    Write-Host '  [append] .ejs.db, .ejs-session-active, .ejs-session-incomplete, logs/*.jsonl -> .gitignore'
 }
 Write-Host ''
 
@@ -274,6 +304,8 @@ if ($DryRun) {
     Write-Host '--- EJS bootstrap complete ---'
     Write-Host ''
     Write-Host 'What happens now:'
+    Write-Host '  * Layer 0 (hooks): Copilot hooks automatically create journey files,'
+    Write-Host '    sync the database, validate completeness, and log sub-agent events.'
     Write-Host '  * Tier 1 (always-on): Active immediately -- every Copilot agent'
     Write-Host '    in this repo will silently record to Session Journey files.'
     Write-Host '    Agent skills auto-load for session init, wrap-up, and sub-agent capture.'
@@ -283,5 +315,6 @@ if ($DryRun) {
     Write-Host ''
     Write-Host 'Next steps:'
     Write-Host '  1. git add -A && git commit -m ''chore: bootstrap EJS'''
-    Write-Host '  2. Start working -- EJS records automatically'
+    Write-Host '  2. Merge to default branch (hooks activate from default branch only)'
+    Write-Host '  3. Start working -- EJS records automatically'
 }

@@ -19,6 +19,8 @@ EJS exists to capture that reality with **low friction** and **high auditability
 - **Non-competing observer model** — EJS injects silent recording into whatever agents are already active in your repo. It never competes with or overrides existing agent instructions.
 
 Includes:
+- `.github/hooks/ejs-hooks.json` — Copilot hooks config (Layer 0: guaranteed structural automation)
+- `scripts/hooks/` — Hook scripts for session start, session end, sub-agent capture, and prompt logging
 - `.github/agents/ejs-journey.agent.md` — Copilot custom agent profile (observer + coordinator)
 - `.github/copilot-instructions.md` — Compact micro-instruction (~30 lines, always-on; append to your existing instructions)
 - `.github/skills/ejs-session-init/SKILL.md` — Agent skill for session initialization workflow
@@ -101,20 +103,22 @@ To see the data flow of how this works both in a **single user and agent interac
 
 ### New Session-Lifecycle Approach (Recommended)
 
-1. **At session start**, initialize the Session Journey:
-   - Agent creates `ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md`
-   - Initial metadata and problem/intent are captured
-   - Structure is ready for continuous updates
+1. **At session start**, Copilot hooks automatically:
+   - Sync the EJS database (`adr-db.py sync`)
+   - Create the journey file scaffold from template with metadata populated
+   - The `ejs-session-init` skill then enhances the scaffold with semantic content (problem/intent, agents involved)
 
 2. **During the session**, work with your coding agent as usual:
    - Agent continuously updates the Session Journey as work progresses
    - Interactions, experiments, learnings captured in real-time
+   - Sub-agent events are automatically logged by hooks; agents enrich with semantic detail
    - No need to remember details for end-of-session reconstruction
 
 3. **At session end**, finalize the journey:
    - Agent completes all sections with coherent summaries
    - Machine extracts are populated
    - Agent drafts a numbered ADR only if a significant architecture/design decision occurred
+   - Copilot hooks automatically validate completeness and flag incomplete sections
 
 4. **Review and commit** artifacts:
    - Verify Session Journey completeness
@@ -158,6 +162,7 @@ Bypass:
 ## Tooling integration (Copilot, Claude, Cursor)
 
 EJS is tool-agnostic and **non-competing** — it layers silent recording onto whatever agents are already active. For GitHub Copilot, the canonical, auto-discoverable locations are:
+- `.github/hooks/ejs-hooks.json` (Layer 0: guaranteed structural automation — DB sync, journey scaffold, validation, sub-agent logging)
 - `.github/copilot-instructions.md` (compact micro-instruction, always-on — Tier 1)
 - `.github/agents/ejs-journey.agent.md` (explicit invocation — Tier 2/3)
 - `.github/skills/ejs-session-init/SKILL.md` (auto-loads for session initialization)
@@ -168,17 +173,19 @@ Different agent tools auto-load instructions from different filenames. Recommend
 
 ### GitHub Copilot (primary)
 
+- Copilot hooks: `.github/hooks/*.json` (guaranteed structural automation — runs every session, no agent compliance needed).
 - Repo-wide instructions: `.github/copilot-instructions.md`.
 - Custom agent profiles: `.github/agents/*.agent.md` (selectable from the Copilot agent dropdown).
 - Agent skills: `.github/skills/<name>/SKILL.md` (auto-loaded by Copilot when relevant to the task).
 
 This repo includes:
+- `.github/hooks/ejs-hooks.json` (hooks for session start/end, sub-agent capture, prompt logging)
 - `.github/agents/ejs-journey.agent.md`
 - `.github/skills/ejs-session-init/SKILL.md`
 - `.github/skills/ejs-session-wrapup/SKILL.md`
 - `.github/skills/ejs-sub-agent-capture/SKILL.md`
 
-Important: agent profiles don’t automatically trigger on `git commit`/`git push` events. They’re selected based on the chat context. Agent skills are auto-loaded by Copilot when it determines they’re relevant to the current task. For “fire on commit/push,” use the git hooks.
+Important: Copilot hooks run automatically from the default branch — they handle structural tasks (DB sync, journey scaffold, validation). Agent profiles are selected based on the chat context. Agent skills are auto-loaded by Copilot when relevant.
 
 ### Claude (e.g., Claude Code)
 
@@ -362,8 +369,10 @@ The fastest way to add EJS to an existing repo:
 ```
 
 The script:
-- Copies the agent profile, agent skills, journey template, ADR template, and database tool (`adr-db.py`)
-- **Appends** the EJS Silent Recording Contract to your existing `.github/copilot-instructions.md` (does not replace it)
+- Copies the Copilot hooks config, hook scripts, agent profile, agent skills, journey template, ADR template, and database tool (`adr-db.py`)
+- **Appends** the EJS Recording Contract to your existing `.github/copilot-instructions.md` (does not replace it)
+- Creates `logs/` directory for audit trail JSONL files
+- Adds `.ejs.db`, `.ejs-session-active`, `.ejs-session-incomplete`, and `logs/*.jsonl` to `.gitignore`
 - Is fully idempotent — safe to run multiple times
 - Optionally installs git hooks (`--with-hooks`) and PR template (`--with-pr`)
 
@@ -373,21 +382,26 @@ If you prefer to copy files manually, this repo uses a strict, collision-resista
 
 #### Minimal copy
 
+- `.github/hooks/ejs-hooks.json` — Copilot hooks config (Layer 0: auto-creates journey files, syncs DB, validates completeness, logs sub-agent events)
+- `scripts/hooks/` — All four hook scripts (`session-start.sh`, `session-end.sh`, `subagent-stop.sh`, `log-prompt.sh`)
 - `.github/agents/ejs-journey.agent.md` — EJS observer agent (for Tier 2 bookend invocation and Tier 3 coordinator mode)
-- `.github/copilot-instructions.md` — **Append** the `## EJS Silent Recording Contract (Always-On)` block to your **existing** copilot-instructions.md (do not replace it). If you don't have one, copy the whole file.
+- `.github/copilot-instructions.md` — **Append** the `## EJS Recording Contract` block to your **existing** copilot-instructions.md (do not replace it). If you don't have one, copy the whole file.
 - `.github/skills/ejs-session-init/SKILL.md` — Agent skill for session initialization (auto-loaded by Copilot)
 - `.github/skills/ejs-session-wrapup/SKILL.md` — Agent skill for session finalization (auto-loaded by Copilot)
 - `.github/skills/ejs-sub-agent-capture/SKILL.md` — Agent skill for multi-agent workflows (auto-loaded by Copilot)
 - `ejs-docs/journey/_templates/journey-template.md` — Session Journey template
 - `ejs-docs/adr/0000-adr-template.md` — ADR template
-- `scripts/adr-db.py` + `scripts/tests/test_adr_db.py` — SQLite index for ADR/journey querying (add `.ejs.db` to `.gitignore`)
+- `scripts/adr-db.py` + `scripts/tests/test_adr_db.py` — SQLite index for ADR/journey querying
+- `logs/.gitkeep` — Directory for audit trail JSONL files
+- Add `.ejs.db`, `.ejs-session-active`, `.ejs-session-incomplete`, and `logs/*.jsonl` to `.gitignore`
 
 Do not copy any existing `ejs-docs/journey/YYYY/` files from this starter repo into your target repo. Those are session artifacts; your target repo should generate its own.
 
-### How the tiers activate
+### How the layers activate
 
-| Tier | What to copy | How it activates | Agent selection needed? |
-|------|-------------|-----------------|------------------------|
+| Layer | What to copy | How it activates | Agent selection needed? |
+|-------|-------------|-----------------|------------------------|
+| **Layer 0** (hooks) | `.github/hooks/ejs-hooks.json` + `scripts/hooks/` | Automatically from default branch — guarantees structural tasks | No |
 | **Tier 1** (always-on) | Append copilot-instructions.md block + skills | Automatically — every agent records silently; skills auto-load when relevant | No |
 | **Tier 2** (bookend) | + agent profile | User says `@ejs-journey initialize/finalize` | Only at start/end |
 | **Tier 3** (coordinator) | + agent profile | User selects `ejs-journey` from dropdown | Yes, for full session |
@@ -415,29 +429,41 @@ After copying, install hooks in the target repo:
 
 ### Resulting layout (target repo)
 
-.github/
-├─ agents/
-│  └─ ejs-journey.agent.md
-├─ copilot/
-│  └─ pull_request_template.md
-├─ skills/
-│  ├─ ejs-session-init/
-│  │  └─ SKILL.md
-│  ├─ ejs-session-wrapup/
-│  │  └─ SKILL.md
-│  └─ ejs-sub-agent-capture/
-│     └─ SKILL.md
-└─ copilot-instructions.md
-ejs-docs/
-├─ adr/
-│  └─ 0000-adr-template.md
-└─ journey/
-   └─ _templates/
-      └─ journey-template.md
+    .github/
+    ├─ agents/
+    │  └─ ejs-journey.agent.md
+    ├─ copilot/
+    │  └─ pull_request_template.md
+    ├─ hooks/
+    │  └─ ejs-hooks.json
+    ├─ skills/
+    │  ├─ ejs-session-init/
+    │  │  └─ SKILL.md
+    │  ├─ ejs-session-wrapup/
+    │  │  └─ SKILL.md
+    │  └─ ejs-sub-agent-capture/
+    │     └─ SKILL.md
+    └─ copilot-instructions.md
+    ejs-docs/
+    ├─ adr/
+    │  └─ 0000-adr-template.md
+    └─ journey/
+       └─ _templates/
+          └─ journey-template.md
+    logs/
+    └─ .gitkeep
+    scripts/
+    ├─ hooks/
+    │  ├─ session-start.sh
+    │  ├─ session-end.sh
+    │  ├─ subagent-stop.sh
+    │  └─ log-prompt.sh
+    └─ adr-db.py
 
 ### What to do after copying (your next step)
 
-- Make sure the copied files are committed and merged to the target repo's default branch.
+- Make sure the copied files are committed and merged to the target repo's **default branch** (hooks only activate from the default branch).
+- **Layer 0 (hooks) activates automatically** — Copilot hooks create journey scaffolds, sync the database, validate completeness, and log sub-agent events on every session.
 - **Tier 1 activates automatically** — every Copilot conversation in the repo will silently record to Session Journey files. No agent selection needed.
 - **For Tier 2**, invoke `@ejs-journey initialize session` at the start of a work session, then work with your normal agents, then invoke `@ejs-journey finalize session` at the end.
 - **For Tier 3**, select `ejs-journey` from the Copilot agent dropdown and it will coordinate the full session.

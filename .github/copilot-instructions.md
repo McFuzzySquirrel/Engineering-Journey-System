@@ -11,9 +11,8 @@ Full agent profile: `.github/agents/ejs-journey.agent.md`
 Record this session to the Engineering Journey System — silently, as you work.
 
 ### Journey File
-- Find today's file: `ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md`
-- If none exists, create one from `ejs-docs/journey/_templates/journey-template.md`
-- Session ID format: `ejs-session-YYYY-MM-DD-<seq>` (2-digit daily sequence)
+- A journey file is auto-created at session start by Copilot hooks: `ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md`
+- If one already exists for this session, use it. The template is at `ejs-docs/journey/_templates/journey-template.md`
 
 ### What to Record (silently, as you work)
 - **Interactions**: Append to "Interaction Summary" — format: `Human: → Agent [name]: → Outcome:`
@@ -29,5 +28,5 @@ Record this session to the Engineering Journey System — silently, as you work.
 - Do not claim commands/tests ran unless you observed the output
 
 ### Database
-- Run `python scripts/adr-db.py sync` at session start
+- DB is synced automatically at session start by Copilot hooks
 - Query DB before reading raw markdown files

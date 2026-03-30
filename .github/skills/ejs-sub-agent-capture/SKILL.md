@@ -12,6 +12,12 @@ Use this skill during multi-agent workflows — when a main agent delegates
 tasks to sub-agents (e.g., explore, task, general-purpose, or custom agents)
 and their decisions and outputs need to be captured in the Session Journey.
 
+> **Note:** Copilot hooks (`scripts/hooks/subagent-stop.sh`) automatically
+> log sub-agent completion events and create timestamped placeholder entries
+> in the journey file. This skill enriches those placeholders with semantic
+> content — decisions, rationale, alternatives, and handoff context — that
+> only an LLM can provide.
+
 ## When Delegating to a Sub-Agent
 
 1. **Record the delegation** in the **Interaction Summary**:
