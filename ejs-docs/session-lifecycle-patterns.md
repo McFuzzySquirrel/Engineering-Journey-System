@@ -414,6 +414,8 @@ Key points:
 5. Capture initial **Problem/Intent**
 6. Inform user that journey is initialized
 
+**Graceful degradation:** All hooks exit 0 on errors — they never block the agent. If DB sync fails, the session continues without a fresh index. If the journey template is missing, the hook logs a warning and exits cleanly; the agent's `ejs-session-init` skill can create the file manually as a fallback. Hooks only run from the default branch; on feature branches, agents handle initialization fully via instructions and skills.
+
 **Benefits:**
 - Clear session boundaries established upfront
 - Context captured while fresh
