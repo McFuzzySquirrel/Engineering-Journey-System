@@ -46,7 +46,7 @@ Hooks handle **deterministic structural tasks** that must happen every session. 
 - **Agent Skills** (Layer 2) provide detailed workflow steps that load only when relevant — they enrich the hook scaffolds with semantic content
 - **Custom Agent** (Layer 3) provides the observer persona and coordination capabilities (Tier 2/3)
 
-Skills are **additive** — they enhance each tier without requiring changes to the agent profile or custom instructions. Hooks are **foundational** — they guarantee structural tasks even when agents don't follow instructions. See [ADR 0014](../adr/0014-agent-skills-for-session-lifecycle.md) for the skills rationale.
+Skills are **additive** — they enhance each tier without requiring changes to the agent profile or custom instructions. Hooks are **foundational** — they guarantee structural tasks even when agents don't follow instructions. See [ADR 0014](../adr/0014-agent-skills-for-session-lifecycle.md) for the skills rationale and [ADR 0016](../adr/0016-copilot-hooks-layer-0-structural-automation.md) for the hooks rationale.
 
 ## Flow Diagrams
 
