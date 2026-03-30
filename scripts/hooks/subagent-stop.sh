@@ -13,11 +13,20 @@ TIMESTAMP="$(echo "$INPUT" | jq -r '.timestamp // empty' 2>/dev/null || true)"
 AGENT_NAME="$(echo "$INPUT" | jq -r '.agentName // .agent_name // "unknown"' 2>/dev/null || true)"
 TASK_DESC="$(echo "$INPUT" | jq -r '.taskDescription // .task // ""' 2>/dev/null || true)"
 
-# Format timestamp for human readability
+# Format timestamp for human readability (portable: GNU date -d vs BSD date -r)
+_epoch_to_iso() {
+  local epoch_secs="$1"
+  if date --version >/dev/null 2>&1; then
+    date -u -d "@${epoch_secs}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "$epoch_secs"
+  else
+    date -u -r "${epoch_secs}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "$epoch_secs"
+  fi
+}
+
 if [ -n "$TIMESTAMP" ]; then
   # Timestamps may be epoch millis; convert to ISO if numeric
   if echo "$TIMESTAMP" | grep -qE '^[0-9]+$'; then
-    TS_DISPLAY="$(date -u -d "@$((TIMESTAMP / 1000))" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "$TIMESTAMP")"
+    TS_DISPLAY="$(_epoch_to_iso "$((TIMESTAMP / 1000))")"
   else
     TS_DISPLAY="$TIMESTAMP"
   fi

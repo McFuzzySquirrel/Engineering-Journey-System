@@ -12,9 +12,19 @@ INPUT="$(cat)"
 TIMESTAMP="$(echo "$INPUT" | jq -r '.timestamp // empty' 2>/dev/null || true)"
 PROMPT="$(echo "$INPUT" | jq -r '.prompt // ""' 2>/dev/null || true)"
 
+# Portable epoch-to-ISO conversion (GNU date -d vs BSD date -r)
+_epoch_to_iso() {
+  local epoch_secs="$1"
+  if date --version >/dev/null 2>&1; then
+    date -u -d "@${epoch_secs}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "$epoch_secs"
+  else
+    date -u -r "${epoch_secs}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "$epoch_secs"
+  fi
+}
+
 # Format timestamp
 if [ -n "$TIMESTAMP" ] && echo "$TIMESTAMP" | grep -qE '^[0-9]+$'; then
-  TS_DISPLAY="$(date -u -d "@$((TIMESTAMP / 1000))" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "$TIMESTAMP")"
+  TS_DISPLAY="$(_epoch_to_iso "$((TIMESTAMP / 1000))")"
 elif [ -n "$TIMESTAMP" ]; then
   TS_DISPLAY="$TIMESTAMP"
 else

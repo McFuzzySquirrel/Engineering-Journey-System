@@ -48,11 +48,19 @@ cp "$TEMPLATE" "$JOURNEY_FILE"
 BRANCH="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')"
 REPO_NAME="$(basename "$(git -C "$REPO_ROOT" rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo 'unknown')"
 
-# Use portable sed (-i differs between GNU and BSD)
-sed -i "s/^session_id:.*/session_id: ${SESSION_ID}/" "$JOURNEY_FILE"
-sed -i "s/^date:.*/date: ${TODAY}/" "$JOURNEY_FILE"
-sed -i "s|^repo:.*|repo: ${REPO_NAME}|" "$JOURNEY_FILE"
-sed -i "s|^branch:.*|branch: ${BRANCH}|" "$JOURNEY_FILE"
+# Portable in-place sed (GNU sed -i vs BSD sed -i '' differ)
+_sed_i() {
+  local expr="$1" file="$2"
+  if sed --version >/dev/null 2>&1; then
+    sed -i "$expr" "$file"            # GNU
+  else
+    sed -i '' "$expr" "$file"         # BSD / macOS
+  fi
+}
+_sed_i "s/^session_id:.*/session_id: ${SESSION_ID}/" "$JOURNEY_FILE"
+_sed_i "s/^date:.*/date: ${TODAY}/" "$JOURNEY_FILE"
+_sed_i "s|^repo:.*|repo: ${REPO_NAME}|" "$JOURNEY_FILE"
+_sed_i "s|^branch:.*|branch: ${BRANCH}|" "$JOURNEY_FILE"
 
 # --- 6. Write active session marker for downstream hooks ---
 echo "$JOURNEY_FILE" > "$REPO_ROOT/.ejs-session-active"

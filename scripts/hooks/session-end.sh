@@ -30,13 +30,17 @@ ISSUES=()
 check_section() {
   local section_name="$1"
   local pattern="$2"
-  # Extract content between this heading and the next heading of same or higher level
+  # Extract content between this heading and the next heading of same or higher level,
+  # filtering out empty lines and common template placeholder patterns.
   local content
   content="$(awk "
     /^#+ ${pattern}/{found=1; next}
     found && /^#+ /{exit}
     found{print}
-  " "$JOURNEY_FILE" | sed '/^$/d' | head -5)"
+  " "$JOURNEY_FILE" \
+    | grep -vE '^\s*$' \
+    | grep -vE '^\s*(Describe |Capture |Recommended format|Do:|Avoid:|Which agents|Key suggestions|Corrections applied|What was|Notable pivots|Technical insights|Prompting insights|Tooling insights|Do this:|Avoid this:|Watch out for:|Prefer:|^- Decision:|^  - Reason:|^  - Impact:)\s*$' \
+    | head -5)" || true
 
   if [ -z "$content" ]; then
     ISSUES+=("$section_name: empty or contains only template placeholders")
