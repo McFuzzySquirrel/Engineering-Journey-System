@@ -16,6 +16,11 @@ This skill also applies for **context-threshold checkpoints** — proactive
 mid-session saves that prevent documentation loss if context runs out. See
 the Checkpoint vs. Full Finalization section below for the differences.
 
+> **Note:** Copilot hooks (`scripts/hooks/session-end.sh`) automatically
+> validate journey completeness at session end and flag incomplete sections.
+> This skill performs the semantic finalization that hooks cannot — writing
+> coherent summaries, populating machine extracts, and evaluating the ADR rubric.
+
 ## Steps
 
 1. **Review the Session Journey for completeness**

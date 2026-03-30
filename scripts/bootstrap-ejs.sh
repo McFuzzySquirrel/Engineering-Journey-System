@@ -209,20 +209,49 @@ copy_file "ejs-docs/journey/_templates/journey-template.md" "ejs-docs/journey/_t
 copy_file "ejs-docs/adr/0000-adr-template.md" "ejs-docs/adr/0000-adr-template.md" "ADR template (ejs-docs/adr/0000-adr-template.md)"
 copy_file "scripts/adr-db.py" "scripts/adr-db.py" "adr-db.py (scripts/adr-db.py)"
 copy_file "scripts/tests/test_adr_db.py" "scripts/tests/test_adr_db.py" "Tests (scripts/tests/test_adr_db.py)"
+echo ""
 
-# Add .ejs.db to .gitignore if not already there
+# ── Copilot hooks (Layer 0 — guaranteed structural automation) ──────
+
+echo "Copilot hooks (Layer 0):"
+copy_file ".github/hooks/ejs-hooks.json" ".github/hooks/ejs-hooks.json" "Hook config (.github/hooks/ejs-hooks.json)"
+copy_file "scripts/hooks/session-start.sh" "scripts/hooks/session-start.sh" "Hook script (scripts/hooks/session-start.sh)"
+copy_file "scripts/hooks/session-end.sh" "scripts/hooks/session-end.sh" "Hook script (scripts/hooks/session-end.sh)"
+copy_file "scripts/hooks/subagent-stop.sh" "scripts/hooks/subagent-stop.sh" "Hook script (scripts/hooks/subagent-stop.sh)"
+copy_file "scripts/hooks/log-prompt.sh" "scripts/hooks/log-prompt.sh" "Hook script (scripts/hooks/log-prompt.sh)"
+
+# Make hook scripts executable
 if [[ "$DRY_RUN" != true ]]; then
-  if [[ -f "$TARGET/.gitignore" ]]; then
-    if ! grep -qF ".ejs.db" "$TARGET/.gitignore" 2>/dev/null; then
-      echo ".ejs.db" >> "$TARGET/.gitignore"
-      echo "  [done] Added .ejs.db to .gitignore"
-    fi
-  else
-    echo ".ejs.db" > "$TARGET/.gitignore"
-    echo "  [done] Created .gitignore with .ejs.db"
+  chmod +x "$TARGET/scripts/hooks/"*.sh 2>/dev/null || true
+fi
+
+# Create logs directory for audit JSONL files
+if [[ "$DRY_RUN" != true ]]; then
+  mkdir -p "$TARGET/logs"
+  if [[ ! -f "$TARGET/logs/.gitkeep" ]]; then
+    touch "$TARGET/logs/.gitkeep"
+    echo "  [done] Created logs/.gitkeep"
   fi
 else
-  echo "  [append] .ejs.db → .gitignore"
+  echo "  [create] logs/.gitkeep"
+fi
+echo ""
+
+# Add .ejs.db, session markers, and audit logs to .gitignore
+if [[ "$DRY_RUN" != true ]]; then
+  if [[ -f "$TARGET/.gitignore" ]]; then
+    for entry in ".ejs.db" ".ejs-session-active" ".ejs-session-incomplete" "logs/*.jsonl"; do
+      if ! grep -qF "$entry" "$TARGET/.gitignore" 2>/dev/null; then
+        echo "$entry" >> "$TARGET/.gitignore"
+        echo "  [done] Added $entry to .gitignore"
+      fi
+    done
+  else
+    printf '.ejs.db\n.ejs-session-active\n.ejs-session-incomplete\nlogs/*.jsonl\n' > "$TARGET/.gitignore"
+    echo "  [done] Created .gitignore with EJS entries"
+  fi
+else
+  echo "  [append] .ejs.db, .ejs-session-active, .ejs-session-incomplete, logs/*.jsonl → .gitignore"
 fi
 echo ""
 
@@ -266,6 +295,8 @@ else
   echo "─── EJS bootstrap complete ───"
   echo ""
   echo "What happens now:"
+  echo "  • Layer 0 (hooks): Copilot hooks automatically create journey files,"
+  echo "    sync the database, validate completeness, and log sub-agent events."
   echo "  • Tier 1 (always-on): Active immediately — every Copilot agent"
   echo "    in this repo will silently record to Session Journey files."
   echo "    Agent skills auto-load for session init, wrap-up, and sub-agent capture."
@@ -275,5 +306,6 @@ else
   echo ""
   echo "Next steps:"
   echo "  1. git add -A && git commit -m 'chore: bootstrap EJS'"
-  echo "  2. Start working — EJS records automatically"
+  echo "  2. Merge to default branch (hooks activate from default branch only)"
+  echo "  3. Start working — EJS records automatically"
 fi
