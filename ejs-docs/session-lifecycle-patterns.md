@@ -6,44 +6,47 @@ EJS uses a **start-of-session initialization** with **continuous updates** appro
 
 This pattern produces higher-quality documentation by capturing context in real-time as work progresses.
 
-EJS is a **non-competing observer** — it records what agents and humans do without interfering with implementation. Recording happens silently as a side-effect of normal work. How this lifecycle activates depends on the adoption tier:
+EJS is a **non-competing observer** — it records what agents and humans do without interfering with implementation. Recording happens silently as a side-effect of normal work. How this lifecycle activates depends on the adoption layer:
 
-| Tier | How it activates | Who records |
-|------|-----------------|-------------|
+| Layer | How it activates | Who records |
+|-------|-----------------|-------------|
+| **Layer 0** (hooks) | Automatic from default branch — `.github/hooks/ejs-hooks.json` | Shell scripts: DB sync, journey scaffold, validation, sub-agent logging |
 | **Tier 1** (always-on) | Appended to `copilot-instructions.md` | Whatever agent is active records silently |
 | **Tier 2** (bookend) | User invokes `@ejs-journey` at start/end | EJS initializes/finalizes; active agent records in between |
 | **Tier 3** (coordinator) | User selects `ejs-journey` from dropdown | EJS delegates to sub-agents and records directly |
 
 The lifecycle phases below apply to all tiers — the difference is which agent performs the recording.
 
-## Agent Skills Integration
+## Layered Architecture
 
-EJS uses three complementary GitHub Copilot customization mechanisms:
+EJS uses four complementary GitHub Copilot customization mechanisms organized in layers:
 
-| Mechanism | File | Trigger | Purpose |
-|-----------|------|---------|---------|
-| **Custom Instructions** | `.github/copilot-instructions.md` | Automatic (always-on) | Compact micro-instruction (~30 lines) — always-on recording contract |
-| **Custom Agent** | `.github/agents/ejs-journey.agent.md` | Manual selection | Observer persona, coordination, Tier 2/3 |
-| **Agent Skills** | `.github/skills/<name>/SKILL.md` | Automatic (Copilot loads when relevant) | Task-specific lifecycle workflows |
+| Layer | Mechanism | File | Trigger | Purpose |
+|-------|-----------|------|---------|---------|
+| **Layer 0** | **Copilot Hooks** | `.github/hooks/ejs-hooks.json` | Automatic (platform-managed) | Guaranteed structural automation: DB sync, journey scaffold, validation, sub-agent logging, prompt audit |
+| **Layer 1** | **Custom Instructions** | `.github/copilot-instructions.md` | Automatic (always-on) | Compact micro-instruction (~30 lines) — semantic recording contract |
+| **Layer 2** | **Agent Skills** | `.github/skills/<name>/SKILL.md` | Automatic (Copilot loads when relevant) | On-demand lifecycle workflows (semantic enrichment) |
+| **Layer 3** | **Custom Agent** | `.github/agents/ejs-journey.agent.md` | Manual selection | Observer persona, coordination, Tier 2/3 |
 
-### How Skills Map to the Lifecycle
+### How Hooks and Skills Divide the Work
 
-Each lifecycle phase has a corresponding agent skill that Copilot can auto-load when it recognizes the task:
+Hooks handle **deterministic structural tasks** that must happen every session. Skills handle **semantic tasks** that require LLM reasoning. Together they eliminate the reliability gap — hooks guarantee the foundation, skills enrich it:
 
-| Lifecycle Phase | Agent Skill | Auto-loads when… |
-|-----------------|-------------|------------------|
-| **Session Initialization** | `ejs-session-init` | User starts a session or begins a new task |
-| **Continuous Recording** | (handled by custom instructions) | Always active — no skill needed |
-| **Sub-Agent Capture** | `ejs-sub-agent-capture` | Main agent delegates to sub-agents |
-| **Session Wrap-Up** | `ejs-session-wrapup` | User signals session end (wrap up, finalize, commit) |
+| Lifecycle Phase | Hook (Layer 0) | Agent Skill (Layer 2) | Auto-loads when… |
+|-----------------|----------------|----------------------|------------------|
+| **Session Initialization** | `session-start.sh`: DB sync, journey scaffold, frontmatter | `ejs-session-init`: Problem/Intent, agents_involved, author | User starts a session or begins a new task |
+| **Continuous Recording** | `log-prompt.sh`: Prompt audit trail (JSONL) | (handled by custom instructions) | Always active |
+| **Sub-Agent Capture** | `subagent-stop.sh`: Timestamped placeholder entry | `ejs-sub-agent-capture`: Decisions, rationale, handoffs | Main agent delegates to sub-agents |
+| **Session Wrap-Up** | `session-end.sh`: Completeness validation | `ejs-session-wrapup`: Finalize sections, machine extracts, ADR rubric | User signals session end |
 
-### Skills vs. Custom Instructions vs. Agent
+### Skills vs. Hooks vs. Instructions vs. Agent
 
-- **Custom Instructions** define the always-on recording contract as a compact micro-instruction (~30 lines); templates and skills carry structural detail
-- **Agent Skills** provide detailed workflow steps that load only when relevant (context-efficient)
-- **Custom Agent** provides the observer persona and coordination capabilities (Tier 2/3)
+- **Copilot Hooks** (Layer 0) guarantee structural tasks run every session regardless of agent compliance — DB sync, file creation, validation, audit logging
+- **Custom Instructions** (Layer 1) define the always-on semantic recording contract (~30 lines); templates and skills carry structural detail
+- **Agent Skills** (Layer 2) provide detailed workflow steps that load only when relevant — they enrich the hook scaffolds with semantic content
+- **Custom Agent** (Layer 3) provides the observer persona and coordination capabilities (Tier 2/3)
 
-Skills are **additive** — they enhance each tier without requiring changes to the agent profile or custom instructions. See [ADR 0014](../adr/0014-agent-skills-for-session-lifecycle.md) for the full rationale.
+Skills are **additive** — they enhance each tier without requiring changes to the agent profile or custom instructions. Hooks are **foundational** — they guarantee structural tasks even when agents don't follow instructions. See [ADR 0014](../adr/0014-agent-skills-for-session-lifecycle.md) for the skills rationale.
 
 ## Flow Diagrams
 
@@ -54,20 +57,22 @@ The following diagram shows a typical EJS session with a single human user and o
 ```mermaid
 sequenceDiagram
     participant H as Human
+    participant HK as Copilot Hooks
     participant A as Agent
     participant DB as EJS Database
     participant J as Session Journey
 
-    Note over H,A: Session Start
+    Note over H,A: Session Start (Hook + Agent)
+    HK->>DB: session-start.sh: adr-db.py sync<br/>(guaranteed DB refresh)
+    HK->>J: session-start.sh: Create journey scaffold<br/>ejs-session-YYYY-MM-DD-001.md<br/>(metadata auto-populated)
     H->>A: "Let's start working on [task]"
-    A->>DB: Run adr-db.py sync<br/>(refresh SQLite index)
-    A->>J: Create journey file<br/>ejs-session-YYYY-MM-DD-001.md
-    A->>J: Write metadata + initial problem/intent
+    A->>J: Enhance scaffold with problem/intent
     A->>H: "Session initialized: ejs-session-YYYY-MM-DD-001"
     
     Note over H,A: Active Collaboration (Continuous Updates)
     
     H->>A: "Implement feature X"
+    HK-->>J: log-prompt.sh: Log prompt to audit trail
     A->>DB: adr-db.py search "feature X"<br/>(check past decisions)
     A->>A: Work on implementation
     A->>J: Update Interaction Summary
@@ -89,7 +94,7 @@ sequenceDiagram
     A->>A: Implement approach A
     A->>J: Update with decision rationale
     
-    Note over H,A: Session End
+    Note over H,A: Session End (Agent + Hook)
     H->>A: "Wrap up this session"
     A->>J: Finalize all sections
     A->>J: Populate machine extracts
@@ -102,6 +107,7 @@ sequenceDiagram
         A->>J: Set decision_detected: false
     end
     A->>H: "Session finalized: ejs-session-YYYY-MM-DD-001"
+    HK->>J: session-end.sh: Validate completeness<br/>(flag incomplete sections)
 ```
 
 ### Multi-Agent and Sub-Agent Scenario
@@ -111,6 +117,7 @@ The following diagram shows a more complex scenario with multiple agents and sub
 ```mermaid
 sequenceDiagram
     participant H as Human
+    participant HK as Copilot Hooks
     participant MA as Main Agent
     participant SA1 as Sub-Agent 1<br/>(Code Review)
     participant SA2 as Sub-Agent 2<br/>(Testing)
@@ -118,11 +125,11 @@ sequenceDiagram
     participant DB as EJS Database
     participant J as Session Journey
 
-    Note over H,MA: Session Start
+    Note over H,MA: Session Start (Hook + Agent)
+    HK->>DB: session-start.sh: adr-db.py sync
+    HK->>J: session-start.sh: Create journey scaffold
     H->>MA: "Let's refactor the authentication system"
-    MA->>DB: Run adr-db.py sync<br/>(refresh SQLite index)
-    MA->>J: Create journey file<br/>ejs-session-YYYY-MM-DD-001.md
-    MA->>J: Write metadata<br/>agents_involved: [Main, Code Review, Testing, Docs]
+    MA->>J: Enhance scaffold with intent + agents_involved
     MA->>H: "Session initialized"
     
     Note over H,MA: Phase 1: Initial Implementation
@@ -139,7 +146,8 @@ sequenceDiagram
     MA->>J: Record delegation in Interaction Summary
     SA1->>SA1: Analyze changes<br/>(decides to flag missing validation)
     SA1->>MA: Review feedback + decisions:<br/>"Add input validation" (chose depth-first<br/>review over breadth-first)
-    MA->>J: Capture SA1 decisions +<br/>alternatives in Sub-Agent Contributions
+    HK-->>J: subagent-stop.sh: Log SA1 completion<br/>(timestamped placeholder)
+    MA->>J: Enrich SA1 placeholder with decisions +<br/>alternatives in Sub-Agent Contributions
     MA->>H: "Code review suggests adding validation"
     H->>MA: "Good point, add it"
     MA->>MA: Add validation
@@ -150,7 +158,8 @@ sequenceDiagram
     MA->>J: Record delegation + handoff<br/>(SA1 output → SA2 input)
     SA2->>SA2: Execute test suite<br/>(decides to add validation edge cases<br/>based on SA1 review feedback)
     SA2->>MA: Test results + decisions:<br/>2 failures found, added 3 new edge-case tests
-    MA->>J: Capture SA2 decisions +<br/>SA1→SA2 handoff in Sub-Agent Contributions
+    HK-->>J: subagent-stop.sh: Log SA2 completion
+    MA->>J: Enrich SA2 placeholder with decisions +<br/>SA1→SA2 handoff in Sub-Agent Contributions
     MA->>H: "Tests found 2 failures"
     H->>MA: "Fix those issues"
     MA->>MA: Fix test failures
@@ -165,10 +174,11 @@ sequenceDiagram
     MA->>J: Record delegation + handoff<br/>(SA2 output → SA3 input)
     SA3->>SA3: Generate documentation<br/>(decides to add validation examples<br/>based on SA2 edge-case tests)
     SA3->>MA: Documentation updated + decisions:<br/>added validation examples section
-    MA->>J: Capture SA3 decisions +<br/>SA2→SA3 handoff in Sub-Agent Contributions
+    HK-->>J: subagent-stop.sh: Log SA3 completion
+    MA->>J: Enrich SA3 placeholder with decisions +<br/>SA2→SA3 handoff in Sub-Agent Contributions
     MA->>H: "Documentation complete"
     
-    Note over H,MA: Session End
+    Note over H,MA: Session End (Agent + Hook)
     H->>MA: "Wrap up this session"
     MA->>J: Finalize Sub-Agent Contributions<br/>(all delegations, decisions, handoffs)
     MA->>J: Finalize Interaction Summary
@@ -179,6 +189,7 @@ sequenceDiagram
     MA->>J: Create ADR 00XX<br/>(JWT validation extraction)
     MA->>J: Link ADR ↔ Journey
     MA->>H: "Session finalized with ADR created"
+    HK->>J: session-end.sh: Validate completeness
 ```
 
 ### Key Differences: Single vs Multi-Agent
@@ -200,9 +211,9 @@ sequenceDiagram
 **Continuous Update Pattern (Both Scenarios):**
 ```mermaid
 flowchart TD
-    Start[Session Start] --> Sync[Sync EJS Database<br/>adr-db.py sync]
-    Sync --> Init[Initialize Journey]
-    Init --> Work[Work on Task]
+    Start[Session Start] --> HookStart[Hook: session-start.sh<br/>DB sync + journey scaffold]
+    HookStart --> Enhance[Agent: Enhance scaffold<br/>with problem/intent]
+    Enhance --> Work[Work on Task]
     Work --> Update{Meaningful<br/>Progress?}
     Update -->|Yes| Record[Update Journey Section]
     Record --> Work
@@ -221,15 +232,17 @@ flowchart TD
     Checkpoint -->|No| Work
     Work --> Done{Session<br/>Complete?}
     Done -->|No| Work
-    Done -->|Yes| Finalize[Finalize Journey]
+    Done -->|Yes| Finalize[Agent: Finalize Journey]
     Finalize --> ADR{ADR<br/>Criteria<br/>Met?}
     ADR -->|Yes| CreateADR[Create ADR]
     ADR -->|No| Skip[Skip ADR]
-    CreateADR --> End[Session End]
-    Skip --> End
+    CreateADR --> HookEnd[Hook: session-end.sh<br/>Validate completeness]
+    Skip --> HookEnd
+    HookEnd --> End[Session End]
     
-    style Sync fill:#e2e3f1
-    style Init fill:#d4edda
+    style HookStart fill:#e2e3f1
+    style HookEnd fill:#e2e3f1
+    style Enhance fill:#d4edda
     style Record fill:#fff3cd
     style Save fill:#fff3cd
     style Finalize fill:#cce5ff
@@ -390,20 +403,16 @@ Key points:
 - Starting a new feature or refactor
 
 **Actions:**
-1. Run `python scripts/adr-db.py sync` to refresh the SQLite index for referencing past decisions
-2. Generate unique session ID: `ejs-session-YYYY-MM-DD-<seq>`
-3. Create Session Journey file at `ejs-docs/journey/YYYY/<session-id>.md`
-4. Populate initial metadata:
-   - session_id
-   - author
-   - date
-   - repo
-   - branch
-   - agents_involved
-   - decision_detected: false (initial)
+
+*Handled by hooks (automatic):*
+1. `session-start.sh`: Run `python scripts/adr-db.py sync` to refresh the SQLite index
+2. `session-start.sh`: Generate unique session ID: `ejs-session-YYYY-MM-DD-<seq>`
+3. `session-start.sh`: Create journey file scaffold from template with structural metadata (session_id, date, repo, branch)
+
+*Handled by agent (semantic):*
+4. Populate `author` and `agents_involved` in frontmatter
 5. Capture initial **Problem/Intent**
-6. Set up structure for continuous updates
-7. Inform user that journey is initialized
+6. Inform user that journey is initialized
 
 **Benefits:**
 - Clear session boundaries established upfront
@@ -531,6 +540,8 @@ flowchart TD
 - "Commit and push"
 
 **Actions:**
+
+*Handled by agent (semantic):*
 1. Review Session Journey for completeness
 2. Finalize all sections with coherent summaries:
    - Complete Interaction Summary
@@ -552,6 +563,11 @@ flowchart TD
 5. Create ADR if decision rubric is met
 6. Update `adr_links` in Session Journey if ADR was created
 7. Final save of Session Journey
+
+*Handled by hooks (automatic):*
+8. `session-end.sh`: Validate that required sections are non-empty
+9. `session-end.sh`: Write validation summary as HTML comment in journey footer
+10. `session-end.sh`: Create `.ejs-session-incomplete` marker if issues found
 
 **Benefits:**
 - Most work already done throughout session
