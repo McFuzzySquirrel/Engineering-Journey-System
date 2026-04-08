@@ -11,7 +11,7 @@ Use this skill when a session is starting — for example when the user says
 "initialize session", "start session", "create session journey", or begins
 work on a new task, feature, or bug fix.
 
-> **Note:** Copilot hooks (`scripts/hooks/session-start.sh`) automatically
+> **Note:** Copilot hooks (`.github/hooks/session-start.sh`) automatically
 > create the journey file scaffold and sync the EJS database at session start.
 > This skill enhances the scaffold with semantic content that hooks cannot provide.
 
@@ -38,7 +38,7 @@ work on a new task, feature, or bug fix.
 - ADR template: `ejs-docs/adr/0000-adr-template.md`
 - Lifecycle patterns: `ejs-docs/session-lifecycle-patterns.md`
 - Database tool: `scripts/adr-db.py`
-- Hook that creates scaffold: `scripts/hooks/session-start.sh`
+- Hook that creates scaffold: `.github/hooks/session-start.sh`
 
 ## Key Principle
 

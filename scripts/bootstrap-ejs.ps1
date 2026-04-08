@@ -219,10 +219,10 @@ Write-Host ''
 
 Write-Host 'Copilot hooks (Layer 0):'
 Copy-EjsFile '.github\hooks\ejs-hooks.json' '.github\hooks\ejs-hooks.json' 'Hook config (.github/hooks/ejs-hooks.json)'
-Copy-EjsFile 'scripts\hooks\session-start.sh' 'scripts\hooks\session-start.sh' 'Hook script (scripts/hooks/session-start.sh)'
-Copy-EjsFile 'scripts\hooks\session-end.sh' 'scripts\hooks\session-end.sh' 'Hook script (scripts/hooks/session-end.sh)'
-Copy-EjsFile 'scripts\hooks\subagent-stop.sh' 'scripts\hooks\subagent-stop.sh' 'Hook script (scripts/hooks/subagent-stop.sh)'
-Copy-EjsFile 'scripts\hooks\log-prompt.sh' 'scripts\hooks\log-prompt.sh' 'Hook script (scripts/hooks/log-prompt.sh)'
+Copy-EjsFile '.github\hooks\session-start.sh' '.github\hooks\session-start.sh' 'Hook script (.github/hooks/session-start.sh)'
+Copy-EjsFile '.github\hooks\session-end.sh' '.github\hooks\session-end.sh' 'Hook script (.github/hooks/session-end.sh)'
+Copy-EjsFile '.github\hooks\subagent-stop.sh' '.github\hooks\subagent-stop.sh' 'Hook script (.github/hooks/subagent-stop.sh)'
+Copy-EjsFile '.github\hooks\log-prompt.sh' '.github\hooks\log-prompt.sh' 'Hook script (.github/hooks/log-prompt.sh)'
 
 # Create logs directory for audit JSONL files
 if (-not $DryRun) {

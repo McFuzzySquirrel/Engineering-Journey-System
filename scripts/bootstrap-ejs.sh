@@ -215,14 +215,14 @@ echo ""
 
 echo "Copilot hooks (Layer 0):"
 copy_file ".github/hooks/ejs-hooks.json" ".github/hooks/ejs-hooks.json" "Hook config (.github/hooks/ejs-hooks.json)"
-copy_file "scripts/hooks/session-start.sh" "scripts/hooks/session-start.sh" "Hook script (scripts/hooks/session-start.sh)"
-copy_file "scripts/hooks/session-end.sh" "scripts/hooks/session-end.sh" "Hook script (scripts/hooks/session-end.sh)"
-copy_file "scripts/hooks/subagent-stop.sh" "scripts/hooks/subagent-stop.sh" "Hook script (scripts/hooks/subagent-stop.sh)"
-copy_file "scripts/hooks/log-prompt.sh" "scripts/hooks/log-prompt.sh" "Hook script (scripts/hooks/log-prompt.sh)"
+copy_file ".github/hooks/session-start.sh" ".github/hooks/session-start.sh" "Hook script (.github/hooks/session-start.sh)"
+copy_file ".github/hooks/session-end.sh" ".github/hooks/session-end.sh" "Hook script (.github/hooks/session-end.sh)"
+copy_file ".github/hooks/subagent-stop.sh" ".github/hooks/subagent-stop.sh" "Hook script (.github/hooks/subagent-stop.sh)"
+copy_file ".github/hooks/log-prompt.sh" ".github/hooks/log-prompt.sh" "Hook script (.github/hooks/log-prompt.sh)"
 
 # Make hook scripts executable
 if [[ "$DRY_RUN" != true ]]; then
-  chmod +x "$TARGET/scripts/hooks/"*.sh 2>/dev/null || true
+  chmod +x "$TARGET/.github/hooks/"*.sh 2>/dev/null || true
 fi
 
 # Create logs directory for audit JSONL files

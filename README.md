@@ -20,7 +20,7 @@ EJS exists to capture that reality with **low friction** and **high auditability
 
 Includes:
 - `.github/hooks/ejs-hooks.json` — Copilot hooks config (Layer 0: guaranteed structural automation)
-- `scripts/hooks/` — Hook scripts for session start, session end, sub-agent capture, and prompt logging
+- `.github/hooks/` — Hook scripts for session start, session end, sub-agent capture, and prompt logging
 - `.github/agents/ejs-journey.agent.md` — Copilot custom agent profile (observer + coordinator)
 - `.github/copilot-instructions.md` — Compact micro-instruction (~30 lines, always-on; append to your existing instructions)
 - `.github/skills/ejs-session-init/SKILL.md` — Agent skill for session initialization workflow
@@ -383,7 +383,7 @@ If you prefer to copy files manually, this repo uses a strict, collision-resista
 #### Minimal copy
 
 - `.github/hooks/ejs-hooks.json` — Copilot hooks config (Layer 0: auto-creates journey files, syncs DB, validates completeness, logs sub-agent events)
-- `scripts/hooks/` — All four hook scripts (`session-start.sh`, `session-end.sh`, `subagent-stop.sh`, `log-prompt.sh`)
+- `.github/hooks/` — All four hook scripts (`session-start.sh`, `session-end.sh`, `subagent-stop.sh`, `log-prompt.sh`)
 - `.github/agents/ejs-journey.agent.md` — EJS observer agent (for Tier 2 bookend invocation and Tier 3 coordinator mode)
 - `.github/copilot-instructions.md` — **Append** the `## EJS Recording Contract` block to your **existing** copilot-instructions.md (do not replace it). If you don't have one, copy the whole file.
 - `.github/skills/ejs-session-init/SKILL.md` — Agent skill for session initialization (auto-loaded by Copilot)
@@ -401,7 +401,7 @@ Do not copy any existing `ejs-docs/journey/YYYY/` files from this starter repo i
 
 | Layer | What to copy | How it activates | Agent selection needed? |
 |-------|-------------|-----------------|------------------------|
-| **Layer 0** (hooks) | `.github/hooks/ejs-hooks.json` + `scripts/hooks/` | Automatically from default branch — guarantees structural tasks | No |
+| **Layer 0** (hooks) | `.github/hooks/ejs-hooks.json` + `.github/hooks/` | Automatically from default branch — guarantees structural tasks | No |
 | **Tier 1** (always-on) | Append copilot-instructions.md block + skills | Automatically — every agent records silently; skills auto-load when relevant | No |
 | **Tier 2** (bookend) | + agent profile | User says `@ejs-journey initialize/finalize` | Only at start/end |
 | **Tier 3** (coordinator) | + agent profile | User selects `ejs-journey` from dropdown | Yes, for full session |
