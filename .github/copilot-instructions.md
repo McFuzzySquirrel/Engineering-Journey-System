@@ -30,4 +30,4 @@ Record this session to the Engineering Journey System — silently, as you work.
 
 ### Database
 - DB is synced automatically at session start by Copilot hooks
-- Query DB before reading raw markdown files
+- Query DB before reading raw markdown files: `python scripts/adr-db.py story` (preferred — rich narrative per session) or `python scripts/adr-db.py search <query>`

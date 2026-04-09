@@ -15,6 +15,7 @@ Usage:
     python scripts/adr-db.py list-journeys          # List all journeys (compact)
     python scripts/adr-db.py get-journey <id>       # Full details for one journey
     python scripts/adr-db.py summary-journeys       # Agent-friendly compact summary of journeys
+    python scripts/adr-db.py story                  # Rich narrative story per journey (preferred for agents)
 
 The database is stored at <repo_root>/.ejs.db (gitignored).
 """
@@ -816,6 +817,143 @@ def cmd_summary_journeys(conn: sqlite3.Connection) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Story helpers
+# ---------------------------------------------------------------------------
+
+_DECISION_BULLET_RE = re.compile(
+    r"^[-*]\s+(?:\*{1,2})?Decision:(?:\*{1,2})?\s+(.+)",
+    re.IGNORECASE,
+)
+
+# Matches a Decision bullet with no trailing content — a template placeholder.
+# e.g. "- Decision:" or "- **Decision:**" with nothing after the colon.
+_BARE_DECISION_RE = re.compile(
+    r"^[-*]\s+(?:\*{1,2})?Decision:(?:\*{1,2})?\s*$",
+    re.IGNORECASE,
+)
+
+# Matches lines that are pure section labels with no trailing content.
+# e.g. "**Technical insights:**" or "Prompting insights:" — bare headings
+# written by agents to introduce a block of content that follows.
+# Handles optional bold markers (**) before and/or after the colon.
+# Uses [^:]+ to match any label characters (not just word chars / slashes).
+_BARE_LABEL_RE = re.compile(r"^(?:\*{1,2})?[^:]+:(?:\*{1,2})?\s*$")
+
+# Maximum characters shown for intent in the story command output.
+_STORY_INTENT_MAX_LEN = 400
+
+
+def _extract_first_decision(text: str) -> str:
+    """Return the text of the first Decision bullet from a decisions_made block.
+
+    Handles both plain (``- Decision: ...``) and bold (``- **Decision:** ...``)
+    markdown bullet styles produced by different agents.
+    """
+    for line in text.splitlines():
+        m = _DECISION_BULLET_RE.match(line.strip())
+        if m:
+            return m.group(1).strip()
+    return ""
+
+
+def _extract_first_content_line(text: str) -> str:
+    """Return the first non-empty, non-heading content line from a markdown block.
+
+    Skips lines that are bare section labels (e.g. ``**Technical insights:**``
+    with no trailing content) and lines that start with ``#``.
+    """
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            continue
+        if _BARE_LABEL_RE.match(stripped):
+            continue
+        return stripped
+    return ""
+
+
+def _format_adr_links(raw: str) -> str:
+    """Format the adr_links field into a compact, readable string.
+
+    The raw value may be a Python-list-repr string with quoted paths (e.g.
+    ``"['../../adr/0011-title.md']"``), a plain bracket-wrapped path (e.g.
+    ``"[ejs-docs/adr/0013-title.md]"``), or a bare ADR ID (e.g. ``"0015"``).
+    Returns a comma-separated list of stem names, or ``"None triggered"``.
+    """
+    raw = (raw or "").strip()
+    if not raw or raw in ("[]", ""):
+        return "None triggered"
+
+    # Try quoted paths first (Python list repr: ['path', 'path2'])
+    quoted = re.findall(r"'([^']+)'|\"([^\"]+)\"", raw)
+    if quoted:
+        names = [Path(s or d).stem for s, d in quoted]
+        return ", ".join(names)
+
+    # Try unquoted paths inside brackets: [path/to/file.md] or [path1, path2]
+    bracket_content = re.match(r"^\[(.+)\]$", raw)
+    if bracket_content:
+        items = [item.strip() for item in bracket_content.group(1).split(",")]
+        return ", ".join(Path(item).stem for item in items if item)
+
+    # Bare value (ADR ID or plain string)
+    return raw
+
+
+def cmd_story(conn: sqlite3.Connection) -> int:
+    """Produce a rich, narrative story for every journey session.
+
+    Each entry shows: intent (up to 400 chars), the first key decision,
+    the first key learning, and ADR status.  This is richer than
+    ``summary-journeys`` (which truncates intent at 300 chars and omits
+    structured decision/learning extraction) and is the preferred command
+    for agents that need to understand past sessions at a glance.
+    """
+    rows = conn.execute(
+        "SELECT session_id, date, decision_detected, adr_links, "
+        "problem_intent, decisions_made, key_learnings "
+        "FROM journeys ORDER BY date, session_id"
+    ).fetchall()
+    if not rows:
+        print("No journeys in database. Run 'sync' first.")
+        return 0
+
+    parts: list[str] = []
+    for r in rows:
+        intent = (r["problem_intent"] or "").strip()
+        intent_display = (
+            intent[:_STORY_INTENT_MAX_LEN] + "…"
+            if len(intent) > _STORY_INTENT_MAX_LEN
+            else intent
+        )
+
+        key_decision = _extract_first_decision(r["decisions_made"] or "")
+        if not key_decision:
+            candidate = _extract_first_content_line(r["decisions_made"] or "")
+            # Skip bare template placeholder bullets like "- Decision:"
+            if candidate and not _BARE_DECISION_RE.match(candidate):
+                key_decision = candidate
+
+        key_learning = _extract_first_content_line(r["key_learnings"] or "")
+
+        adr_display = _format_adr_links(r["adr_links"])
+
+        lines = [f"[{r['session_id']}] {r['date']}"]
+        lines.append(f"Intent: {intent_display or '(not recorded)'}")
+        if key_decision:
+            lines.append(f"Key decision: {key_decision}")
+        if key_learning:
+            lines.append(f"Learning: {key_learning}")
+        lines.append(f"ADR: {adr_display}")
+        parts.append("\n".join(lines))
+
+    print("\n\n".join(parts))
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # CLI entry-point
 # ---------------------------------------------------------------------------
 
@@ -861,6 +999,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("summary-journeys", help="Agent-friendly compact summary of journeys")
 
+    sub.add_parser(
+        "story",
+        help="Rich narrative story per journey — intent, key decision, learning, ADR (preferred for agents)",
+    )
+
     return parser
 
 
@@ -894,6 +1037,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_get_journey(conn, args.session_id)
         if args.command == "summary-journeys":
             return cmd_summary_journeys(conn)
+        if args.command == "story":
+            return cmd_story(conn)
         parser.print_help()
         return 1
     finally:
