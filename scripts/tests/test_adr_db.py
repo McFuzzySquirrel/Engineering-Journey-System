@@ -981,5 +981,210 @@ class TestJourneyCLICommands(_JourneyTempDirMixin, unittest.TestCase):
         self.assertIn("[Journey ejs-session-2026-03-02-01]", output)
 
 
+# ---------------------------------------------------------------------------
+# Story helper tests
+# ---------------------------------------------------------------------------
+
+
+class TestExtractFirstDecision(unittest.TestCase):
+    """Tests for _extract_first_decision()."""
+
+    def test_plain_decision_bullet(self) -> None:
+        text = "- Decision: Use SQLite\n  - Reason: Fast\n"
+        self.assertEqual(adr_db._extract_first_decision(text), "Use SQLite")
+
+    def test_bold_decision_bullet(self) -> None:
+        text = "- **Decision:** Use PostgreSQL\n  - Reason: Reliable\n"
+        self.assertEqual(adr_db._extract_first_decision(text), "Use PostgreSQL")
+
+    def test_star_bullet(self) -> None:
+        text = "* Decision: Go with option B\n"
+        self.assertEqual(adr_db._extract_first_decision(text), "Go with option B")
+
+    def test_returns_first_only(self) -> None:
+        text = "- Decision: First choice\n- Decision: Second choice\n"
+        self.assertEqual(adr_db._extract_first_decision(text), "First choice")
+
+    def test_empty_string(self) -> None:
+        self.assertEqual(adr_db._extract_first_decision(""), "")
+
+    def test_no_decision_bullet(self) -> None:
+        text = "- Reason: Something\n- Impact: Big\n"
+        self.assertEqual(adr_db._extract_first_decision(text), "")
+
+    def test_bare_decision_ignored(self) -> None:
+        """A bare 'Decision:' with no text should not match."""
+        text = "- Decision:\n  - Reason: n/a\n"
+        self.assertEqual(adr_db._extract_first_decision(text), "")
+
+    def test_case_insensitive(self) -> None:
+        text = "- DECISION: Uppercase works\n"
+        self.assertEqual(adr_db._extract_first_decision(text), "Uppercase works")
+
+
+class TestExtractFirstContentLine(unittest.TestCase):
+    """Tests for _extract_first_content_line()."""
+
+    def test_simple_content(self) -> None:
+        text = "This is content.\nMore content.\n"
+        self.assertEqual(adr_db._extract_first_content_line(text), "This is content.")
+
+    def test_skips_empty_lines(self) -> None:
+        text = "\n\n  \nActual content here.\n"
+        self.assertEqual(adr_db._extract_first_content_line(text), "Actual content here.")
+
+    def test_skips_headings(self) -> None:
+        text = "# Heading\n## Subheading\nContent after headings.\n"
+        self.assertEqual(adr_db._extract_first_content_line(text), "Content after headings.")
+
+    def test_skips_bare_labels(self) -> None:
+        text = "**Technical insights:**\nActual insight goes here.\n"
+        self.assertEqual(adr_db._extract_first_content_line(text), "Actual insight goes here.")
+
+    def test_skips_plain_bare_label(self) -> None:
+        text = "Prompting insights:\nUse clear prompts.\n"
+        self.assertEqual(adr_db._extract_first_content_line(text), "Use clear prompts.")
+
+    def test_empty_string(self) -> None:
+        self.assertEqual(adr_db._extract_first_content_line(""), "")
+
+    def test_only_headings_and_labels(self) -> None:
+        text = "# Heading\n**Label:**\n"
+        self.assertEqual(adr_db._extract_first_content_line(text), "")
+
+    def test_label_with_content_not_skipped(self) -> None:
+        """A label with trailing content is valid content, not a bare label."""
+        text = "Technical insights: things were found\n"
+        self.assertEqual(
+            adr_db._extract_first_content_line(text),
+            "Technical insights: things were found",
+        )
+
+    def test_bullet_content(self) -> None:
+        text = "**Key Learnings:**\n- Agents benefit from structured search\n"
+        self.assertEqual(
+            adr_db._extract_first_content_line(text),
+            "- Agents benefit from structured search",
+        )
+
+
+class TestFormatAdrLinks(unittest.TestCase):
+    """Tests for _format_adr_links()."""
+
+    def test_empty_string(self) -> None:
+        self.assertEqual(adr_db._format_adr_links(""), "None triggered")
+
+    def test_none(self) -> None:
+        self.assertEqual(adr_db._format_adr_links(None), "None triggered")
+
+    def test_empty_brackets(self) -> None:
+        self.assertEqual(adr_db._format_adr_links("[]"), "None triggered")
+
+    def test_quoted_path(self) -> None:
+        raw = "['../../adr/0011-start-of-session.md']"
+        self.assertEqual(adr_db._format_adr_links(raw), "0011-start-of-session")
+
+    def test_multiple_quoted_paths(self) -> None:
+        raw = "['../../adr/0011-one.md', '../../adr/0012-two.md']"
+        self.assertEqual(adr_db._format_adr_links(raw), "0011-one, 0012-two")
+
+    def test_unquoted_bracket_path(self) -> None:
+        raw = "[ejs-docs/adr/0013-sqlite.md]"
+        self.assertEqual(adr_db._format_adr_links(raw), "0013-sqlite")
+
+    def test_bare_adr_id(self) -> None:
+        self.assertEqual(adr_db._format_adr_links("0015"), "0015")
+
+    def test_double_quoted_path(self) -> None:
+        raw = '[\"path/to/0014-skills.md\"]'
+        self.assertEqual(adr_db._format_adr_links(raw), "0014-skills")
+
+
+class TestCmdStory(_JourneyTempDirMixin, unittest.TestCase):
+    """Tests for cmd_story()."""
+
+    def _capture_story(self) -> str:
+        import io
+        from contextlib import redirect_stdout
+
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = adr_db.cmd_story(self.conn)
+        self.assertEqual(rc, 0)
+        return buf.getvalue()
+
+    def test_empty_db(self) -> None:
+        output = self._capture_story()
+        self.assertIn("No journeys or ADRs in database", output)
+
+    def test_journey_story(self) -> None:
+        _write_journey(self.journey_dir, "ejs-session-2026-02-10-01.md",
+                       SAMPLE_JOURNEY_FRONTMATTER)
+        adr_db._sync_journeys(self.conn, self.tmp / "journey")
+        output = self._capture_story()
+        self.assertIn("JOURNEY STORIES", output)
+        self.assertIn("[ejs-session-2026-02-10-01]", output)
+        self.assertIn("Intent:", output)
+        self.assertIn("sub-agents capture", output)
+        self.assertIn("Key decision: Add Sub-Agent Contributions section", output)
+        self.assertIn("Learning:", output)
+        self.assertIn("ADR: 0012-sub-agent-decision-capture-protocol", output)
+
+    def test_journey_no_adr_link(self) -> None:
+        _write_journey(self.journey_dir, "ejs-session-2026-03-02-01.md",
+                       SAMPLE_JOURNEY_PLAIN)
+        adr_db._sync_journeys(self.conn, self.tmp / "journey")
+        output = self._capture_story()
+        self.assertIn("ADR: None triggered", output)
+
+    def test_adr_index_section(self) -> None:
+        _write_adr(self.adr_dir, "0042-test.md", SAMPLE_ADR)
+        adr_db._sync_adrs(self.conn, self.adr_dir)
+        output = self._capture_story()
+        self.assertIn("ADR INDEX", output)
+        self.assertIn("[ADR 0042]", output)
+        self.assertIn("Use SQLite for ADR Tracking", output)
+        self.assertIn("accepted", output)
+        self.assertIn("Decision:", output)
+
+    def test_combined_journey_and_adr(self) -> None:
+        _write_journey(self.journey_dir, "ejs-session-2026-02-10-01.md",
+                       SAMPLE_JOURNEY_FRONTMATTER)
+        adr_db._sync_journeys(self.conn, self.tmp / "journey")
+        _write_adr(self.adr_dir, "0042-test.md", SAMPLE_ADR)
+        adr_db._sync_adrs(self.conn, self.adr_dir)
+        output = self._capture_story()
+        # Both sections present
+        self.assertIn("JOURNEY STORIES", output)
+        self.assertIn("ADR INDEX", output)
+        # Journey content
+        self.assertIn("ejs-session-2026-02-10-01", output)
+        # ADR content
+        self.assertIn("[ADR 0042]", output)
+
+    def test_intent_truncation(self) -> None:
+        """Intent longer than 400 chars gets truncated with ellipsis."""
+        long_intent = "A" * 450
+        journey_text = (
+            f"session_id: ejs-session-long\n"
+            f"date: 2026-01-01\n\n"
+            f"# Problem / Intent\n\n{long_intent}\n\n"
+            f"# Decisions Made\n\n- Decision: Test\n"
+        )
+        _write_journey(self.journey_dir, "ejs-session-long.md", journey_text)
+        adr_db._sync_journeys(self.conn, self.tmp / "journey")
+        output = self._capture_story()
+        self.assertIn("A" * 400 + "…", output)
+        self.assertNotIn("A" * 450, output)
+
+    def test_adr_only_no_journeys(self) -> None:
+        """When only ADRs exist, story shows ADR INDEX without journey section."""
+        _write_adr(self.adr_dir, "0042-test.md", SAMPLE_ADR)
+        adr_db._sync_adrs(self.conn, self.adr_dir)
+        output = self._capture_story()
+        self.assertNotIn("JOURNEY STORIES", output)
+        self.assertIn("ADR INDEX", output)
+
+
 if __name__ == "__main__":
     unittest.main()

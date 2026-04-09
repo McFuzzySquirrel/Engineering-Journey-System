@@ -15,7 +15,7 @@ Usage:
     python scripts/adr-db.py list-journeys          # List all journeys (compact)
     python scripts/adr-db.py get-journey <id>       # Full details for one journey
     python scripts/adr-db.py summary-journeys       # Agent-friendly compact summary of journeys
-    python scripts/adr-db.py story                  # Rich narrative story per journey (preferred for agents)
+    python scripts/adr-db.py story                  # Journey narratives + ADR index (preferred for agents)
 
 The database is stored at <repo_root>/.ejs.db (gitignored).
 """
@@ -903,51 +903,82 @@ def _format_adr_links(raw: str) -> str:
 
 
 def cmd_story(conn: sqlite3.Connection) -> int:
-    """Produce a rich, narrative story for every journey session.
+    """Produce a rich, narrative story for every journey session and ADR.
 
-    Each entry shows: intent (up to 400 chars), the first key decision,
-    the first key learning, and ADR status.  This is richer than
-    ``summary-journeys`` (which truncates intent at 300 chars and omits
-    structured decision/learning extraction) and is the preferred command
-    for agents that need to understand past sessions at a glance.
+    The output has two sections:
+
+    **JOURNEY STORIES** — one entry per session with: intent (up to 400
+    chars), the first key decision, the first key learning, and ADR status.
+
+    **ADR INDEX** — one entry per Architecture Decision Record with: title,
+    status, a compact decision summary, and the first key learning.
+
+    This is richer than ``summary-journeys`` (which truncates intent at
+    300 chars and omits structured decision/learning extraction) and is
+    the preferred single command for agents that need to understand the
+    full project history at a glance.
     """
-    rows = conn.execute(
+    # ── Journey stories ────────────────────────────────────────────
+    journey_rows = conn.execute(
         "SELECT session_id, date, decision_detected, adr_links, "
         "problem_intent, decisions_made, key_learnings "
         "FROM journeys ORDER BY date, session_id"
     ).fetchall()
-    if not rows:
-        print("No journeys in database. Run 'sync' first.")
+
+    adr_rows = conn.execute(
+        "SELECT adr_id, title, date, status, decision, key_learnings "
+        "FROM adrs ORDER BY date, adr_id"
+    ).fetchall()
+
+    if not journey_rows and not adr_rows:
+        print("No journeys or ADRs in database. Run 'sync' first.")
         return 0
 
     parts: list[str] = []
-    for r in rows:
-        intent = (r["problem_intent"] or "").strip()
-        intent_display = (
-            intent[:_STORY_INTENT_MAX_LEN] + "…"
-            if len(intent) > _STORY_INTENT_MAX_LEN
-            else intent
-        )
 
-        key_decision = _extract_first_decision(r["decisions_made"] or "")
-        if not key_decision:
-            candidate = _extract_first_content_line(r["decisions_made"] or "")
-            # Skip bare template placeholder bullets like "- Decision:"
-            if candidate and not _BARE_DECISION_RE.match(candidate):
-                key_decision = candidate
+    if journey_rows:
+        parts.append("═══ JOURNEY STORIES ═══")
+        for r in journey_rows:
+            intent = (r["problem_intent"] or "").strip()
+            intent_display = (
+                intent[:_STORY_INTENT_MAX_LEN] + "…"
+                if len(intent) > _STORY_INTENT_MAX_LEN
+                else intent
+            )
 
-        key_learning = _extract_first_content_line(r["key_learnings"] or "")
+            key_decision = _extract_first_decision(r["decisions_made"] or "")
+            if not key_decision:
+                candidate = _extract_first_content_line(r["decisions_made"] or "")
+                # Skip bare template placeholder bullets like "- Decision:"
+                if candidate and not _BARE_DECISION_RE.match(candidate):
+                    key_decision = candidate
 
-        adr_display = _format_adr_links(r["adr_links"])
+            key_learning = _extract_first_content_line(r["key_learnings"] or "")
 
-        lines = [f"[{r['session_id']}] {r['date']}"]
-        lines.append(f"Intent: {intent_display or '(not recorded)'}")
-        if key_decision:
-            lines.append(f"Key decision: {key_decision}")
-        if key_learning:
-            lines.append(f"Learning: {key_learning}")
-        lines.append(f"ADR: {adr_display}")
-        parts.append("\n".join(lines))
+            adr_display = _format_adr_links(r["adr_links"])
+
+            lines = [f"[{r['session_id']}] {r['date']}"]
+            lines.append(f"Intent: {intent_display or '(not recorded)'}")
+            if key_decision:
+                lines.append(f"Key decision: {key_decision}")
+            if key_learning:
+                lines.append(f"Learning: {key_learning}")
+            lines.append(f"ADR: {adr_display}")
+            parts.append("\n".join(lines))
+
+    # ── ADR index ──────────────────────────────────────────────────
+    if adr_rows:
+        parts.append("═══ ADR INDEX ═══")
+        for r in adr_rows:
+            decision_line = _extract_first_content_line(r["decision"] or "")
+            learning_line = _extract_first_content_line(r["key_learnings"] or "")
+
+            lines = [f"[ADR {r['adr_id']}] {r['title']}  ({r['status']}, {r['date']})"]
+            if decision_line:
+                lines.append(f"Decision: {decision_line}")
+            if learning_line:
+                lines.append(f"Learning: {learning_line}")
+            parts.append("\n".join(lines))
 
     print("\n\n".join(parts))
     return 0
@@ -1001,7 +1032,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser(
         "story",
-        help="Rich narrative story per journey — intent, key decision, learning, ADR (preferred for agents)",
+        help="Journey narratives + ADR index — intent, decisions, learnings (preferred for agents)",
     )
 
     return parser
