@@ -57,7 +57,7 @@ See [`game/README.md`](game/README.md) for setup instructions and controls.
 
 ```bash
 python scripts/adr-db.py sync          # Index all ADRs + journeys into .ejs.db
-python scripts/adr-db.py summary       # Compact ADR digest (great for agent context)
+python scripts/adr-db.py story         # Journey narratives + ADR index (preferred for agents)
 python scripts/adr-db.py search "auth" # Full-text search across ADRs and journeys
 ```
 
@@ -66,6 +66,7 @@ python scripts/adr-db.py search "auth" # Full-text search across ADRs and journe
 | Command | Description |
 |---------|-------------|
 | `sync` | Parse ADR and journey markdown files and upsert into the local SQLite database |
+| `story` | **Preferred.** Journey narratives + ADR index in one view — intent, key decision, learning, ADR status |
 | `list` | List all ADRs (compact: id, title, status, date) |
 | `get <adr_id>` | Show full details for a specific ADR |
 | `search <query>` | Full-text search across all ADR **and** journey content |
@@ -83,11 +84,13 @@ python scripts/adr-db.py search "auth" # Full-text search across ADRs and journe
 
 ### Agent workflow
 
-Agents should run `sync` at the start of a session to ensure the index is fresh, then use `summary`, `search`, or `get` to reference past decisions efficiently:
+Agents should run `sync` at the start of a session to ensure the index is fresh, then use `story` to get the full project narrative (journey stories + ADR index in one view):
 
 ```bash
-python scripts/adr-db.py sync && python scripts/adr-db.py summary
+python scripts/adr-db.py sync && python scripts/adr-db.py story
 ```
+
+For targeted lookups, use `search`, `summary`, or `get` to drill into specific decisions.
 
 See [ADR 0013](ejs-docs/adr/0013-sqlite-backed-adr-index-for-agent-reference.md) for the full design rationale.
 

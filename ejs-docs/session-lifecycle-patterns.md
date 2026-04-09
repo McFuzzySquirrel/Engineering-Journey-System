@@ -282,17 +282,19 @@ When agents need to reference past decisions, journeys, or context, they **must*
 ### Lookup Order
 
 ```
-1. adr-db.py search <query>     ← Primary: fast, context-efficient
-2. adr-db.py summary            ← Overview of all ADRs
-3. adr-db.py get <id>           ← Full DB record for one ADR/journey
-4. Read ejs-docs/adr/*.md       ← Fallback only: when DB results need more detail
-5. Read ejs-docs/journey/**/*.md ← Fallback only: when DB results need more detail
+1. adr-db.py story                ← Preferred: full project narrative (journeys + ADR index)
+2. adr-db.py search <query>       ← Targeted: fast, context-efficient topic search
+3. adr-db.py summary              ← Overview of all ADRs
+4. adr-db.py get <id>             ← Full DB record for one ADR/journey
+5. Read ejs-docs/adr/*.md         ← Fallback only: when DB results need more detail
+6. Read ejs-docs/journey/**/*.md  ← Fallback only: when DB results need more detail
 ```
 
 ### Why DB-First?
 
 | Approach | Context cost | Speed | Use when |
 |----------|-------------|-------|----------|
+| `adr-db.py story` | Medium (structured narrative) | Fast | Starting a session — need full project context with journey intent, decisions, and ADR index |
 | `adr-db.py search` | Low (returns snippets) | Fast | Looking for specific topics, keywords, or decisions |
 | `adr-db.py summary` | Medium (compact list) | Fast | Need an overview of all ADRs or journeys |
 | `adr-db.py get <id>` | Medium (single record) | Fast | Need full details on a specific known ADR or journey |
@@ -301,24 +303,29 @@ When agents need to reference past decisions, journeys, or context, they **must*
 ### Rules
 
 1. **Always run `adr-db.py sync` at session start** before any queries
-2. **Never read markdown files as a first step** when looking for past decisions or context
-3. **Use `search` for discovery** — find which ADRs or journeys are relevant before requesting full details
-4. **Use `get` for depth** — retrieve full DB record for a specific ADR or journey identified via search
-5. **Fall back to markdown files only when** the database record lacks the detail you need (e.g., custom sections, embedded diagrams, full narrative context)
+2. **Use `story` first** — get the full project narrative (journeys + ADR index) for broad context
+3. **Never read markdown files as a first step** when looking for past decisions or context
+4. **Use `search` for targeted discovery** — find specific ADRs or journeys by topic
+5. **Use `get` for depth** — retrieve full DB record for a specific ADR or journey identified via search
+6. **Fall back to markdown files only when** the database record lacks the detail you need (e.g., custom sections, embedded diagrams, full narrative context)
 
 ### Flow Diagram
 
 ```mermaid
 flowchart TD
-    Need[Need Past Context] --> DBSearch[adr-db.py search query]
-    DBSearch --> Sufficient{DB Result<br/>Sufficient?}
+    Need[Need Past Context] --> Story[adr-db.py story<br/>journey narratives + ADR index]
+    Story --> Sufficient{Broad Context<br/>Sufficient?}
     Sufficient -->|Yes| Use[Use DB Result]
-    Sufficient -->|No| DBGet[adr-db.py get id]
+    Sufficient -->|No| DBSearch[adr-db.py search query<br/>targeted lookup]
+    DBSearch --> Found{Found What<br/>You Need?}
+    Found -->|Yes| Use
+    Found -->|No| DBGet[adr-db.py get id]
     DBGet --> Enough{Enough<br/>Detail?}
     Enough -->|Yes| Use
     Enough -->|No| ReadMD[Read Markdown File<br/>— fallback only]
     ReadMD --> Use
 
+    style Story fill:#d4edda
     style DBSearch fill:#d4edda
     style DBGet fill:#fff3cd
     style ReadMD fill:#f8d7da
