@@ -13,14 +13,11 @@
 .PARAMETER Target
     Path to the target repository (must be a git repo).
 
-.PARAMETER WithHooks
-    Also install git commit/push reminder hooks.
-
 .PARAMETER WithPr
     Also copy the PR template.
 
 .PARAMETER Full
-    Copy everything (hooks + PR template).
+    Copy everything (PR template).
 
 .PARAMETER DryRun
     Show what would be done without making changes.
@@ -40,7 +37,6 @@ param(
     [Parameter(Mandatory = $true, Position = 0)]
     [string]$Target,
 
-    [switch]$WithHooks,
     [switch]$WithPr,
     [switch]$Full,
     [switch]$DryRun
@@ -51,7 +47,6 @@ $ErrorActionPreference = 'Stop'
 # ── Resolve flags ───────────────────────────────────────────────────
 
 if ($Full) {
-    $WithHooks = $true
     $WithPr    = $true
 }
 
@@ -219,10 +214,10 @@ Write-Host ''
 
 Write-Host 'Copilot hooks (Layer 0):'
 Copy-EjsFile '.github\hooks\ejs-hooks.json' '.github\hooks\ejs-hooks.json' 'Hook config (.github/hooks/ejs-hooks.json)'
-Copy-EjsFile 'scripts\hooks\session-start.sh' 'scripts\hooks\session-start.sh' 'Hook script (scripts/hooks/session-start.sh)'
-Copy-EjsFile 'scripts\hooks\session-end.sh' 'scripts\hooks\session-end.sh' 'Hook script (scripts/hooks/session-end.sh)'
-Copy-EjsFile 'scripts\hooks\subagent-stop.sh' 'scripts\hooks\subagent-stop.sh' 'Hook script (scripts/hooks/subagent-stop.sh)'
-Copy-EjsFile 'scripts\hooks\log-prompt.sh' 'scripts\hooks\log-prompt.sh' 'Hook script (scripts/hooks/log-prompt.sh)'
+Copy-EjsFile '.github\hooks\session-start.sh' '.github\hooks\session-start.sh' 'Hook script (.github/hooks/session-start.sh)'
+Copy-EjsFile '.github\hooks\session-end.sh' '.github\hooks\session-end.sh' 'Hook script (.github/hooks/session-end.sh)'
+Copy-EjsFile '.github\hooks\subagent-stop.sh' '.github\hooks\subagent-stop.sh' 'Hook script (.github/hooks/subagent-stop.sh)'
+Copy-EjsFile '.github\hooks\log-prompt.sh' '.github\hooks\log-prompt.sh' 'Hook script (.github/hooks/log-prompt.sh)'
 
 # Create logs directory for audit JSONL files
 if (-not $DryRun) {
@@ -267,24 +262,6 @@ Write-Host ''
 if ($WithPr) {
     Write-Host 'PR template:'
     Copy-EjsFile '.github\copilot\pull_request_template.md' '.github\copilot\pull_request_template.md' 'PR template (.github/copilot/pull_request_template.md)'
-    Write-Host ''
-}
-
-# ── Optional: git hooks ────────────────────────────────────────────
-
-if ($WithHooks) {
-    Write-Host 'Git hooks:'
-    Copy-EjsFile '.githooks\post-commit' '.githooks\post-commit' 'post-commit hook (.githooks/post-commit)'
-    Copy-EjsFile '.githooks\pre-push' '.githooks\pre-push' 'pre-push hook (.githooks/pre-push)'
-    Copy-EjsFile 'scripts\install-githooks.sh' 'scripts\install-githooks.sh' 'Hook installer (scripts/install-githooks.sh)'
-    Copy-EjsFile 'scripts\install-githooks.ps1' 'scripts\install-githooks.ps1' 'Hook installer PS1 (scripts/install-githooks.ps1)'
-
-    if (-not $DryRun) {
-        git -C $Target config core.hooksPath .githooks 2>$null
-        Write-Host '  [done] Activated hooks (core.hooksPath=.githooks)'
-    } else {
-        Write-Host '  [activate] git config core.hooksPath .githooks'
-    }
     Write-Host ''
 }
 

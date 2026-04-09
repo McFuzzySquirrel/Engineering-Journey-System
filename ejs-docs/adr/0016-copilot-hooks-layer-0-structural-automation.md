@@ -111,10 +111,10 @@ Four hooks are implemented via `.github/hooks/ejs-hooks.json`:
 
 | Hook | Script | Purpose |
 |------|--------|---------|
-| `sessionStart` | `scripts/hooks/session-start.sh` | DB sync + journey scaffold with frontmatter |
-| `sessionEnd` | `scripts/hooks/session-end.sh` | Completeness validation, HTML comment footer |
-| `subagentStop` | `scripts/hooks/subagent-stop.sh` | Timestamped placeholder in Sub-Agent Contributions + JSONL audit |
-| `userPromptSubmitted` | `scripts/hooks/log-prompt.sh` | Prompt audit trail to `logs/ejs-prompt-audit.jsonl` |
+| `sessionStart` | `.github/hooks/session-start.sh` | DB sync + journey scaffold with frontmatter |
+| `sessionEnd` | `.github/hooks/session-end.sh` | Completeness validation, HTML comment footer |
+| `subagentStop` | `.github/hooks/subagent-stop.sh` | Timestamped placeholder in Sub-Agent Contributions + JSONL audit |
+| `userPromptSubmitted` | `.github/hooks/log-prompt.sh` | Prompt audit trail to `logs/ejs-prompt-audit.jsonl` |
 
 Cross-hook state is managed via `.ejs-session-active` (contains journey file path). All hooks exit 0
 on error — they never block the agent.

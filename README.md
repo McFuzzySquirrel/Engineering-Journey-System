@@ -20,7 +20,7 @@ EJS exists to capture that reality with **low friction** and **high auditability
 
 Includes:
 - `.github/hooks/ejs-hooks.json` — Copilot hooks config (Layer 0: guaranteed structural automation)
-- `scripts/hooks/` — Hook scripts for session start, session end, sub-agent capture, and prompt logging
+- `.github/hooks/` — Hook scripts for session start, session end, sub-agent capture, and prompt logging
 - `.github/agents/ejs-journey.agent.md` — Copilot custom agent profile (observer + coordinator)
 - `.github/copilot-instructions.md` — Compact micro-instruction (~30 lines, always-on; append to your existing instructions)
 - `.github/skills/ejs-session-init/SKILL.md` — Agent skill for session initialization workflow
@@ -134,31 +134,6 @@ To see the data flow of how this works both in a **single user and agent interac
 - Higher quality documentation (real-time vs. retrospective)
 - Better for multi-step/multi-agent sessions (preserves full history)
 
-### Make It “Fire” on Commit/Push
-
-Agents can’t reliably detect `git commit`/`git push` on their own across editors and platforms. The portable way to make EJS run every time is to add lightweight git hook reminders.
-
-This repo includes hooks that remind (and optionally block) when you commit/push without a Session Journey.
-
-Install them (per-repo):
-
-`./scripts/install-githooks.sh`
-
-Windows (PowerShell):
-
-`powershell -ExecutionPolicy Bypass -File .\scripts\install-githooks.ps1`
-
-Behavior:
-- `post-commit`: reminds if the last commit didn’t include an `ejs-docs/journey/YYYY/ejs-session-...md` file.
-- `pre-push`: warns if the push doesn’t include a Session Journey file (set `EJS_ENFORCE=1` to block pushes).
-
-Notes:
-- On Windows, this relies on Git for Windows (Git Bash) to run hook scripts.
-
-Bypass:
-- `git commit --no-verify` / `git push --no-verify`
-- or set `EJS_SKIP=1`
-
 ## Tooling integration (Copilot, Claude, Cursor)
 
 EJS is tool-agnostic and **non-competing** — it layers silent recording onto whatever agents are already active. For GitHub Copilot, the canonical, auto-discoverable locations are:
@@ -230,10 +205,6 @@ Invoke `@ejs-journey` at session boundaries, then work with your normal agents i
 - Use the agent dropdown to select `ejs-journey`
 - EJS acts as the primary agent, delegating implementation to sub-agents and recording everything directly
 - If you don’t see it, use the agent dropdown → “Configure Custom Agents…” and ensure the workspace agent profile exists at `.github/agents/ejs-journey.agent.md`
-
-### Commit/push reminders
-
-VS Code doesn’t change the git hook behavior. If you copy the optional `.githooks/` + install scripts into your repo and install them, you’ll still get reminders on `git commit` and `git push`.
 
 
 ## Using EJS with CLI Tools
@@ -348,7 +319,7 @@ The fastest way to add EJS to an existing repo:
 # From a local clone of the EJS starter repo:
 ./scripts/bootstrap-ejs.sh /path/to/your-repo
 
-# With all optional extras (hooks, database tool, PR template):
+# With all optional extras (PR template):
 ./scripts/bootstrap-ejs.sh --full /path/to/your-repo
 
 # Preview what would change without modifying anything:
@@ -374,7 +345,7 @@ The script:
 - Creates `logs/` directory for audit trail JSONL files
 - Adds `.ejs.db`, `.ejs-session-active`, `.ejs-session-incomplete`, and `logs/*.jsonl` to `.gitignore`
 - Is fully idempotent — safe to run multiple times
-- Optionally installs git hooks (`--with-hooks`) and PR template (`--with-pr`)
+- Optionally copies PR template (`--with-pr`)
 
 ### Manual copy (alternative)
 
@@ -383,7 +354,7 @@ If you prefer to copy files manually, this repo uses a strict, collision-resista
 #### Minimal copy
 
 - `.github/hooks/ejs-hooks.json` — Copilot hooks config (Layer 0: auto-creates journey files, syncs DB, validates completeness, logs sub-agent events)
-- `scripts/hooks/` — All four hook scripts (`session-start.sh`, `session-end.sh`, `subagent-stop.sh`, `log-prompt.sh`)
+- `.github/hooks/` — All four hook scripts (`session-start.sh`, `session-end.sh`, `subagent-stop.sh`, `log-prompt.sh`)
 - `.github/agents/ejs-journey.agent.md` — EJS observer agent (for Tier 2 bookend invocation and Tier 3 coordinator mode)
 - `.github/copilot-instructions.md` — **Append** the `## EJS Recording Contract` block to your **existing** copilot-instructions.md (do not replace it). If you don't have one, copy the whole file.
 - `.github/skills/ejs-session-init/SKILL.md` — Agent skill for session initialization (auto-loaded by Copilot)
@@ -401,7 +372,7 @@ Do not copy any existing `ejs-docs/journey/YYYY/` files from this starter repo i
 
 | Layer | What to copy | How it activates | Agent selection needed? |
 |-------|-------------|-----------------|------------------------|
-| **Layer 0** (hooks) | `.github/hooks/ejs-hooks.json` + `scripts/hooks/` | Automatically from default branch — guarantees structural tasks | No |
+| **Layer 0** (hooks) | `.github/hooks/ejs-hooks.json` + `.github/hooks/` | Automatically from default branch — guarantees structural tasks | No |
 | **Tier 1** (always-on) | Append copilot-instructions.md block + skills | Automatically — every agent records silently; skills auto-load when relevant | No |
 | **Tier 2** (bookend) | + agent profile | User says `@ejs-journey initialize/finalize` | Only at start/end |
 | **Tier 3** (coordinator) | + agent profile | User selects `ejs-journey` from dropdown | Yes, for full session |
@@ -414,18 +385,6 @@ Do not copy any existing `ejs-docs/journey/YYYY/` files from this starter repo i
 
 If you copy example ADRs, treat them as reference material (not “your repo’s decisions”).
 
-### Optional (commit/push reminders)
-
-These make the process “fire” on `git commit`/`git push`:
-
-- `.githooks/` (the hooks themselves)
-- `scripts/install-githooks.sh`
-- `scripts/install-githooks.ps1`
-
-After copying, install hooks in the target repo:
-
-- Linux/macOS: `./scripts/install-githooks.sh`
-- Windows: `powershell -ExecutionPolicy Bypass -File .\scripts\install-githooks.ps1`
 
 ### Resulting layout (target repo)
 

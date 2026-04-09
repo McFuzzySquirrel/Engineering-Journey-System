@@ -16,7 +16,6 @@ set -euo pipefail
 #   1. Copies the EJS agent profile, agent skills, templates, and tooling
 #   2. Appends the EJS Silent Recording Contract to your existing
 #      copilot-instructions.md (does NOT replace it)
-#   3. Optionally installs git hooks for commit/push reminders
 #
 # EJS is additive and non-competing — it layers silent collaboration
 # recording onto whatever agents you already have.
@@ -65,9 +64,8 @@ Arguments:
   <target-repo>    Path to the target repository (must be a git repo)
 
 Options:
-  --with-hooks     Also install git commit/push reminder hooks
   --with-pr        Also copy the PR template
-  --full           Copy everything (hooks + PR template)
+  --full           Copy everything (PR template)
   --dry-run        Show what would be done without making changes
   -h, --help       Show this help message
 
@@ -85,16 +83,15 @@ EOF
 }
 
 TARGET=""
-WITH_HOOKS=false
 WITH_PR=false
 DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --with-hooks) WITH_HOOKS=true; shift ;;
+    --with-hooks) shift ;;  # ignored — git hooks removed; Copilot hooks handle this now
     --with-db)    shift ;;  # ignored — database tool is now always included
     --with-pr)    WITH_PR=true; shift ;;
-    --full)       WITH_HOOKS=true; WITH_PR=true; shift ;;
+    --full)       WITH_PR=true; shift ;;
     --dry-run)    DRY_RUN=true; shift ;;
     -h|--help)    usage ;;
     -*)           echo "EJS: unknown option: $1"; usage ;;
@@ -215,14 +212,14 @@ echo ""
 
 echo "Copilot hooks (Layer 0):"
 copy_file ".github/hooks/ejs-hooks.json" ".github/hooks/ejs-hooks.json" "Hook config (.github/hooks/ejs-hooks.json)"
-copy_file "scripts/hooks/session-start.sh" "scripts/hooks/session-start.sh" "Hook script (scripts/hooks/session-start.sh)"
-copy_file "scripts/hooks/session-end.sh" "scripts/hooks/session-end.sh" "Hook script (scripts/hooks/session-end.sh)"
-copy_file "scripts/hooks/subagent-stop.sh" "scripts/hooks/subagent-stop.sh" "Hook script (scripts/hooks/subagent-stop.sh)"
-copy_file "scripts/hooks/log-prompt.sh" "scripts/hooks/log-prompt.sh" "Hook script (scripts/hooks/log-prompt.sh)"
+copy_file ".github/hooks/session-start.sh" ".github/hooks/session-start.sh" "Hook script (.github/hooks/session-start.sh)"
+copy_file ".github/hooks/session-end.sh" ".github/hooks/session-end.sh" "Hook script (.github/hooks/session-end.sh)"
+copy_file ".github/hooks/subagent-stop.sh" ".github/hooks/subagent-stop.sh" "Hook script (.github/hooks/subagent-stop.sh)"
+copy_file ".github/hooks/log-prompt.sh" ".github/hooks/log-prompt.sh" "Hook script (.github/hooks/log-prompt.sh)"
 
 # Make hook scripts executable
 if [[ "$DRY_RUN" != true ]]; then
-  chmod +x "$TARGET/scripts/hooks/"*.sh 2>/dev/null || true
+  chmod +x "$TARGET/.github/hooks/"*.sh 2>/dev/null || true
 fi
 
 # Create logs directory for audit JSONL files
@@ -260,28 +257,6 @@ echo ""
 if [[ "$WITH_PR" == true ]]; then
   echo "PR template:"
   copy_file ".github/copilot/pull_request_template.md" ".github/copilot/pull_request_template.md" "PR template (.github/copilot/pull_request_template.md)"
-  echo ""
-fi
-
-# ── Optional: git hooks ────────────────────────────────────────────
-
-if [[ "$WITH_HOOKS" == true ]]; then
-  echo "Git hooks:"
-  copy_file ".githooks/post-commit" ".githooks/post-commit" "post-commit hook (.githooks/post-commit)"
-  copy_file ".githooks/pre-push" ".githooks/pre-push" "pre-push hook (.githooks/pre-push)"
-  copy_file "scripts/install-githooks.sh" "scripts/install-githooks.sh" "Hook installer (scripts/install-githooks.sh)"
-  copy_file "scripts/install-githooks.ps1" "scripts/install-githooks.ps1" "Hook installer PS1 (scripts/install-githooks.ps1)"
-
-  if [[ "$DRY_RUN" != true ]]; then
-    chmod +x "$TARGET/.githooks/post-commit" "$TARGET/.githooks/pre-push" 2>/dev/null || true
-    chmod +x "$TARGET/scripts/install-githooks.sh" 2>/dev/null || true
-
-    # Install hooks
-    git -C "$TARGET" config core.hooksPath .githooks 2>/dev/null || true
-    echo "  [done] Activated hooks (core.hooksPath=.githooks)"
-  else
-    echo "  [activate] git config core.hooksPath .githooks"
-  fi
   echo ""
 fi
 

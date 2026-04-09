@@ -255,7 +255,7 @@ Once hooks reliably handle structural tasks, the existing instructions and skill
 **Files to create:**
 ```
 .github/hooks/ejs-hooks.json          # Hook configuration
-scripts/hooks/session-start.sh        # Session start script
+.github/hooks/session-start.sh        # Session start script
 ```
 
 **Hook configuration sketch:**
@@ -266,7 +266,7 @@ scripts/hooks/session-start.sh        # Session start script
     "sessionStart": [
       {
         "type": "command",
-        "bash": "./scripts/hooks/session-start.sh",
+        "bash": "./.github/hooks/session-start.sh",
         "cwd": ".",
         "timeoutSec": 15
       }
@@ -292,10 +292,10 @@ scripts/hooks/session-start.sh        # Session start script
 **Files to create:**
 ```
 .github/hooks/ejs-hooks.json          # Hook configuration
-scripts/hooks/session-start.sh        # Journey scaffold + DB sync
-scripts/hooks/session-end.sh          # Completeness validation
-scripts/hooks/subagent-stop.sh        # Sub-agent event logging
-scripts/hooks/log-prompt.sh           # Prompt audit trail
+.github/hooks/session-start.sh        # Journey scaffold + DB sync
+.github/hooks/session-end.sh          # Completeness validation
+.github/hooks/subagent-stop.sh        # Sub-agent event logging
+.github/hooks/log-prompt.sh           # Prompt audit trail
 ```
 
 **Additional behaviors:**
@@ -312,8 +312,8 @@ scripts/hooks/log-prompt.sh           # Prompt audit trail
 
 **Additional files:**
 ```
-scripts/hooks/pre-tool-check.sh       # Soft enforcement
-scripts/hooks/post-tool-log.sh        # Tool audit trail
+.github/hooks/pre-tool-check.sh       # Soft enforcement
+.github/hooks/post-tool-log.sh        # Tool audit trail
 ```
 
 **Additional behaviors:**

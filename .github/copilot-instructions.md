@@ -13,6 +13,7 @@ Record this session to the Engineering Journey System — silently, as you work.
 ### Journey File
 - A journey file is auto-created at session start by Copilot hooks: `ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md`
 - If one already exists for this session, use it. The template is at `ejs-docs/journey/_templates/journey-template.md`
+- On your first interaction, read `.github/skills/ejs-session-init/SKILL.md` and follow its steps to enhance the journey scaffold with problem/intent and agents involved
 
 ### What to Record (silently, as you work)
 - **Interactions**: Append to "Interaction Summary" — format: `Human: → Agent [name]: → Outcome:`
