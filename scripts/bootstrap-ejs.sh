@@ -202,6 +202,8 @@ append_recording_contract
 copy_file ".github/skills/ejs-session-init/SKILL.md" ".github/skills/ejs-session-init/SKILL.md" "Agent skill (.github/skills/ejs-session-init/SKILL.md)"
 copy_file ".github/skills/ejs-session-wrapup/SKILL.md" ".github/skills/ejs-session-wrapup/SKILL.md" "Agent skill (.github/skills/ejs-session-wrapup/SKILL.md)"
 copy_file ".github/skills/ejs-sub-agent-capture/SKILL.md" ".github/skills/ejs-sub-agent-capture/SKILL.md" "Agent skill (.github/skills/ejs-sub-agent-capture/SKILL.md)"
+copy_file ".github/skills/ejs-story-builder/SKILL.md" ".github/skills/ejs-story-builder/SKILL.md" "Agent skill (.github/skills/ejs-story-builder/SKILL.md)"
+copy_file ".github/skills/ejs-story-builder/assets/narrative-template.md" ".github/skills/ejs-story-builder/assets/narrative-template.md" "Story template (.github/skills/ejs-story-builder/assets/narrative-template.md)"
 copy_file "ejs-docs/journey/_templates/journey-template.md" "ejs-docs/journey/_templates/journey-template.md" "Journey template (ejs-docs/journey/_templates/journey-template.md)"
 copy_file "ejs-docs/adr/0000-adr-template.md" "ejs-docs/adr/0000-adr-template.md" "ADR template (ejs-docs/adr/0000-adr-template.md)"
 copy_file "scripts/adr-db.py" "scripts/adr-db.py" "adr-db.py (scripts/adr-db.py)"
