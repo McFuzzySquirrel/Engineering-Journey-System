@@ -22,6 +22,29 @@ in collaboration perspectives: human, human + agent, agent, and agent-to-agent.
 
 ## Steps
 
+### 0. Identify the Human / Lead Perspective
+
+Before generating the narrative, determine how to identify the primary decision-maker
+or lead engineer throughout the story. Ask the user:
+
+**"How would you like the human/lead perspective to be identified in this narrative?"**
+
+Suggested options:
+- **Personal name**: "Alice worked with the Copilot agent..." → Use actual first or full name
+- **GitHub handle**: "@alice-dev identified the gap" → Use GitHub username in bold
+- **Team name**: "The backend team" or "Team Alpha" → For group-led projects
+- **Role descriptor**: "The lead engineer" or "The founder" → Generic but clear
+- **Generic + Note**: "McFuzzySquirrel" with a customization note in the prologue
+
+Default: If the user doesn't specify, check the earliest journey file's `author` field
+and use that name. If no author is populated, use a generic descriptor: "The lead engineer".
+
+Store this identifier as `HUMAN_IDENTIFIER` and use it throughout the narrative
+in place of generic "the human" / "The human's" phrasing.
+
+Optional: If the user provides their own identifier, ask if they want a customization
+note added to the Prologue explaining that this story template can be adapted by others.
+
 ### 1. Determine Scope
 
 Check if the user specified any filters. If not, include everything.
