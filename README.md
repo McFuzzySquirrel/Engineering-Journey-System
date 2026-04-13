@@ -165,6 +165,22 @@ This repo includes:
 
 Important: Copilot hooks run automatically from the default branch — they handle structural tasks (DB sync, journey scaffold, validation). Agent profiles are selected based on the chat context. Agent skills are auto-loaded by Copilot when relevant.
 
+### Why the Additional Phase 2 Hooks Increase EJS Value
+
+The additional hooks (`preToolUse`, `postToolUse`, `agentStop`, `errorOccurred`) improve EJS by adding operational evidence alongside semantic journey notes:
+
+- **Tool-level observability:** `preToolUse` and `postToolUse` create a structured audit trail of attempted tools and outcomes.
+- **Stronger debugging signal:** `errorOccurred` captures runtime failures in a durable JSONL stream, reducing post-hoc guesswork.
+- **Clearer timeline boundaries:** `agentStop` records response boundaries to make long sessions easier to reconstruct.
+- **Higher trust in documentation:** Journey narratives now have verifiable execution context, not just retrospective summaries.
+- **Future analytics-ready logs:** The audit files support metrics like tool success rates, recurring failure patterns, and friction hotspots.
+
+Design guardrails keep this safe in day-to-day use:
+
+- `preToolUse` is currently soft-enforcement and always returns `allow`.
+- Hook scripts remain lightweight and non-blocking.
+- Structural hooks continue to complement semantic recording by instructions, skills, and agents.
+
 ### Claude (e.g., Claude Code)
 
 - Use `CLAUDE.md` at the repository root.
@@ -356,8 +372,8 @@ If you prefer to copy files manually, this repo uses a strict, collision-resista
 
 #### Minimal copy
 
-- `.github/hooks/ejs-hooks.json` — Copilot hooks config (Layer 0: auto-creates journey files, syncs DB, validates completeness, logs sub-agent events)
-- `.github/hooks/` — All four hook scripts (`session-start.sh`, `session-end.sh`, `subagent-stop.sh`, `log-prompt.sh`)
+- `.github/hooks/ejs-hooks.json` — Copilot hooks config (Layer 0: auto-creates journey files, syncs DB, validates completeness, logs sub-agent + tool + error/agent boundary events)
+- `.github/hooks/` — All hook scripts (`session-start.sh`, `session-end.sh`, `subagent-stop.sh`, `log-prompt.sh`, `pre-tool-use.sh`, `post-tool-use.sh`, `agent-stop.sh`, `error-occurred.sh`)
 - `.github/agents/ejs-journey.agent.md` — EJS observer agent (for Tier 2 bookend invocation and Tier 3 coordinator mode)
 - `.github/copilot-instructions.md` — **Append** the `## EJS Recording Contract` block to your **existing** copilot-instructions.md (do not replace it). If you don't have one, copy the whole file.
 - `.github/skills/ejs-session-init/SKILL.md` — Agent skill for session initialization (auto-loaded by Copilot)
