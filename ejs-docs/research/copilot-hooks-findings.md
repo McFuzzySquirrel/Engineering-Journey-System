@@ -5,6 +5,8 @@
 **Branch:** copilot/research-github-hooks-automation
 **Status:** Research — pending review
 
+**Update (2026-04-13):** Phase 2 hooks (`preToolUse`, `postToolUse`, `agentStop`, `errorOccurred`) are implemented on branch `feat/hooks-phase2` with non-blocking behavior (pre-tool always returns allow).
+
 ---
 
 ## Executive Summary

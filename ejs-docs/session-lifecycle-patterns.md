@@ -23,7 +23,7 @@ EJS uses four complementary GitHub Copilot customization mechanisms organized in
 
 | Layer | Mechanism | File | Trigger | Purpose |
 |-------|-----------|------|---------|---------|
-| **Layer 0** | **Copilot Hooks** | `.github/hooks/ejs-hooks.json` | Automatic (platform-managed) | Guaranteed structural automation: DB sync, journey scaffold, validation, sub-agent logging, prompt audit |
+| **Layer 0** | **Copilot Hooks** | `.github/hooks/ejs-hooks.json` | Automatic (platform-managed) | Guaranteed structural automation: DB sync, journey scaffold, validation, sub-agent logging, prompt audit, tool audit, agent/error logging |
 | **Layer 1** | **Custom Instructions** | `.github/copilot-instructions.md` | Automatic (always-on) | Compact micro-instruction (~30 lines) — semantic recording contract |
 | **Layer 2** | **Agent Skills** | `.github/skills/<name>/SKILL.md` | Automatic (Copilot loads when relevant) | On-demand lifecycle workflows (semantic enrichment) |
 | **Layer 3** | **Custom Agent** | `.github/agents/ejs-journey.agent.md` | Manual selection | Observer persona, coordination, Tier 2/3 |
@@ -36,6 +36,8 @@ Hooks handle **deterministic structural tasks** that must happen every session. 
 |-----------------|----------------|----------------------|------------------|
 | **Session Initialization** | `session-start.sh`: DB sync, journey scaffold, frontmatter | `ejs-session-init`: Problem/Intent, agents_involved, author | User starts a session or begins a new task |
 | **Continuous Recording** | `log-prompt.sh`: Prompt audit trail (JSONL) | (handled by custom instructions) | Always active |
+| **Tool Audit (Phase 2)** | `pre-tool-use.sh` + `post-tool-use.sh`: tool invocation/result audit trail (JSONL) | N/A | Any tool execution |
+| **Agent/Error Audit (Phase 2)** | `agent-stop.sh` + `error-occurred.sh`: agent boundary + runtime error audit (JSONL) | N/A | Agent response completes / runtime error occurs |
 | **Sub-Agent Capture** | `subagent-stop.sh`: Timestamped placeholder entry | `ejs-sub-agent-capture`: Decisions, rationale, handoffs | Main agent delegates to sub-agents |
 | **Session Wrap-Up** | `session-end.sh`: Completeness validation | `ejs-session-wrapup`: Finalize sections, machine extracts, ADR rubric | User signals session end |
 

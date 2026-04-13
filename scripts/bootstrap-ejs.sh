@@ -218,6 +218,10 @@ copy_file ".github/hooks/session-start.sh" ".github/hooks/session-start.sh" "Hoo
 copy_file ".github/hooks/session-end.sh" ".github/hooks/session-end.sh" "Hook script (.github/hooks/session-end.sh)"
 copy_file ".github/hooks/subagent-stop.sh" ".github/hooks/subagent-stop.sh" "Hook script (.github/hooks/subagent-stop.sh)"
 copy_file ".github/hooks/log-prompt.sh" ".github/hooks/log-prompt.sh" "Hook script (.github/hooks/log-prompt.sh)"
+copy_file ".github/hooks/pre-tool-use.sh" ".github/hooks/pre-tool-use.sh" "Hook script (.github/hooks/pre-tool-use.sh)"
+copy_file ".github/hooks/post-tool-use.sh" ".github/hooks/post-tool-use.sh" "Hook script (.github/hooks/post-tool-use.sh)"
+copy_file ".github/hooks/agent-stop.sh" ".github/hooks/agent-stop.sh" "Hook script (.github/hooks/agent-stop.sh)"
+copy_file ".github/hooks/error-occurred.sh" ".github/hooks/error-occurred.sh" "Hook script (.github/hooks/error-occurred.sh)"
 
 # Make hook scripts executable
 if [[ "$DRY_RUN" != true ]]; then

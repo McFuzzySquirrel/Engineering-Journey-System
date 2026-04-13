@@ -20,7 +20,7 @@ EJS exists to capture that reality with **low friction** and **high auditability
 
 Includes:
 - `.github/hooks/ejs-hooks.json` — Copilot hooks config (Layer 0: guaranteed structural automation)
-- `.github/hooks/` — Hook scripts for session start, session end, sub-agent capture, and prompt logging
+- `.github/hooks/` — Hook scripts for session start/end, sub-agent capture, prompt logging, tool-use audit, agent-stop, and error audit
 - `.github/agents/ejs-journey.agent.md` — Copilot custom agent profile (observer + coordinator)
 - `.github/copilot-instructions.md` — Compact micro-instruction (~30 lines, always-on; append to your existing instructions)
 - `.github/skills/ejs-session-init/SKILL.md` — Agent skill for session initialization workflow
@@ -157,7 +157,7 @@ Different agent tools auto-load instructions from different filenames. Recommend
 - Agent skills: `.github/skills/<name>/SKILL.md` (auto-loaded by Copilot when relevant to the task).
 
 This repo includes:
-- `.github/hooks/ejs-hooks.json` (hooks for session start/end, sub-agent capture, prompt logging)
+- `.github/hooks/ejs-hooks.json` (hooks for session start/end, sub-agent capture, prompt logging, pre/post tool use, agent stop, and error tracking)
 - `.github/agents/ejs-journey.agent.md`
 - `.github/skills/ejs-session-init/SKILL.md`
 - `.github/skills/ejs-session-wrapup/SKILL.md`

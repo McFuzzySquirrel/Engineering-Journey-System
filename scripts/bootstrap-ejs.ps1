@@ -218,6 +218,10 @@ Copy-EjsFile '.github\hooks\session-start.sh' '.github\hooks\session-start.sh' '
 Copy-EjsFile '.github\hooks\session-end.sh' '.github\hooks\session-end.sh' 'Hook script (.github/hooks/session-end.sh)'
 Copy-EjsFile '.github\hooks\subagent-stop.sh' '.github\hooks\subagent-stop.sh' 'Hook script (.github/hooks/subagent-stop.sh)'
 Copy-EjsFile '.github\hooks\log-prompt.sh' '.github\hooks\log-prompt.sh' 'Hook script (.github/hooks/log-prompt.sh)'
+Copy-EjsFile '.github\hooks\pre-tool-use.sh' '.github\hooks\pre-tool-use.sh' 'Hook script (.github/hooks/pre-tool-use.sh)'
+Copy-EjsFile '.github\hooks\post-tool-use.sh' '.github\hooks\post-tool-use.sh' 'Hook script (.github/hooks/post-tool-use.sh)'
+Copy-EjsFile '.github\hooks\agent-stop.sh' '.github\hooks\agent-stop.sh' 'Hook script (.github/hooks/agent-stop.sh)'
+Copy-EjsFile '.github\hooks\error-occurred.sh' '.github\hooks\error-occurred.sh' 'Hook script (.github/hooks/error-occurred.sh)'
 
 # Create logs directory for audit JSONL files
 if (-not $DryRun) {

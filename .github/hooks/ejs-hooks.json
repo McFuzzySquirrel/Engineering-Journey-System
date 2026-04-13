@@ -32,6 +32,38 @@
         "cwd": ".",
         "timeoutSec": 5
       }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/pre-tool-use.sh",
+        "cwd": ".",
+        "timeoutSec": 3
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/post-tool-use.sh",
+        "cwd": ".",
+        "timeoutSec": 3
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/agent-stop.sh",
+        "cwd": ".",
+        "timeoutSec": 3
+      }
+    ],
+    "errorOccurred": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/error-occurred.sh",
+        "cwd": ".",
+        "timeoutSec": 3
+      }
     ]
   }
 }

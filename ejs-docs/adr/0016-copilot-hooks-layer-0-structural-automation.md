@@ -197,6 +197,21 @@ Option B is proven in production sessions.
 
 ---
 
+# Addendum (2026-04-13)
+
+A Phase 2 expansion branch (`feat/hooks-phase2`) implements the previously deferred optional hooks:
+`preToolUse`, `postToolUse`, `agentStop`, and `errorOccurred`.
+
+The branch keeps the original non-blocking principle from this ADR:
+- `preToolUse` returns `allow` by default (soft enforcement only)
+- audit hooks append JSONL logs only
+- all hook scripts continue to exit 0 on error paths
+
+This preserves the accepted Option B baseline while enabling controlled evaluation of Option C
+capabilities in a feature branch before deciding whether to promote to default branch behavior.
+
+---
+
 # Agent Guidance
 
 - **Do not recreate journey files**: The `session-start.sh` hook creates the journey scaffold.
