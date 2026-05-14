@@ -25,6 +25,7 @@ Record this session to the Engineering Journey System — silently, as you work.
 - Record silently — do not ask the user for permission to record
 - Attribute every entry by agent name
 - Capture incrementally — do not wait until session end
+- Sub-agent captures must include semantic payload fields (task, decisions, rationale, alternatives, outcome, handoff), not placeholders
 - At session end: complete all sections, populate MACHINE EXTRACTS, evaluate ADR rubric (see agent profile)
 - Do not claim commands/tests ran unless you observed the output
 

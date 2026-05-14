@@ -8,6 +8,18 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 INPUT="$(cat)"
 
+SEMANTIC_MODE="${EJS_SEMANTIC_ENFORCEMENT_MODE:-off}"
+SEMANTIC_MODE="$(printf '%s' "$SEMANTIC_MODE" | tr '[:upper:]' '[:lower:]')"
+case "$SEMANTIC_MODE" in
+  off|soft|strict) ;;
+  *) SEMANTIC_MODE="off" ;;
+esac
+
+SEMANTIC_UNRESOLVED_THRESHOLD="${EJS_SEMANTIC_UNRESOLVED_THRESHOLD:-0}"
+if ! [[ "$SEMANTIC_UNRESOLVED_THRESHOLD" =~ ^[0-9]+$ ]]; then
+  SEMANTIC_UNRESOLVED_THRESHOLD=0
+fi
+
 # --- 1. Parse input ---
 REASON="$(echo "$INPUT" | jq -r '.reason // "unknown"' 2>/dev/null || true)"
 
@@ -53,6 +65,34 @@ check_section "INTERACTION_EXTRACT" "INTERACTION_EXTRACT"
 check_section "DECISIONS_EXTRACT" "DECISIONS_EXTRACT"
 check_section "LEARNING_EXTRACT" "LEARNING_EXTRACT"
 
+if [ "$SEMANTIC_MODE" != "off" ]; then
+  read -r SUBAGENT_TOTAL SUBAGENT_UNRESOLVED < <(
+    awk '
+      BEGIN {in_block=0; total=0; unresolved=0; unknown=0; placeholder=0; marker=0}
+      /^## Sub-Agent:/ {
+        in_block=1
+        unknown=($0 ~ /^## Sub-Agent: unknown$/)
+        placeholder=0
+        marker=0
+      }
+      in_block && /_To be filled by parent agent_/ {placeholder=1}
+      in_block && /EJS Semantic: unresolved/ {marker=1}
+      in_block && /<!-- Logged by EJS Hook \[subagent-stop\] -->/ {
+        total++
+        if (unknown || placeholder || marker) {
+          unresolved++
+        }
+        in_block=0
+      }
+      END {printf "%d %d\n", total, unresolved}
+    ' "$JOURNEY_FILE"
+  )
+
+  if [ "$SUBAGENT_UNRESOLVED" -gt "$SEMANTIC_UNRESOLVED_THRESHOLD" ]; then
+    ISSUES+=("Semantic payloads: ${SUBAGENT_UNRESOLVED}/${SUBAGENT_TOTAL} unresolved sub-agent entries (threshold=${SEMANTIC_UNRESOLVED_THRESHOLD}, mode=${SEMANTIC_MODE})")
+  fi
+fi
+
 # --- 4. Write validation summary to journey file footer ---
 {
   echo ""
@@ -60,6 +100,11 @@ check_section "LEARNING_EXTRACT" "LEARNING_EXTRACT"
   echo "<!-- EJS Hook Validation (sessionEnd) -->"
   echo "<!-- Reason: $REASON -->"
   echo "<!-- Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ) -->"
+  echo "<!-- Semantic mode: $SEMANTIC_MODE -->"
+  if [ "$SEMANTIC_MODE" != "off" ]; then
+    echo "<!-- Semantic unresolved threshold: $SEMANTIC_UNRESOLVED_THRESHOLD -->"
+    echo "<!-- Semantic unresolved entries: ${SUBAGENT_UNRESOLVED:-0}/${SUBAGENT_TOTAL:-0} -->"
+  fi
   if [ ${#ISSUES[@]} -eq 0 ]; then
     echo "<!-- Status: COMPLETE — all required sections populated -->"
   else

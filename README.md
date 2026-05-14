@@ -28,6 +28,7 @@ Includes:
 - `.github/skills/ejs-sub-agent-capture/SKILL.md` — Agent skill for multi-agent contribution capture
 - `ejs-docs/adr/0000-adr-template.md` — ADR template for structured journey capture
 - `ejs-docs/adr/0010-engineering-journey-system-adoption.md` — example ADR
+- `ejs-docs/adr/0019-semantic-payload-enforcement-for-sub-agent-capture.md` — semantic payload enforcement rollout and quality gates
 - `.github/copilot/pull_request_template.md` — PR template with EJS checks
 - `ejs-docs/journey/_templates/journey-template.md` — Session Journey template
 - `scripts/adr-db.py` — SQLite-backed index for ADRs and Session Journeys ([details below](#ejs-database-tool))
@@ -93,6 +94,7 @@ python scripts/adr-db.py sync && python scripts/adr-db.py story
 For targeted lookups, use `search`, `summary`, or `get` to drill into specific decisions.
 
 See [ADR 0013](ejs-docs/adr/0013-sqlite-backed-adr-index-for-agent-reference.md) for the full design rationale.
+See [ADR 0019](ejs-docs/adr/0019-semantic-payload-enforcement-for-sub-agent-capture.md) for semantic enforcement decisions and rollout guidance.
 
 ## How to Use
 
@@ -115,6 +117,7 @@ To see the data flow of how this works both in a **single user and agent interac
    - Agent continuously updates the Session Journey as work progresses
    - Interactions, experiments, learnings captured in real-time
    - Sub-agent events are automatically logged by hooks; agents enrich with semantic detail
+   - Optional semantic payload enforcement (`off|soft|strict`) validates sub-agent records for task, decisions, rationale, alternatives, outcome, and handoff
    - No need to remember details for end-of-session reconstruction
 
 3. **At session end**, finalize the journey:
@@ -122,6 +125,7 @@ To see the data flow of how this works both in a **single user and agent interac
    - Machine extracts are populated
    - Agent drafts a numbered ADR only if a significant architecture/design decision occurred
    - Copilot hooks automatically validate completeness and flag incomplete sections
+   - When semantic enforcement is enabled, unresolved sub-agent placeholders contribute to INCOMPLETE status
 
 4. **Review and commit** artifacts:
    - Verify Session Journey completeness
@@ -136,6 +140,26 @@ To see the data flow of how this works both in a **single user and agent interac
 - Reduced end-of-session burden (most work already done)
 - Higher quality documentation (real-time vs. retrospective)
 - Better for multi-step/multi-agent sessions (preserves full history)
+
+### Semantic Enforcement Modes (Sub-Agent Capture)
+
+Semantic enforcement is controlled through `EJS_SEMANTIC_ENFORCEMENT_MODE` in hook runtime environment:
+
+- `off` (default): current placeholder-friendly behavior
+- `soft`: accept events, mark unresolved semantics, and surface violations in audits/validation
+- `strict`: require compliant semantic payloads for resolved sub-agent capture
+
+Optional threshold: `EJS_SEMANTIC_UNRESOLVED_THRESHOLD` (default `0`) controls how many unresolved sub-agent entries are tolerated before session-end validation marks the journey incomplete.
+
+Recommended rollout:
+1. Start with `soft` mode to measure violation patterns.
+2. Promote to `strict` canary when unknown/empty fields stabilize.
+3. Move to `strict` default only after quality gates hold for two windows.
+
+Operational quality metrics:
+- Unknown agent ratio in `logs/ejs-subagent-audit.jsonl`
+- Semantic violation ratio in `logs/ejs-subagent-audit.jsonl`
+- Unresolved placeholder ratio in session journey sub-agent blocks
 
 ## Tooling integration (Copilot, Claude, Cursor)
 

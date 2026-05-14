@@ -245,12 +245,15 @@ After each sub-agent completes, its contribution is recorded in the **Sub-Agent 
 - Outcome
 - Handoff to other agents (if any)
 
+When semantic enforcement is enabled (`EJS_SEMANTIC_ENFORCEMENT_MODE=soft|strict`), sub-agent captures should satisfy the semantic payload contract used by hooks: task, decisions, rationale, alternatives, outcome, and handoff. Avoid placeholders (`unknown`, `_To be filled by parent agent_`) in completed records.
+
 ### Machine Extracts
 At finalization, populate the `SUB_AGENT_EXTRACT` section with a structured summary of all sub-agent contributions, decisions, and handoffs.
 
 ### Coordinator Mode (Tier 3) Sub-Agent Protocol
 When this agent is the primary (Tier 3), and it delegates to sub-agents:
 - Instruct sub-agents to report back: decisions made, alternatives considered, and any handoffs
+- Require semantic payload fields: task, decisions, rationale, alternatives, outcome, handoff
 - Enforce EJS conventions on sub-agents — use the EJS ADR template (`ejs-docs/adr/0000-adr-template.md`), place ADRs under `ejs-docs/adr/`, do not create conflicting instruction files
 - If the sub-agent has no knowledge of EJS, explicitly pass it the EJS ADR template path and format requirements
 

@@ -96,13 +96,33 @@ When delegating to a sub-agent, include this in the delegation prompt to close
 the sub-agent EJS blind spot — sub-agents have no automatic awareness of EJS:
 
 ```
-EJS: Append your work to [journey-file-path] under "Sub-Agent Contributions".
-Record: task, decisions (with rationale), alternatives considered, outcome.
-Attribute all entries to your agent name.
+EJS semantic payload v1 (required):
+- agent_name
+- task_delegated
+- decisions_made
+- rationale
+- alternatives_considered (or none_with_reason:<reason>)
+- outcome
+- handoff_to (or none)
+
+Append your completed payload to [journey-file-path] under "Sub-Agent Contributions".
+Do not use placeholders such as "unknown" or "_To be filled by parent agent_".
 ```
 
 Replace `[journey-file-path]` with the actual path, e.g.
 `ejs-docs/journey/2026/ejs-session-2026-03-13-01.md`.
+
+### Minimal Compliant Example
+
+```markdown
+## Sub-Agent: Explore
+- **Task delegated:** Analyze hook validation paths for semantic enforcement
+- **Decisions made:** Prioritized mode-gated enforcement over immediate hard-fail behavior
+- **Rationale:** Soft mode preserves workflow continuity while surfacing data quality gaps
+- **Alternatives considered:** none_with_reason: hard-fail first would disrupt existing sessions
+- **Outcome:** Proposed off|soft|strict rollout with measurable gates
+- **Handoff to other agents:** parent-agent
+```
 
 ## Contextual References
 

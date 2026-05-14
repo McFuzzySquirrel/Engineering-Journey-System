@@ -36,7 +36,7 @@ Hooks handle **deterministic structural tasks** that must happen every session. 
 |-----------------|----------------|----------------------|------------------|
 | **Session Initialization** | `session-start.sh`: DB sync, journey scaffold, frontmatter | `ejs-session-init`: Problem/Intent, agents_involved, author | User starts a session or begins a new task |
 | **Continuous Recording** | `log-prompt.sh`: Prompt audit trail (JSONL) | (handled by custom instructions) | Always active |
-| **Sub-Agent Capture** | `subagent-stop.sh`: Timestamped placeholder entry | `ejs-sub-agent-capture`: Decisions, rationale, handoffs | Main agent delegates to sub-agents |
+| **Sub-Agent Capture** | `subagent-stop.sh`: Timestamped sub-agent entry with semantic enforcement modes (`off|soft|strict`) | `ejs-sub-agent-capture`: Decisions, rationale, handoffs | Main agent delegates to sub-agents |
 | **Session Wrap-Up** | `session-end.sh`: Completeness validation | `ejs-session-wrapup`: Finalize sections, machine extracts, ADR rubric | User signals session end |
 
 ### Skills vs. Hooks vs. Instructions vs. Agent
@@ -146,8 +146,8 @@ sequenceDiagram
     MA->>J: Record delegation in Interaction Summary
     SA1->>SA1: Analyze changes<br/>(decides to flag missing validation)
     SA1->>MA: Review feedback + decisions:<br/>"Add input validation" (chose depth-first<br/>review over breadth-first)
-    HK-->>J: subagent-stop.sh: Log SA1 completion<br/>(timestamped placeholder)
-    MA->>J: Enrich SA1 placeholder with decisions +<br/>alternatives in Sub-Agent Contributions
+   HK-->>J: subagent-stop.sh: Log SA1 completion<br/>(enforcement: off|soft|strict)
+   MA->>J: Ensure SA1 entry is semantically complete<br/>(decisions, rationale, alternatives, outcome)
     MA->>H: "Code review suggests adding validation"
     H->>MA: "Good point, add it"
     MA->>MA: Add validation
@@ -158,8 +158,8 @@ sequenceDiagram
     MA->>J: Record delegation + handoff<br/>(SA1 output → SA2 input)
     SA2->>SA2: Execute test suite<br/>(decides to add validation edge cases<br/>based on SA1 review feedback)
     SA2->>MA: Test results + decisions:<br/>2 failures found, added 3 new edge-case tests
-    HK-->>J: subagent-stop.sh: Log SA2 completion
-    MA->>J: Enrich SA2 placeholder with decisions +<br/>SA1→SA2 handoff in Sub-Agent Contributions
+   HK-->>J: subagent-stop.sh: Log SA2 completion
+   MA->>J: Resolve semantic checks and record<br/>SA1→SA2 handoff in Sub-Agent Contributions
     MA->>H: "Tests found 2 failures"
     H->>MA: "Fix those issues"
     MA->>MA: Fix test failures
@@ -174,8 +174,8 @@ sequenceDiagram
     MA->>J: Record delegation + handoff<br/>(SA2 output → SA3 input)
     SA3->>SA3: Generate documentation<br/>(decides to add validation examples<br/>based on SA2 edge-case tests)
     SA3->>MA: Documentation updated + decisions:<br/>added validation examples section
-    HK-->>J: subagent-stop.sh: Log SA3 completion
-    MA->>J: Enrich SA3 placeholder with decisions +<br/>SA2→SA3 handoff in Sub-Agent Contributions
+   HK-->>J: subagent-stop.sh: Log SA3 completion
+   MA->>J: Resolve semantic checks and record<br/>SA2→SA3 handoff in Sub-Agent Contributions
     MA->>H: "Documentation complete"
     
     Note over H,MA: Session End (Agent + Hook)
@@ -204,7 +204,15 @@ sequenceDiagram
 | **Decision Attribution** | Clear single source | Track which agent contributed to decision |
 | **Experiments** | Single agent's attempts | Multiple sub-agent experiments aggregated |
 | **Machine Extracts** | Standard 4 extracts | Standard 4 + SUB_AGENT_EXTRACT |
+| **Semantic Gating** | Optional | Enforced by mode (`off|soft|strict`) with unresolved thresholds |
 | **Complexity** | Linear interaction flow | Parallel/delegated work streams |
+
+### Semantic Enforcement Notes
+
+- `EJS_SEMANTIC_ENFORCEMENT_MODE=off` keeps backward-compatible behavior.
+- `EJS_SEMANTIC_ENFORCEMENT_MODE=soft` marks unresolved semantic payloads and surfaces violations.
+- `EJS_SEMANTIC_ENFORCEMENT_MODE=strict` requires compliant semantic payloads for resolved sub-agent capture.
+- `EJS_SEMANTIC_UNRESOLVED_THRESHOLD` controls how many unresolved sub-agent entries are tolerated before session-end validation marks a journey incomplete.
 
 ### Flow Patterns
 
