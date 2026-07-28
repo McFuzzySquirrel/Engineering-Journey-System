@@ -17,6 +17,11 @@ if [ -f "$REPO_ROOT/scripts/adr-db.py" ]; then
   python3 "$REPO_ROOT/scripts/adr-db.py" sync 2>/dev/null || true
 fi
 
+# --- 2b. Knowledge graph sync ---
+if [ -f "$REPO_ROOT/scripts/knowledge-graph.py" ]; then
+  python3 "$REPO_ROOT/scripts/knowledge-graph.py" sync 2>/dev/null || true
+fi
+
 # --- 3. Determine today's date and next sequence number ---
 TODAY="$(date -u +%Y-%m-%d)"
 YEAR="$(date -u +%Y)"

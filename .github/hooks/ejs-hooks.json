@@ -32,6 +32,14 @@
         "cwd": ".",
         "timeoutSec": 5
       }
+    ],
+    "preCommit": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/pre-commit-doc-check.sh",
+        "cwd": ".",
+        "timeoutSec": 15
+      }
     ]
   }
 }

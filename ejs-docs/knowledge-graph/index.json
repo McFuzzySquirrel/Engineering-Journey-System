@@ -1,0 +1,647 @@
+{
+  "schema_version": "1.0",
+  "last_updated": "2026-07-28T20:01:50.659613+00:00",
+  "nodes": [
+    {
+      "id": "adr-0010",
+      "type": "adr",
+      "title": "Adopt Engineering Journey System for Agent-Assisted Development",
+      "path": "ejs-docs/adr/0010-engineering-journey-system-adoption.md",
+      "date": "2026-02-05",
+      "tags": [],
+      "summary": "Adopt **Engineering Journey System (EJS)** using:",
+      "related": [
+        "ejs-session-2026-02-05-01"
+      ]
+    },
+    {
+      "id": "adr-0011",
+      "type": "adr",
+      "title": "Shift EJS to Start-of-Session with Continuous Journey Updates",
+      "path": "ejs-docs/adr/0011-start-of-session-continuous-journey-updates.md",
+      "date": "2026-02-07",
+      "tags": [],
+      "summary": "Adopt **Option C: Start-of-Session with Continuous Updates**",
+      "related": [
+        "ejs-session-2026-02-07-001"
+      ]
+    },
+    {
+      "id": "adr-0012",
+      "type": "adr",
+      "title": "Sub-Agent Decision Capture and Handoff Protocol",
+      "path": "ejs-docs/adr/0012-sub-agent-decision-capture-protocol.md",
+      "date": "2026-02-10",
+      "tags": [],
+      "summary": "Adopt **Option B: Sub-Agent Contributions Section with Handoff Protocol**",
+      "related": [
+        "ejs-session-2026-02-10-01"
+      ]
+    },
+    {
+      "id": "adr-0013",
+      "type": "adr",
+      "title": "SQLite-Backed EJS Index for Agent Reference",
+      "path": "ejs-docs/adr/0013-sqlite-backed-adr-index-for-agent-reference.md",
+      "date": "2026-03-02",
+      "tags": [],
+      "summary": "Adopt **Option C: SQLite with FTS5 Full-Text Search**",
+      "related": [
+        "ejs-session-2026-03-02-01"
+      ]
+    },
+    {
+      "id": "adr-0014",
+      "type": "adr",
+      "title": "Agent Skills for Session Lifecycle Workflows",
+      "path": "ejs-docs/adr/0014-agent-skills-for-session-lifecycle.md",
+      "date": "2026-03-11",
+      "tags": [],
+      "summary": "**Use both custom agent and agent skills.** Three skills were created:",
+      "related": [
+        "ejs-session-2026-03-11-01"
+      ]
+    },
+    {
+      "id": "adr-0015",
+      "type": "adr",
+      "title": "Micro-Instruction Simplification of EJS Always-On Recording Contract",
+      "path": "ejs-docs/adr/0015-micro-instruction-simplification.md",
+      "date": "2026-03-13",
+      "tags": [],
+      "summary": "**Option A (Micro-Instruction) with the sub-agent instruction fragment from Option C.**",
+      "related": [
+        "ejs-session-2026-03-13-01"
+      ]
+    },
+    {
+      "id": "adr-0016",
+      "type": "adr",
+      "title": "Copilot Hooks as Layer 0 Structural Automation",
+      "path": "ejs-docs/adr/0016-copilot-hooks-layer-0-structural-automation.md",
+      "date": "2026-03-30",
+      "tags": [],
+      "summary": "**Adopt Option B: Lifecycle Bookends + Sub-Agent Capture.**",
+      "related": [
+        "ejs-session-2026-03-30-02"
+      ]
+    },
+    {
+      "id": "adr-0017",
+      "type": "adr",
+      "title": "Remove Git Hooks in Favor of Copilot Hooks",
+      "path": "ejs-docs/adr/0017-remove-git-hooks-in-favor-of-copilot-hooks.md",
+      "date": "2026-04-08",
+      "tags": [],
+      "summary": "Remove all git hooks (`.githooks/post-commit`, `.githooks/pre-push`) and their install scripts (`scripts/install-githooks.sh`, `scripts/install-githooks.ps1`).",
+      "related": [
+        "ejs-session-2026-04-08-02"
+      ]
+    },
+    {
+      "id": "adr-0018",
+      "type": "adr",
+      "title": "Story Command and DB-First Reinforcement",
+      "path": "ejs-docs/adr/0018-story-command-and-db-first-reinforcement.md",
+      "date": "2026-04-09",
+      "tags": [],
+      "summary": "**Adopt Option B.** Keep Markdown journey files.",
+      "related": [
+        "ejs-session-2026-04-10-01",
+        "ejs-session-2026-04-09-01",
+        "ejs-session-2026-04-09-02"
+      ]
+    },
+    {
+      "id": "architecture-blueprint",
+      "type": "architecture",
+      "title": "Architecture Blueprint — Engineering Journey System",
+      "path": "ejs-docs/architecture/architecture-blueprint.md",
+      "date": "2026-07-28",
+      "tags": [
+        "architecture",
+        "blueprint",
+        "living-doc"
+      ],
+      "summary": "**Users / Consumers:**",
+      "related": [
+        "adr-0010",
+        "adr-0013",
+        "adr-0016",
+        "adr-0017",
+        "ejs-session-2026-07-28-01"
+      ]
+    },
+    {
+      "id": "readme",
+      "type": "readme",
+      "title": "Engineering Journey System (EJS)",
+      "path": "README.md",
+      "date": "",
+      "tags": [
+        "readme",
+        "living-doc",
+        "setup"
+      ],
+      "summary": "Starter repository for the Engineering Journey System.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-02-05-01",
+      "type": "session",
+      "title": "Session: ejs-session-2026-02-05-01",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-02-05-01.md",
+      "date": "2026-02-05",
+      "tags": [
+        "'ejs'",
+        "'templates'",
+        "'copilot'"
+      ],
+      "summary": "Ensure Session Journeys consistently capture the *interaction trail* between human and agent, not just outcomes.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-02-07-001",
+      "type": "session",
+      "title": "Session: ejs-session-2026-02-07-001",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-02-07-001.md",
+      "date": "2026-02-07",
+      "tags": [
+        "'ejs'",
+        "'architecture'",
+        "'process-improvement'",
+        "'session-lifecycle'"
+      ],
+      "summary": "Shift EJS from end-of-session reconstruction to start-of-session initialization with continuous journey updates throughout the session lifecycle.",
+      "related": [
+        "adr-0011"
+      ]
+    },
+    {
+      "id": "ejs-session-2026-02-10-01",
+      "type": "session",
+      "title": "Session: ejs-session-2026-02-10-01",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-02-10-01.md",
+      "date": "2026-02-10",
+      "tags": [
+        "'ejs'",
+        "'multi-agent'",
+        "'sub-agent'",
+        "'collaboration'",
+        "'decision-capture'"
+      ],
+      "summary": "Ensure that in a multi-agent and sub-agent process, sub-agents are also capturing their decisions and collaboration with each other.",
+      "related": [
+        "adr-0012"
+      ]
+    },
+    {
+      "id": "ejs-session-2026-02-10-02",
+      "type": "session",
+      "title": "Session: ejs-session-2026-02-10-02",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-02-10-02.md",
+      "date": "2026-02-10",
+      "tags": [
+        "'ejs'",
+        "'multi-agent'",
+        "'sub-agent'",
+        "'babylonjs'",
+        "'game'",
+        "'3d-asteroids'",
+        "'protocol-validation'"
+      ],
+      "summary": "Validate the new Sub-Agent Decision Capture Protocol (ADR 0012) by building a 3D Asteroids game using Babylon.js — a task that naturally requires multiple specialized sub-agents (architecture design, ",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-02-10-03",
+      "type": "session",
+      "title": "Session: ejs-session-2026-02-10-03",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-02-10-03.md",
+      "date": "2026-02-10",
+      "tags": [
+        "documentation",
+        "readme",
+        "game"
+      ],
+      "summary": "Update the main README to mention the 3D Asteroids game and create a dedicated README in the `game/` folder so that users can easily discover and run the game.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-02-10-04",
+      "type": "session",
+      "title": "Session: ejs-session-2026-02-10-04",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-02-10-04.md",
+      "date": "2026-02-10",
+      "tags": [
+        "game",
+        "dependencies",
+        "babylon-js"
+      ],
+      "summary": "Include the Babylon.js library files directly in the repository so the 3D Asteroids game works out of the box from a fresh clone, without requiring users to download dependencies or swap script tags.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-03-02-01",
+      "type": "session",
+      "title": "Session: ejs-session-2026-03-02-01",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-03-02-01.md",
+      "date": "2026-03-02",
+      "tags": [
+        "sqlite",
+        "adr-tracking",
+        "journey-tracking",
+        "agent-tooling",
+        "full-text-search"
+      ],
+      "summary": "The repository stores Architecture Decision Records (ADRs) and Session Journeys as markdown files in `ejs-docs/`.",
+      "related": [
+        "adr-0013"
+      ]
+    },
+    {
+      "id": "ejs-session-2026-03-04-01",
+      "type": "session",
+      "title": "Session: ejs-session-2026-03-04-01",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-03-04-01.md",
+      "date": "2026-03-04",
+      "tags": [
+        "'observer-reframe'",
+        "'architecture'",
+        "'agent-model'"
+      ],
+      "summary": "Reframe the EJS agent from an implementation assistant to a **non-competing observer/recorder** that can be bootstrapped into repos with existing agents.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-03-11-01",
+      "type": "session",
+      "title": "Session: ejs-session-2026-03-11-01",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-03-11-01.md",
+      "date": "2026-03-11",
+      "tags": [
+        "'research'",
+        "'skill-vs-agent'",
+        "'platform-concepts'",
+        "'architecture'"
+      ],
+      "summary": "Investigate whether EJS should use the \"agent\" or \"skill\" concept (or both) in the GitHub Copilot ecosystem.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-03-13-01",
+      "type": "session",
+      "title": "Session: ejs-session-2026-03-13-01",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-03-13-01.md",
+      "date": "2026-03-13",
+      "tags": [
+        "'ejs'",
+        "'research'",
+        "'simplification'",
+        "'micro-instructions'",
+        "'implementation'"
+      ],
+      "summary": "Research whether the EJS instruction surface can be significantly simplified while preserving core principles (journey recording, ADR creation, agent attribution, sub-agent capture).",
+      "related": [
+        "adr-0015"
+      ]
+    },
+    {
+      "id": "ejs-session-2026-03-30-01",
+      "type": "session",
+      "title": "Session: ejs-session-2026-03-30-01",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-03-30-01.md",
+      "date": "2026-03-30",
+      "tags": [
+        "research",
+        "hooks",
+        "automation",
+        "copilot-coding-agent"
+      ],
+      "summary": "Research whether GitHub Copilot Coding Agent hooks (`.github/hooks/*.json`) could ensure better automation and capture of EJS journey records and ADRs.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-03-30-02",
+      "type": "session",
+      "title": "Session: ejs-session-2026-03-30-02",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-03-30-02.md",
+      "date": "2026-03-30",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-03-30-03",
+      "type": "session",
+      "title": "Session: ejs-session-2026-03-30-03",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-03-30-03.md",
+      "date": "2026-03-30",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-03-30-04",
+      "type": "session",
+      "title": "Session: ejs-session-2026-03-30-04",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-03-30-04.md",
+      "date": "2026-03-30",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-04-08-01",
+      "type": "session",
+      "title": "Session: ejs-session-2026-04-08-01",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-04-08-01.md",
+      "date": "2026-04-08",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-04-08-02",
+      "type": "session",
+      "title": "Session: ejs-session-2026-04-08-02",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-04-08-02.md",
+      "date": "2026-04-08",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-04-09-01",
+      "type": "session",
+      "title": "Session: ejs-session-2026-04-09-01",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-04-09-01.md",
+      "date": "2026-04-09",
+      "tags": [
+        "research",
+        "json",
+        "efficiency",
+        "sqlite",
+        "context-reduction",
+        "journey-format"
+      ],
+      "summary": "Research whether storing journey files as JSON (instead of Markdown) would make the Engineering Journey System more efficient — specifically: (1) whether agents could query the SQLite database as the ",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-04-09-02",
+      "type": "session",
+      "title": "Session: ejs-session-2026-04-09-02",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-04-09-02.md",
+      "date": "2026-04-09",
+      "tags": [
+        "implementation",
+        "adr-db",
+        "story-command",
+        "efficiency"
+      ],
+      "summary": "Implement the recommendations from the JSON journey format research session (ejs-session-2026-04-09-01):",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-04-09-03",
+      "type": "session",
+      "title": "Session: ejs-session-2026-04-09-03",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-04-09-03.md",
+      "date": "2026-04-09",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-04-09-04",
+      "type": "session",
+      "title": "Session: ejs-session-2026-04-09-04",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-04-09-04.md",
+      "date": "2026-04-09",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-04-09-05",
+      "type": "session",
+      "title": "Session: ejs-session-2026-04-09-05",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-04-09-05.md",
+      "date": "2026-04-09",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-04-09-06",
+      "type": "session",
+      "title": "Session: ejs-session-2026-04-09-06",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-04-09-06.md",
+      "date": "2026-04-09",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-04-09-07",
+      "type": "session",
+      "title": "Session: ejs-session-2026-04-09-07",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-04-09-07.md",
+      "date": "2026-04-09",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-04-10-01",
+      "type": "session",
+      "title": "Session: ejs-session-2026-04-10-01",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-04-10-01.md",
+      "date": "2026-04-10",
+      "tags": [
+        "adr",
+        "documentation",
+        "story-command",
+        "db-first",
+        "json-rejection"
+      ],
+      "summary": "Create a proper ADR documenting all the changes from the last merge (PR #19 from `copilot/research-findings-document`).",
+      "related": [
+        "adr-0018"
+      ]
+    },
+    {
+      "id": "ejs-session-2026-04-10-02",
+      "type": "session",
+      "title": "Session: ejs-session-2026-04-10-02",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-04-10-02.md",
+      "date": "2026-04-10",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-04-10-03",
+      "type": "session",
+      "title": "Session: ejs-session-2026-04-10-03",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-04-10-03.md",
+      "date": "2026-04-10",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-07-28-01",
+      "type": "session",
+      "title": "Session: ejs-session-2026-07-28-01",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-07-28-01.md",
+      "date": "2026-07-28",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    },
+    {
+      "id": "ejs-session-2026-07-28-02",
+      "type": "session",
+      "title": "Session: ejs-session-2026-07-28-02",
+      "path": "ejs-docs/journey/2026/ejs-session-2026-07-28-02.md",
+      "date": "2026-07-28",
+      "tags": [],
+      "summary": "Describe the purpose of the session.",
+      "related": []
+    }
+  ],
+  "edges": [
+    {
+      "from": "adr-0010",
+      "to": "ejs-session-2026-02-05-01",
+      "rel": "implements"
+    },
+    {
+      "from": "adr-0011",
+      "to": "ejs-session-2026-02-07-001",
+      "rel": "implements"
+    },
+    {
+      "from": "adr-0012",
+      "to": "ejs-session-2026-02-10-01",
+      "rel": "implements"
+    },
+    {
+      "from": "adr-0013",
+      "to": "ejs-session-2026-03-02-01",
+      "rel": "implements"
+    },
+    {
+      "from": "adr-0014",
+      "to": "ejs-session-2026-03-11-01",
+      "rel": "implements"
+    },
+    {
+      "from": "adr-0015",
+      "to": "ejs-session-2026-03-13-01",
+      "rel": "implements"
+    },
+    {
+      "from": "adr-0016",
+      "to": "ejs-session-2026-03-30-02",
+      "rel": "implements"
+    },
+    {
+      "from": "adr-0017",
+      "to": "ejs-session-2026-04-08-02",
+      "rel": "implements"
+    },
+    {
+      "from": "adr-0018",
+      "to": "ejs-session-2026-04-10-01",
+      "rel": "implements"
+    },
+    {
+      "from": "adr-0018",
+      "to": "ejs-session-2026-04-09-01",
+      "rel": "implements"
+    },
+    {
+      "from": "adr-0018",
+      "to": "ejs-session-2026-04-09-02",
+      "rel": "implements"
+    },
+    {
+      "from": "architecture-blueprint",
+      "to": "adr-0010",
+      "rel": "references"
+    },
+    {
+      "from": "architecture-blueprint",
+      "to": "adr-0013",
+      "rel": "references"
+    },
+    {
+      "from": "architecture-blueprint",
+      "to": "adr-0016",
+      "rel": "references"
+    },
+    {
+      "from": "architecture-blueprint",
+      "to": "adr-0017",
+      "rel": "references"
+    },
+    {
+      "from": "architecture-blueprint",
+      "to": "ejs-session-2026-07-28-01",
+      "rel": "references"
+    },
+    {
+      "from": "ejs-session-2026-02-07-001",
+      "to": "adr-0011",
+      "rel": "triggers"
+    },
+    {
+      "from": "ejs-session-2026-02-10-01",
+      "to": "adr-0012",
+      "rel": "triggers"
+    },
+    {
+      "from": "ejs-session-2026-03-02-01",
+      "to": "adr-0013",
+      "rel": "triggers"
+    },
+    {
+      "from": "ejs-session-2026-03-13-01",
+      "to": "adr-0015",
+      "rel": "triggers"
+    },
+    {
+      "from": "ejs-session-2026-04-10-01",
+      "to": "adr-0018",
+      "rel": "triggers"
+    },
+    {
+      "from": "ejs-session-2026-02-05-01",
+      "to": "adr-0010",
+      "rel": "triggers"
+    },
+    {
+      "from": "ejs-session-2026-03-11-01",
+      "to": "adr-0014",
+      "rel": "triggers"
+    },
+    {
+      "from": "ejs-session-2026-03-30-02",
+      "to": "adr-0016",
+      "rel": "triggers"
+    },
+    {
+      "from": "ejs-session-2026-04-08-02",
+      "to": "adr-0017",
+      "rel": "triggers"
+    },
+    {
+      "from": "ejs-session-2026-07-28-01",
+      "to": "architecture-blueprint",
+      "rel": "updates"
+    }
+  ]
+}

@@ -69,11 +69,46 @@ the Checkpoint vs. Full Finalization section below for the differences.
    - Inform the user: `"Session finalized: ejs-session-YYYY-MM-DD-<seq>"`
    - If an ADR was created, mention it: `"ADR NNNN created: <title>"`
 
+8. **Architecture Blueprint check**
+   Check whether this session made any architectural decisions. Invoke the
+   `arch-blueprint` skill if **at least one** of these is true:
+   - A new system component, service, or integration was introduced
+   - A tech stack decision was made (framework, datastore, protocol, infrastructure)
+   - Data flows or system boundaries changed
+   - An ADR was created that has architectural scope
+   - The Architecture Blueprint (`ejs-docs/architecture/architecture-blueprint.md`) is missing
+
+   If none apply, skip this step.
+
+9. **README check**
+   Check whether this session changed anything visible to new users or contributors.
+   Invoke the `readme-updater` skill if **at least one** of these is true:
+   - The project's purpose, name, or scope changed
+   - Setup, installation, or run instructions changed
+   - A new major dependency or tool was introduced
+   - The contributor workflow changed
+
+   If none apply, skip this step.
+
+10. **Knowledge graph sync**
+    After completing steps 1–9 (regardless of whether the blueprint or README
+    were updated), rebuild the knowledge graph index so agents have fresh
+    context for the next session:
+    ```
+    python scripts/knowledge-graph.py sync
+    ```
+    Confirm: `"Knowledge graph synced."`
+
 ## Contextual References
 
 - ADR template: `ejs-docs/adr/0000-adr-template.md`
+- Architecture Blueprint: `ejs-docs/architecture/architecture-blueprint.md`
+- Architecture Blueprint skill: `.github/skills/arch-blueprint/SKILL.md`
+- README updater skill: `.github/skills/readme-updater/SKILL.md`
 - Lifecycle patterns: `ejs-docs/session-lifecycle-patterns.md`
 - Database tool: `scripts/adr-db.py`
+- Knowledge graph tool: `scripts/knowledge-graph.py`
+- Knowledge graph index: `ejs-docs/knowledge-graph/index.json`
 
 ## Key Principle
 

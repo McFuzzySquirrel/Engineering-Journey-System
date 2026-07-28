@@ -204,10 +204,18 @@ copy_file ".github/skills/ejs-session-wrapup/SKILL.md" ".github/skills/ejs-sessi
 copy_file ".github/skills/ejs-sub-agent-capture/SKILL.md" ".github/skills/ejs-sub-agent-capture/SKILL.md" "Agent skill (.github/skills/ejs-sub-agent-capture/SKILL.md)"
 copy_file ".github/skills/ejs-story-builder/SKILL.md" ".github/skills/ejs-story-builder/SKILL.md" "Agent skill (.github/skills/ejs-story-builder/SKILL.md)"
 copy_file ".github/skills/ejs-story-builder/assets/narrative-template.md" ".github/skills/ejs-story-builder/assets/narrative-template.md" "Story template (.github/skills/ejs-story-builder/assets/narrative-template.md)"
+copy_file ".github/skills/arch-blueprint/SKILL.md" ".github/skills/arch-blueprint/SKILL.md" "Agent skill (.github/skills/arch-blueprint/SKILL.md)"
+copy_file ".github/skills/readme-updater/SKILL.md" ".github/skills/readme-updater/SKILL.md" "Agent skill (.github/skills/readme-updater/SKILL.md)"
 copy_file "ejs-docs/journey/_templates/journey-template.md" "ejs-docs/journey/_templates/journey-template.md" "Journey template (ejs-docs/journey/_templates/journey-template.md)"
 copy_file "ejs-docs/adr/0000-adr-template.md" "ejs-docs/adr/0000-adr-template.md" "ADR template (ejs-docs/adr/0000-adr-template.md)"
+copy_file "ejs-docs/architecture/_templates/arch-blueprint-template.md" "ejs-docs/architecture/_templates/arch-blueprint-template.md" "Architecture Blueprint template (ejs-docs/architecture/_templates/arch-blueprint-template.md)"
+copy_file "ejs-docs/architecture/_templates/readme-template.md" "ejs-docs/architecture/_templates/readme-template.md" "README template (ejs-docs/architecture/_templates/readme-template.md)"
+copy_file "ejs-docs/knowledge-graph/graph-schema.md" "ejs-docs/knowledge-graph/graph-schema.md" "Knowledge graph schema (ejs-docs/knowledge-graph/graph-schema.md)"
+copy_file "ejs-docs/knowledge-graph/index.json" "ejs-docs/knowledge-graph/index.json" "Knowledge graph index (ejs-docs/knowledge-graph/index.json)"
 copy_file "scripts/adr-db.py" "scripts/adr-db.py" "adr-db.py (scripts/adr-db.py)"
+copy_file "scripts/knowledge-graph.py" "scripts/knowledge-graph.py" "knowledge-graph.py (scripts/knowledge-graph.py)"
 copy_file "scripts/tests/test_adr_db.py" "scripts/tests/test_adr_db.py" "Tests (scripts/tests/test_adr_db.py)"
+copy_file "scripts/tests/test_knowledge_graph.py" "scripts/tests/test_knowledge_graph.py" "Tests (scripts/tests/test_knowledge_graph.py)"
 echo ""
 
 # ── Copilot hooks (Layer 0 — guaranteed structural automation) ──────
@@ -218,11 +226,51 @@ copy_file ".github/hooks/session-start.sh" ".github/hooks/session-start.sh" "Hoo
 copy_file ".github/hooks/session-end.sh" ".github/hooks/session-end.sh" "Hook script (.github/hooks/session-end.sh)"
 copy_file ".github/hooks/subagent-stop.sh" ".github/hooks/subagent-stop.sh" "Hook script (.github/hooks/subagent-stop.sh)"
 copy_file ".github/hooks/log-prompt.sh" ".github/hooks/log-prompt.sh" "Hook script (.github/hooks/log-prompt.sh)"
+copy_file ".github/hooks/pre-commit-doc-check.sh" ".github/hooks/pre-commit-doc-check.sh" "Hook script (.github/hooks/pre-commit-doc-check.sh)"
 
 # Make hook scripts executable
 if [[ "$DRY_RUN" != true ]]; then
   chmod +x "$TARGET/.github/hooks/"*.sh 2>/dev/null || true
 fi
+
+# ── Install git pre-commit hook ────────────────────────────────────────
+# The pre-commit-doc-check script also runs as a standard git hook so it
+# works outside Copilot environments (e.g., local CLI commits).
+
+install_git_precommit() {
+  local git_hook_dir
+  git_hook_dir="$(git -C "$TARGET" rev-parse --git-dir 2>/dev/null)/hooks"
+
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "  [install] git pre-commit hook → $git_hook_dir/pre-commit"
+    return
+  fi
+
+  mkdir -p "$git_hook_dir"
+  local hook_file="$git_hook_dir/pre-commit"
+
+  if [[ -f "$hook_file" ]]; then
+    # Check if our hook is already installed
+    if grep -qF "pre-commit-doc-check" "$hook_file" 2>/dev/null; then
+      echo "  [skip] git pre-commit hook (EJS hook already present)"
+      return
+    fi
+    # Append to existing hook
+    printf '\n# EJS: doc freshness check\nbash "$(git rev-parse --show-toplevel)/.github/hooks/pre-commit-doc-check.sh"\n' >> "$hook_file"
+    echo "  [done] Appended EJS doc-check to existing git pre-commit hook"
+  else
+    # Create a new hook
+    cat > "$hook_file" << 'HOOK'
+#!/usr/bin/env bash
+# EJS pre-commit: doc freshness check
+bash "$(git rev-parse --show-toplevel)/.github/hooks/pre-commit-doc-check.sh"
+HOOK
+    chmod +x "$hook_file"
+    echo "  [done] Installed git pre-commit hook ($hook_file)"
+  fi
+}
+
+install_git_precommit
 
 # Create logs directory for audit JSONL files
 if [[ "$DRY_RUN" != true ]]; then
@@ -273,7 +321,9 @@ else
   echo ""
   echo "What happens now:"
   echo "  • Layer 0 (hooks): Copilot hooks automatically create journey files,"
-  echo "    sync the database, validate completeness, and log sub-agent events."
+  echo "    sync the database and knowledge graph, validate completeness, and log sub-agent events."
+  echo "  • Pre-commit hook: warns when living docs (Architecture Blueprint, README, ADRs)"
+  echo "    are stale and not part of the staged commit (non-blocking)."
   echo "  • Tier 1 (always-on): Active immediately — every Copilot agent"
   echo "    in this repo will silently record to Session Journey files."
   echo "    Agent skills auto-load for session init, wrap-up, and sub-agent capture."
@@ -282,7 +332,9 @@ else
   echo "  • Tier 3 (coordinator): Select ejs-journey from the agent dropdown."
   echo ""
   echo "Next steps:"
-  echo "  1. git add -A && git commit -m 'chore: bootstrap EJS'"
-  echo "  2. Merge to default branch (hooks activate from default branch only)"
-  echo "  3. Start working — EJS records automatically"
+  echo "  1. Update ejs-docs/architecture/architecture-blueprint.md for your project"
+  echo "  2. python scripts/knowledge-graph.py sync   (rebuild index)"
+  echo "  3. git add -A && git commit -m 'chore: bootstrap EJS'"
+  echo "  4. Merge to default branch (hooks activate from default branch only)"
+  echo "  5. Start working — EJS records automatically"
 fi
