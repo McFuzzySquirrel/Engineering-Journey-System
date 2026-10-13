@@ -1,6 +1,6 @@
 # decision-graph (`dg`) — Implementation Plan
 
-> Status: **Planned** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
+> Status: **Phase 0 complete; Phases 1-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
 > Tick boxes as work lands. Each phase has acceptance criteria. The phase is done only when every criterion is met.
 
 ---
@@ -153,14 +153,20 @@ Planned dependencies: `commander`, `better-sqlite3`, `pg`, `zod`, `gray-matter`,
 ## 6. Phases
 
 ### Phase 0 — Retire EJS to `legacy/`
-- [ ] Tag the current HEAD as `ejs-final` and push the tag
-- [ ] `git mv` into `legacy/`: `ejs-docs/`, `scripts/`, `_posts/`, `logs/`, `.github/hooks/`, `.github/skills/ejs-*`, `.github/agents/ejs-journey.agent.md`, `.github/copilot/pull_request_template.md`
-- [ ] Remove `.ejs.db`, `.ejs-session-active`, `.ejs-session-incomplete`. Update `.gitignore`
-- [ ] Replace `.github/copilot-instructions.md` with a minimal pointer to `AGENTS.md`
-- [ ] Add `legacy/README.md` explaining what EJS was and linking to the `ejs-final` tag
-- [ ] Rewrite the root `README.md` as a stub for decision-graph (the full version comes in Phase 9)
+- [x] Tag the current HEAD as `ejs-final` and push the tag
+- [x] `git mv` into `legacy/`: `ejs-docs/`, `scripts/`, `_posts/`, `logs/`, `.github/hooks/`, `.github/skills/ejs-*`, `.github/agents/ejs-journey.agent.md`, `.github/copilot/pull_request_template.md`
+- [x] Remove `.ejs.db`, `.ejs-session-active`, `.ejs-session-incomplete`. Update `.gitignore`
+- [x] Replace `.github/copilot-instructions.md` with a minimal pointer to `AGENTS.md`
+- [x] Add `legacy/README.md` explaining what EJS was and linking to the `ejs-final` tag
+- [x] Rewrite the root `README.md` as a stub for decision-graph (the full version comes in Phase 9)
 
 **Acceptance:** no hooks fire at session start. The repo root holds only the new project skeleton plus `legacy/`. `git log --follow` still finds the moved files.
+
+**Completion notes:** `ejs-final` points to commit `3a0259d` and is published
+to origin. The original README and recording instructions are also archived.
+Untracked journeys and ignored logs remain preserved locally, not added to Git.
+The active EJS hook configuration is absent; no EJS workflows are run to validate
+this retirement. Phase 1 remains unstarted.
 
 ### Phase 1 — Package scaffold
 - [ ] `package.json` (name `decision-graph`, `bin: { dg }`, `engines.node >= 20`, ESM)
