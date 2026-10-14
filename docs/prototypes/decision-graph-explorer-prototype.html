@@ -1,0 +1,1639 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Decision Graph Explorer - UI Prototype</title>
+    <!--
+      Prototype for "Prototyping the explorer layout and interactions":
+      three structural variations, switchable with ?variant=workbench|catalog|dashboard.
+      The records are illustrative and live only in this page.
+    -->
+    <style>
+      :root {
+        color-scheme: light;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        color: #182230;
+        background: #f3f6fa;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        --ink: #182230;
+        --muted: #667085;
+        --line: #d9e1eb;
+        --surface: #fff;
+        --wash: #f7f9fc;
+        --blue: #2359a8;
+        --blue-soft: #e8f0ff;
+        --green: #18734a;
+        --amber: #8a5a00;
+        --red: #a23232;
+        --shadow: 0 12px 32px rgb(20 34 54 / 8%);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button,
+      select,
+      input[type="search"] {
+        color: var(--ink);
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible,
+      summary:focus-visible {
+        outline: 3px solid #78a9f8;
+        outline-offset: 2px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 68px;
+        padding: 12px 28px;
+        color: #fff;
+        background: #172b48;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 750;
+        letter-spacing: -0.02em;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        place-items: center;
+        border: 1px solid rgb(255 255 255 / 35%);
+        border-radius: 10px;
+        background: rgb(255 255 255 / 10%);
+      }
+
+      .topbar-note {
+        color: #c9d7ed;
+        font-size: 0.84rem;
+      }
+
+      main {
+        width: min(1600px, 100%);
+        margin: 0 auto;
+        padding: 26px 28px 104px;
+      }
+
+      .intro {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 5px;
+        font-size: clamp(1.45rem, 2vw, 1.9rem);
+        letter-spacing: -0.04em;
+      }
+
+      h2 {
+        margin-bottom: 12px;
+        font-size: 1.05rem;
+        letter-spacing: -0.02em;
+      }
+
+      h3 {
+        margin-bottom: 7px;
+        font-size: 0.94rem;
+      }
+
+      .subtle,
+      .muted {
+        color: var(--muted);
+      }
+
+      .subtle {
+        margin-bottom: 0;
+        font-size: 0.92rem;
+      }
+
+      .demo-badge {
+        flex: 0 0 auto;
+        padding: 7px 10px;
+        border: 1px solid #f2d18b;
+        border-radius: 999px;
+        color: #754b00;
+        background: #fff5dd;
+        font-size: 0.75rem;
+        font-weight: 700;
+      }
+
+      .project-overview {
+        display: grid;
+        grid-template-columns: minmax(190px, 1fr) repeat(3, minmax(110px, 150px));
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 15px 18px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+      }
+
+      .project-name {
+        margin-bottom: 4px;
+        font-weight: 750;
+      }
+
+      .project-meta {
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .stat {
+        padding-left: 14px;
+        border-left: 1px solid var(--line);
+      }
+
+      .stat strong {
+        display: block;
+        font-size: 1.15rem;
+      }
+
+      .stat span {
+        color: var(--muted);
+        font-size: 0.74rem;
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: minmax(180px, 1.1fr) minmax(220px, 2fr) repeat(
+            3,
+            minmax(125px, 0.8fr)
+          );
+        gap: 10px;
+        margin-bottom: 16px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+      }
+
+      .field {
+        display: grid;
+        gap: 5px;
+        min-width: 0;
+      }
+
+      .field > span,
+      .field-label {
+        color: #475467;
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
+
+      .field input,
+      .field select {
+        width: 100%;
+        min-height: 38px;
+        padding: 7px 10px;
+        border: 1px solid #c8d2df;
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .search-field {
+        position: relative;
+      }
+
+      .search-field input {
+        padding-right: 145px;
+      }
+
+      .search-scope {
+        position: absolute;
+        top: 29px;
+        right: 8px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: #475467;
+        font-size: 0.7rem;
+        white-space: nowrap;
+      }
+
+      .search-scope input {
+        width: 14px;
+        min-height: auto;
+        margin: 0;
+      }
+
+      .edge-filter {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+        padding-top: 10px;
+        border-top: 1px solid #edf0f4;
+      }
+
+      .edge-filter strong {
+        color: #475467;
+        font-size: 0.72rem;
+      }
+
+      .edge-option {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: #475467;
+        font-size: 0.72rem;
+      }
+
+      .edge-option input {
+        margin: 0;
+      }
+
+      .panel {
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 15px 16px 11px;
+        border-bottom: 1px solid #edf0f4;
+      }
+
+      .panel-head h2 {
+        margin: 0;
+      }
+
+      .panel-body {
+        padding: 12px 16px 16px;
+      }
+
+      .panel-kicker {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.75rem;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-height: 34px;
+        padding: 6px 10px;
+        border: 1px solid #c9d6e7;
+        border-radius: 8px;
+        color: #234b83;
+        background: #fff;
+        font-size: 0.76rem;
+        font-weight: 700;
+      }
+
+      .btn:hover {
+        background: #f1f6ff;
+      }
+
+      .btn-primary {
+        border-color: var(--blue);
+        color: #fff;
+        background: var(--blue);
+      }
+
+      .btn-primary:hover {
+        background: #194987;
+      }
+
+      .layout {
+        display: grid;
+        gap: 14px;
+        align-items: start;
+      }
+
+      .variant-workbench .layout {
+        grid-template-columns: minmax(245px, 0.82fr) minmax(420px, 1.55fr) minmax(
+            280px,
+            0.95fr
+          );
+      }
+
+      .variant-catalog .layout {
+        grid-template-columns: minmax(320px, 0.9fr) minmax(450px, 1.35fr);
+      }
+
+      .variant-dashboard .layout {
+        grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+      }
+
+      .variant-dashboard .project-overview {
+        border: 0;
+        padding: 4px 4px 12px;
+        background: transparent;
+      }
+
+      .variant-dashboard .results-panel {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+      }
+
+      .variant-dashboard .detail-panel {
+        grid-column: 2;
+        grid-row: 2;
+      }
+
+      .variant-dashboard .graph-card,
+      .variant-dashboard .graph-launcher {
+        grid-column: 2;
+        grid-row: 1;
+      }
+
+      .result-list {
+        display: grid;
+        gap: 6px;
+        max-height: 610px;
+        overflow: auto;
+      }
+
+      .result {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        text-align: left;
+        background: transparent;
+      }
+
+      .result:hover {
+        border-color: #d9e5f7;
+        background: #f6f9fe;
+      }
+
+      .result[aria-current="true"] {
+        border-color: #a8c3ef;
+        background: #eef4ff;
+      }
+
+      .result-title {
+        display: block;
+        margin: 5px 0 4px;
+        font-size: 0.84rem;
+        font-weight: 720;
+      }
+
+      .result-id {
+        color: var(--muted);
+        font-size: 0.68rem;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .result-summary {
+        display: block;
+        color: #596579;
+        font-size: 0.73rem;
+        line-height: 1.45;
+      }
+
+      .badge-row,
+      .tag-row,
+      .relation-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+
+      .badge,
+      .tag,
+      .relation-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 20px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        font-size: 0.64rem;
+        font-weight: 700;
+      }
+
+      .badge-type {
+        color: #344054;
+        background: #eef1f5;
+      }
+
+      .status-accepted {
+        color: var(--green);
+        background: #e8f6ee;
+      }
+
+      .status-proposed {
+        color: var(--amber);
+        background: #fff3d6;
+      }
+
+      .status-open {
+        color: #5846a5;
+        background: #f0ecff;
+      }
+
+      .tag {
+        color: #475467;
+        background: #f0f3f7;
+      }
+
+      .record-body {
+        color: #414d5d;
+        font-size: 0.8rem;
+        line-height: 1.58;
+      }
+
+      .record-body p:last-child {
+        margin-bottom: 0;
+      }
+
+      .detail-section {
+        margin-top: 16px;
+      }
+
+      .detail-section h3 {
+        margin-bottom: 7px;
+      }
+
+      .rules {
+        display: grid;
+        gap: 7px;
+        padding: 0;
+        list-style: none;
+      }
+
+      .rules li {
+        padding: 8px 9px;
+        border-left: 3px solid #8caee1;
+        border-radius: 0 7px 7px 0;
+        background: #f6f8fb;
+        color: #3f4b5b;
+        font-size: 0.75rem;
+        line-height: 1.45;
+      }
+
+      .verify {
+        display: grid;
+        gap: 7px;
+      }
+
+      .verify-item {
+        padding: 8px 9px;
+        border: 1px solid #edf0f4;
+        border-radius: 8px;
+        font-size: 0.73rem;
+      }
+
+      .verify-item strong {
+        display: block;
+        margin-bottom: 3px;
+      }
+
+      .graph-card {
+        min-height: 370px;
+      }
+
+      .graph-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .graph-area {
+        position: relative;
+        min-height: 285px;
+        margin: 4px 8px 12px;
+        overflow: hidden;
+        border: 1px solid #edf0f4;
+        border-radius: 10px;
+        background:
+          radial-gradient(circle at 1px 1px, #dce4ef 1px, transparent 0) 0 0 / 20px
+            20px,
+          #fbfcfe;
+      }
+
+      .graph-area svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        pointer-events: none;
+      }
+
+      .graph-edge {
+        stroke: #9aabc1;
+        stroke-width: 2;
+        marker-end: url(#arrow);
+      }
+
+      .graph-edge-label {
+        fill: #53647a;
+        font-size: 12px;
+        font-weight: 650;
+        paint-order: stroke;
+        stroke: #fbfcfe;
+        stroke-width: 5px;
+      }
+
+      .graph-node {
+        position: absolute;
+        z-index: 1;
+        width: clamp(112px, 26%, 166px);
+        min-height: 58px;
+        padding: 8px;
+        border: 1px solid #b9c8dc;
+        border-radius: 10px;
+        text-align: left;
+        background: #fff;
+        box-shadow: 0 4px 12px rgb(29 48 76 / 9%);
+        transform: translate(-50%, -50%);
+      }
+
+      .graph-node:hover,
+      .graph-node[aria-pressed="true"] {
+        border-color: #4c7fc5;
+        background: #eff5ff;
+      }
+
+      .graph-node strong,
+      .graph-node span {
+        display: block;
+      }
+
+      .graph-node strong {
+        margin-bottom: 3px;
+        font-size: 0.69rem;
+      }
+
+      .graph-node span {
+        color: #536175;
+        font-size: 0.62rem;
+        line-height: 1.3;
+      }
+
+      .tree-wrap {
+        margin: 0 8px 14px;
+        padding: 10px 12px;
+        border: 1px solid #e3e8ef;
+        border-radius: 10px;
+        background: #fff;
+      }
+
+      .tree-wrap h3 {
+        margin-bottom: 5px;
+        font-size: 0.77rem;
+      }
+
+      .tree-hint {
+        margin-bottom: 7px;
+        color: var(--muted);
+        font-size: 0.67rem;
+      }
+
+      .record-tree {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .treeitem {
+        min-height: 29px;
+        padding: 4px 7px;
+        border: 1px solid #d8e0eb;
+        border-radius: 7px;
+        color: #344054;
+        background: #fff;
+        font-size: 0.66rem;
+      }
+
+      .treeitem[aria-selected="true"] {
+        border-color: #6c94d0;
+        color: #183e75;
+        background: #edf4ff;
+      }
+
+      .empty {
+        padding: 24px 12px;
+        color: var(--muted);
+        text-align: center;
+        font-size: 0.8rem;
+      }
+
+      .inline-note {
+        margin: 12px 0 0;
+        padding: 9px 10px;
+        border-radius: 8px;
+        color: #596579;
+        background: #f5f7fa;
+        font-size: 0.7rem;
+        line-height: 1.45;
+      }
+
+      .variant-catalog .graph-area {
+        min-height: 235px;
+      }
+
+      .variant-catalog .graph-card {
+        min-height: auto;
+      }
+
+      .variant-dashboard .graph-area {
+        min-height: 310px;
+      }
+
+      .prototype-switcher {
+        position: fixed;
+        z-index: 5;
+        right: 50%;
+        bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-height: 48px;
+        padding: 6px 9px;
+        border: 1px solid #394b66;
+        border-radius: 999px;
+        color: #fff;
+        background: #172b48;
+        box-shadow: 0 12px 30px rgb(12 24 42 / 28%);
+        transform: translateX(50%);
+      }
+
+      .prototype-switcher button {
+        width: 33px;
+        height: 33px;
+        border: 1px solid rgb(255 255 255 / 35%);
+        border-radius: 50%;
+        color: #fff;
+        background: transparent;
+        font-size: 1rem;
+      }
+
+      .prototype-switcher button:hover {
+        background: rgb(255 255 255 / 15%);
+      }
+
+      .variant-label {
+        min-width: 162px;
+        text-align: center;
+        font-size: 0.73rem;
+        font-weight: 700;
+      }
+
+      .variant-choices {
+        display: flex;
+        gap: 4px;
+        padding-left: 5px;
+        border-left: 1px solid rgb(255 255 255 / 30%);
+      }
+
+      .variant-choices button {
+        width: auto;
+        height: 28px;
+        padding: 0 9px;
+        border-radius: 999px;
+        font-size: 0.65rem;
+      }
+
+      .variant-choices button[aria-pressed="true"] {
+        color: #172b48;
+        background: #fff;
+      }
+
+      @media (max-width: 1180px) {
+        .variant-workbench .layout {
+          grid-template-columns: minmax(220px, 0.8fr) minmax(420px, 1.4fr);
+        }
+
+        .variant-workbench .detail-panel {
+          grid-column: 1 / -1;
+        }
+
+        .variant-workbench .detail-panel .panel-body {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0 20px;
+        }
+      }
+
+      @media (max-width: 850px) {
+        main {
+          padding: 20px 14px 100px;
+        }
+
+        .topbar {
+          padding: 11px 15px;
+        }
+
+        .topbar-note {
+          display: none;
+        }
+
+        .project-overview {
+          grid-template-columns: 1fr repeat(3, minmax(66px, 0.4fr));
+          gap: 8px;
+          padding: 12px;
+        }
+
+        .stat {
+          padding-left: 8px;
+        }
+
+        .toolbar {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .search-field {
+          grid-column: 1 / -1;
+        }
+
+        .variant-workbench .layout,
+        .variant-catalog .layout,
+        .variant-dashboard .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .variant-dashboard .results-panel,
+        .variant-dashboard .detail-panel,
+        .variant-dashboard .graph-card,
+        .variant-dashboard .graph-launcher {
+          grid-column: auto;
+          grid-row: auto;
+        }
+
+        .variant-workbench .detail-panel .panel-body {
+          display: block;
+        }
+
+        .graph-card {
+          min-height: 330px;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .intro {
+          align-items: start;
+        }
+
+        .demo-badge {
+          max-width: 106px;
+          text-align: center;
+        }
+
+        .project-overview {
+          grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .project-summary {
+          grid-column: 1 / -1;
+        }
+
+        .stat:first-of-type {
+          padding-left: 0;
+          border-left: 0;
+        }
+
+        .toolbar {
+          grid-template-columns: 1fr 1fr;
+          padding: 10px;
+        }
+
+        .prototype-switcher {
+          bottom: 10px;
+          gap: 5px;
+          padding: 5px;
+        }
+
+        .variant-label {
+          min-width: 112px;
+          font-size: 0.66rem;
+        }
+
+        .variant-choices {
+          gap: 2px;
+          padding-left: 3px;
+        }
+
+        .variant-choices button {
+          width: 27px;
+          padding: 0;
+          font-size: 0.6rem;
+        }
+
+        .graph-area {
+          min-height: 250px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">dg</span>
+        <span>decision-graph</span>
+      </div>
+      <span class="topbar-note">Explore decisions, rules, and their relationships</span>
+    </header>
+    <main id="app"></main>
+    <nav class="prototype-switcher" aria-label="Prototype layout variations">
+      <button id="previous-variant" type="button" aria-label="Previous layout">←</button>
+      <span class="variant-label" id="variant-label" aria-live="polite"></span>
+      <button id="next-variant" type="button" aria-label="Next layout">→</button>
+      <div class="variant-choices" id="variant-choices" aria-label="Choose a layout"></div>
+    </nav>
+
+    <script>
+      const projects = [
+        {
+          id: "decision-graph",
+          name: "Decision Graph",
+          type: "cli-tool",
+          origin: "Local project",
+        },
+        {
+          id: "platform-handbook",
+          name: "Platform Handbook",
+          type: "service",
+          origin: "Shared team project",
+        },
+      ];
+
+      const records = [
+        {
+          projectId: "decision-graph",
+          id: "ADR-0000",
+          type: "adr",
+          title: "Keep session narratives as the primary record",
+          status: "superseded",
+          date: "2025-11-06",
+          tags: ["history"],
+          appliesTo: ["**/*"],
+          summary: "An earlier approach centered on session journals.",
+          body: "The project first captured engineering work as narrative sessions. That made context easy to preserve, but expensive to maintain and difficult to query for reusable decisions.",
+          rules: ["Keep historical session material available for reference."],
+          verify: ["The archive remains readable without running its tooling."],
+        },
+        {
+          projectId: "decision-graph",
+          id: "ADR-0001",
+          type: "adr",
+          title: "Treat Markdown decisions as the source of truth",
+          status: "accepted",
+          date: "2026-10-13",
+          tags: ["records", "source-of-truth"],
+          appliesTo: ["**/*.md"],
+          summary: "The local index is rebuildable; versioned records are canonical.",
+          body: "Architecture decisions live in versioned Markdown files. SQLite and PostgreSQL indexes are projections that can be rebuilt from those files, so repository history remains authoritative.",
+          rules: [
+            "MUST Treat versioned Markdown decision records as the source of truth.",
+            "MUST Rebuild the local index from those files.",
+          ],
+          verify: ["Run `dg sync` and confirm the indexed records match the files."],
+        },
+        {
+          projectId: "decision-graph",
+          id: "ADR-0002",
+          type: "adr",
+          title: "Use SQLite for the local decision index",
+          status: "accepted",
+          date: "2026-10-13",
+          tags: ["storage", "search"],
+          appliesTo: ["src/store/**"],
+          summary: "A local SQLite index keeps single-project queries self-contained.",
+          body: "A local project needs a fast searchable index without requiring a running service. SQLite provides local graph storage and full-text search while Markdown files remain canonical.",
+          rules: ["SHOULD Keep local queries available without a remote server."],
+          verify: ["Run the store integration tests against a temporary database."],
+        },
+        {
+          projectId: "decision-graph",
+          id: "ADR-0003",
+          type: "adr",
+          title: "Keep unauthenticated servers on trusted networks",
+          status: "accepted",
+          date: "2026-10-13",
+          tags: ["security", "server"],
+          appliesTo: ["src/server/**"],
+          summary: "The v1 server has no authentication and must not be public.",
+          body: "The HTTP and MCP server endpoints have no authentication in v1. Localhost is the default; non-local bindings are limited to trusted networks.",
+          rules: [
+            "MUST Keep unauthenticated decision-graph servers bound to localhost or a trusted network.",
+          ],
+          verify: ["Review the bind host before exposing a server beyond localhost."],
+        },
+        {
+          projectId: "decision-graph",
+          id: "SDR-20261014-001",
+          type: "sdr",
+          title: "Explore decisions through a read-only browser",
+          status: "open",
+          date: "2026-10-14",
+          tags: ["ui", "exploration"],
+          appliesTo: ["docs/**"],
+          summary: "A visual explorer can make project decisions easier to navigate.",
+          body: "The proposed browser experience focuses on finding, reading, and following decisions. Record authoring stays in the source files and CLI workflow.",
+          rules: ["MAY Browse records without changing their canonical files."],
+          verify: [],
+        },
+        {
+          projectId: "decision-graph",
+          id: "ADR-0004",
+          type: "adr",
+          title: "Keep the first browser explorer read-only",
+          status: "proposed",
+          date: "2026-10-14",
+          tags: ["ui", "scope"],
+          appliesTo: ["docs/**"],
+          summary: "The browser helps people inspect the graph without becoming an editor.",
+          body: "A read-only explorer avoids creating a second authoring path for decision records. Users can inspect a complete record and navigate its relationships, then make changes through the established Markdown workflow.",
+          rules: [
+            "SHOULD Display the record rationale, rules, and verification checks together.",
+          ],
+          verify: ["Confirm the explorer exposes no record-creation or editing action."],
+        },
+        {
+          projectId: "platform-handbook",
+          id: "ADR-0001",
+          type: "adr",
+          title: "Emit structured service events",
+          status: "accepted",
+          date: "2026-08-21",
+          tags: ["observability", "services"],
+          appliesTo: ["services/**"],
+          summary: "Structured events make operational decisions searchable.",
+          body: "Services emit structured events with stable names and useful context. The shared event schema keeps dashboards and incident searches consistent.",
+          rules: ["MUST Include a stable event name and service identifier."],
+          verify: ["Inspect emitted events for the required fields."],
+        },
+        {
+          projectId: "platform-handbook",
+          id: "ADR-0002",
+          type: "adr",
+          title: "Use a shared deployment health check",
+          status: "accepted",
+          date: "2026-08-29",
+          tags: ["operations", "deployment"],
+          appliesTo: ["deploy/**"],
+          summary: "A consistent health endpoint makes rollout status comparable.",
+          body: "Every deployable service exposes the same readiness signal. The platform uses it to decide whether a rollout can continue.",
+          rules: ["SHOULD Report readiness only after required dependencies respond."],
+          verify: ["Exercise the readiness endpoint before and after dependency startup."],
+        },
+        {
+          projectId: "platform-handbook",
+          id: "SDR-20261002-003",
+          type: "sdr",
+          title: "Compare service ownership labels",
+          status: "open",
+          date: "2026-10-02",
+          tags: ["ownership"],
+          appliesTo: ["services/**"],
+          summary: "The team is evaluating a shared ownership vocabulary.",
+          body: "A consistent service owner field could make routing operational questions easier. The team has not yet selected the required metadata.",
+          rules: [],
+          verify: [],
+        },
+      ];
+
+      const edges = [
+        {
+          projectId: "decision-graph",
+          src: "ADR-0001",
+          dst: "ADR-0000",
+          kind: "supersedes",
+        },
+        {
+          projectId: "decision-graph",
+          src: "ADR-0001",
+          dst: "ADR-0002",
+          kind: "relates_to",
+        },
+        {
+          projectId: "decision-graph",
+          src: "ADR-0003",
+          dst: "ADR-0002",
+          kind: "conflicts_with",
+        },
+        {
+          projectId: "decision-graph",
+          src: "SDR-20261014-001",
+          dst: "ADR-0004",
+          kind: "promoted_to",
+        },
+        {
+          projectId: "decision-graph",
+          src: "ADR-0004",
+          dst: "SDR-20261014-001",
+          kind: "derived_from",
+        },
+        {
+          projectId: "platform-handbook",
+          src: "ADR-0001",
+          dst: "ADR-0002",
+          kind: "relates_to",
+        },
+        {
+          projectId: "platform-handbook",
+          src: "SDR-20261002-003",
+          dst: "ADR-0001",
+          kind: "relates_to",
+        },
+      ];
+
+      const variants = [
+        { key: "workbench", name: "Three-pane workbench" },
+        { key: "catalog", name: "Catalog and inspector" },
+        { key: "dashboard", name: "Project dashboard" },
+      ];
+      const edgeKinds = [
+        "supersedes",
+        "relates_to",
+        "derived_from",
+        "promoted_to",
+        "conflicts_with",
+      ];
+      const state = {
+        projectId: "decision-graph",
+        selectedId: "ADR-0001",
+        query: "",
+        allProjects: false,
+        type: "all",
+        status: "all",
+        tag: "all",
+        selectedKinds: new Set(edgeKinds),
+        visibleNodes: new Set(),
+        dashboardGraphOpen: false,
+      };
+
+      const app = document.querySelector("#app");
+      const variantKey = () => {
+        const requested = new URLSearchParams(location.search).get("variant");
+        return variants.some((item) => item.key === requested)
+          ? requested
+          : "workbench";
+      };
+      const escapeHtml = (value) =>
+        String(value).replace(/[&<>"']/g, (character) => {
+          const entities = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          };
+          return entities[character];
+        });
+      const projectRecords = (projectId) =>
+        records.filter((record) => record.projectId === projectId);
+      const selectedProject = () =>
+        projects.find((project) => project.id === state.projectId);
+      const selectedRecord = () =>
+        records.find(
+          (record) =>
+            record.projectId === state.projectId &&
+            record.id === state.selectedId,
+        ) ?? projectRecords(state.projectId)[0];
+
+      function filteredRecords() {
+        const query = state.query.trim().toLowerCase();
+        return records.filter((record) => {
+          if (!state.allProjects && record.projectId !== state.projectId) {
+            return false;
+          }
+          if (state.type !== "all" && record.type !== state.type) return false;
+          if (state.status !== "all" && record.status !== state.status) {
+            return false;
+          }
+          if (state.tag !== "all" && !record.tags.includes(state.tag)) {
+            return false;
+          }
+          if (!query) return true;
+          const projectName =
+            projects.find((project) => project.id === record.projectId)?.name ??
+            "";
+          return [
+            record.id,
+            record.title,
+            record.summary,
+            record.body,
+            record.tags.join(" "),
+            projectName,
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(query);
+        });
+      }
+
+      function statusClass(status) {
+        if (status === "accepted") return "status-accepted";
+        if (status === "proposed") return "status-proposed";
+        return "status-open";
+      }
+
+      function badges(record) {
+        return `<span class="badge badge-type">${escapeHtml(record.type.toUpperCase())}</span>
+          <span class="badge ${statusClass(record.status)}">${escapeHtml(record.status)}</span>`;
+      }
+
+      function overview() {
+        const items = projectRecords(state.projectId);
+        const accepted = items.filter((record) => record.status === "accepted").length;
+        const open = items.filter((record) => record.status === "open").length;
+        return `<section class="project-overview" aria-label="Project overview">
+          <div class="project-summary">
+            <div class="project-name">${escapeHtml(selectedProject().name)}</div>
+            <div class="project-meta">${escapeHtml(selectedProject().type)} · ${escapeHtml(selectedProject().origin)}</div>
+          </div>
+          <div class="stat"><strong>${items.length}</strong><span>records</span></div>
+          <div class="stat"><strong>${accepted}</strong><span>accepted</span></div>
+          <div class="stat"><strong>${open}</strong><span>open SDRs</span></div>
+        </section>`;
+      }
+
+      function toolbar() {
+        const projectOptions = projects
+          .map(
+            (project) =>
+              `<option value="${escapeHtml(project.id)}" ${project.id === state.projectId ? "selected" : ""}>${escapeHtml(project.name)}</option>`,
+          )
+          .join("");
+        return `<section class="toolbar" aria-label="Find records">
+          <label class="field">
+            <span>Project</span>
+            <select id="project-select">${projectOptions}</select>
+          </label>
+          <label class="field search-field">
+            <span>Search records</span>
+            <input id="record-search" type="search" value="${escapeHtml(state.query)}" placeholder="Title, ID, rule, or text" />
+            <span class="search-scope"><input id="all-projects" type="checkbox" ${state.allProjects ? "checked" : ""} /> All projects</span>
+          </label>
+          <label class="field">
+            <span>Type</span>
+            <select id="type-filter">
+              ${option("all", "All types", state.type)}
+              ${option("adr", "ADR", state.type)}
+              ${option("sdr", "SDR", state.type)}
+            </select>
+          </label>
+          <label class="field">
+            <span>Status</span>
+            <select id="status-filter">
+              ${option("all", "All statuses", state.status)}
+              ${option("accepted", "Accepted", state.status)}
+              ${option("proposed", "Proposed", state.status)}
+              ${option("open", "Open", state.status)}
+              ${option("superseded", "Superseded", state.status)}
+            </select>
+          </label>
+          <label class="field">
+            <span>Tag</span>
+            <select id="tag-filter">
+              ${option("all", "All tags", state.tag)}
+              ${[...new Set(records.flatMap((record) => record.tags))]
+                .sort()
+                .map((tag) => option(tag, tag, state.tag))
+                .join("")}
+            </select>
+          </label>
+          <div class="edge-filter" aria-label="Relationship type filters">
+            <strong>Show relationships</strong>
+            ${edgeKinds
+              .map(
+                (kind) => `<label class="edge-option">
+                  <input type="checkbox" data-edge-kind="${kind}" ${state.selectedKinds.has(kind) ? "checked" : ""} />
+                  ${kind.replaceAll("_", " ")}
+                </label>`,
+              )
+              .join("")}
+          </div>
+        </section>`;
+      }
+
+      function option(value, label, selected) {
+        return `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(label)}</option>`;
+      }
+
+      function resultList() {
+        const results = filteredRecords();
+        if (!results.length) {
+          return `<div class="empty">No records match these filters.</div>`;
+        }
+        return `<div class="result-list" role="list">
+          ${results
+            .map((record) => {
+              const project =
+                projects.find((item) => item.id === record.projectId)?.name ?? "";
+              return `<button class="result" type="button" role="listitem"
+                data-record-id="${escapeHtml(record.id)}"
+                data-project-id="${escapeHtml(record.projectId)}"
+                aria-current="${record.projectId === state.projectId && record.id === state.selectedId}">
+                <span class="result-id">${escapeHtml(record.id)}${state.allProjects ? ` · ${escapeHtml(project)}` : ""}</span>
+                <span class="result-title">${escapeHtml(record.title)}</span>
+                <span class="badge-row">${badges(record)}</span>
+                <span class="result-summary">${escapeHtml(record.summary)}</span>
+              </button>`;
+            })
+            .join("")}
+        </div>`;
+      }
+
+      function recordDetails() {
+        const record = selectedRecord();
+        if (!record) return `<div class="empty">Select a record to inspect it.</div>`;
+        const recordEdges = edges.filter(
+          (edge) =>
+            edge.projectId === record.projectId &&
+            (edge.src === record.id || edge.dst === record.id),
+        );
+        const linkedRecords = recordEdges
+          .map((edge) => {
+            const id = edge.src === record.id ? edge.dst : edge.src;
+            const related = records.find(
+              (item) => item.projectId === record.projectId && item.id === id,
+            );
+            return related
+              ? `<button class="btn" type="button" data-record-id="${escapeHtml(related.id)}" data-project-id="${escapeHtml(related.projectId)}">${escapeHtml(edge.kind.replaceAll("_", " "))} · ${escapeHtml(related.id)}</button>`
+              : "";
+          })
+          .join("");
+        return `<div class="panel-body">
+          <div class="badge-row">${badges(record)}</div>
+          <p class="panel-kicker">${escapeHtml(record.id)} · ${escapeHtml(record.date)}</p>
+          <h2>${escapeHtml(record.title)}</h2>
+          <div class="tag-row">${record.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>
+          <div class="detail-section">
+            <h3>Applies to</h3>
+            <div class="tag-row">${record.appliesTo.map((item) => `<span class="tag">${escapeHtml(item)}</span>`).join("")}</div>
+          </div>
+          <div class="detail-section record-body"><h3>Decision and context</h3><p>${escapeHtml(record.body)}</p></div>
+          <div class="detail-section">
+            <h3>Agent rules</h3>
+            ${record.rules.length ? `<ul class="rules">${record.rules.map((rule) => `<li>${escapeHtml(rule)}</li>`).join("")}</ul>` : `<p class="muted">No agent rules recorded.</p>`}
+          </div>
+          <div class="detail-section">
+            <h3>Verification</h3>
+            ${record.verify.length ? `<div class="verify">${record.verify.map((check) => `<div class="verify-item"><strong>Check</strong>${escapeHtml(check)}</div>`).join("")}</div>` : `<p class="muted">No verification checks recorded.</p>`}
+          </div>
+          <div class="detail-section">
+            <h3>Relationships</h3>
+            <div class="relation-list">${linkedRecords || `<span class="muted">No linked records.</span>`}</div>
+          </div>
+        </div>`;
+      }
+
+      function graphRecords() {
+        return records.filter(
+          (record) =>
+            record.projectId === state.projectId &&
+            state.visibleNodes.has(record.id),
+        );
+      }
+
+      function resetNeighborhood() {
+        const root = selectedRecord();
+        state.visibleNodes = new Set(root ? [root.id] : []);
+        if (root) expandNeighborhood();
+      }
+
+      function expandNeighborhood() {
+        const current = records.filter(
+          (record) =>
+            record.projectId === state.projectId &&
+            state.visibleNodes.has(record.id),
+        );
+        const visibleKinds = state.selectedKinds;
+        for (const record of current) {
+          for (const edge of edges) {
+            if (
+              edge.projectId !== state.projectId ||
+              !visibleKinds.has(edge.kind)
+            ) {
+              continue;
+            }
+            if (edge.src === record.id) state.visibleNodes.add(edge.dst);
+            if (edge.dst === record.id) state.visibleNodes.add(edge.src);
+          }
+        }
+      }
+
+      function graphMarkup() {
+        const nodes = graphRecords();
+        const positions = [
+          [50, 20],
+          [22, 52],
+          [78, 52],
+          [22, 83],
+          [78, 83],
+          [50, 90],
+        ];
+        const indexById = new Map(nodes.map((record, index) => [record.id, index]));
+        const graphEdges = edges.filter(
+          (edge) =>
+            edge.projectId === state.projectId &&
+            state.selectedKinds.has(edge.kind) &&
+            indexById.has(edge.src) &&
+            indexById.has(edge.dst),
+        );
+        const lines = graphEdges
+          .map((edge) => {
+            const [x1, y1] = positions[indexById.get(edge.src) % positions.length];
+            const [x2, y2] = positions[indexById.get(edge.dst) % positions.length];
+            const mx = (x1 + x2) / 2;
+            const my = (y1 + y2) / 2;
+            return `<line class="graph-edge" x1="${x1 * 10}" y1="${y1 * 5}" x2="${x2 * 10}" y2="${y2 * 5}" />
+              <text class="graph-edge-label" x="${mx * 10}" y="${my * 5 - 7}" text-anchor="middle">${escapeHtml(edge.kind.replaceAll("_", " "))}</text>`;
+          })
+          .join("");
+        const graphNodes = nodes
+          .map((record, index) => {
+            const [x, y] = positions[index % positions.length];
+            return `<button class="graph-node" type="button"
+              data-record-id="${escapeHtml(record.id)}"
+              data-project-id="${escapeHtml(record.projectId)}"
+              aria-pressed="${record.id === state.selectedId}"
+              style="left:${x}%;top:${y}%">
+              <strong>${escapeHtml(record.id)}</strong>
+              <span>${escapeHtml(record.title)}</span>
+            </button>`;
+          })
+          .join("");
+        return `<div class="graph-area" role="group" aria-label="Illustrative relationship map">
+          <svg viewBox="0 0 1000 500" preserveAspectRatio="none" aria-hidden="true">
+            <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#9aabc1"></path></marker></defs>
+            ${lines}
+          </svg>
+          ${graphNodes}
+        </div>`;
+      }
+
+      function treeMarkup() {
+        const nodes = graphRecords();
+        return `<section class="tree-wrap" aria-label="Accessible relationship navigation">
+          <h3>Accessible record tree</h3>
+          <p class="tree-hint">Use ↑ and ↓ to move; Enter or Space opens a record.</p>
+          ${nodes.length ? `<ul class="record-tree" role="tree" aria-label="Records in this relationship neighborhood">
+            ${nodes
+              .map(
+                (record) => `<li role="none"><button class="treeitem" type="button" role="treeitem"
+                  data-record-id="${escapeHtml(record.id)}" data-project-id="${escapeHtml(record.projectId)}"
+                  aria-selected="${record.id === state.selectedId}" tabindex="${record.id === state.selectedId ? "0" : "-1"}">
+                  ${escapeHtml(record.id)} · ${escapeHtml(record.title)}
+                </button></li>`,
+              )
+              .join("")}
+          </ul>` : `<p class="muted">No records in this neighborhood.</p>`}
+        </section>`;
+      }
+
+      function graphPanel() {
+        const total = projectRecords(state.projectId).length;
+        const visible = graphRecords().length;
+        const dashboardAction =
+          variantKey() === "dashboard"
+            ? `<button class="btn" type="button" id="close-graph">Back to overview</button>`
+            : "";
+        return `<section class="panel graph-card">
+          <div class="panel-head">
+            <div><h2>Relationship neighborhood</h2><div class="panel-kicker">${visible} of ${total} project records shown</div></div>
+            <div class="graph-actions">
+              ${dashboardAction}
+              <button class="btn btn-primary" type="button" id="expand-neighborhood">Expand one hop</button>
+              <button class="btn" type="button" id="reset-neighborhood">Reset</button>
+            </div>
+          </div>
+          ${graphMarkup()}
+          ${treeMarkup()}
+          <p class="inline-note">The diagram is illustrative. The accessible record tree is the keyboard navigation path and stays in sync with graph selection.</p>
+        </section>`;
+      }
+
+      function graphLauncherPanel() {
+        return `<section class="panel graph-launcher">
+          <div class="panel-head">
+            <div><h2>Explore relationships</h2><div class="panel-kicker">Open the selected record neighborhood when you need it.</div></div>
+          </div>
+          <div class="panel-body">
+            <p class="record-body">Follow superseding, related, derived, promoted, and conflicting decisions without leaving the project overview.</p>
+            <button class="btn btn-primary" type="button" id="open-graph">Open relationship map</button>
+          </div>
+        </section>`;
+      }
+
+      function listPanel() {
+        return `<section class="panel results-panel">
+          <div class="panel-head">
+            <div><h2>Decision records</h2><div class="panel-kicker">${filteredRecords().length} matching records</div></div>
+            <span class="panel-kicker">Read-only</span>
+          </div>
+          <div class="panel-body">${resultList()}</div>
+        </section>`;
+      }
+
+      function detailPanel() {
+        return `<section class="panel detail-panel">
+          <div class="panel-head"><div><h2>Record details</h2><div class="panel-kicker">Rationale, rules, checks, and links</div></div></div>
+          ${recordDetails()}
+        </section>`;
+      }
+
+      function introMarkup() {
+        return `<div class="intro">
+          <div><h1>Decision explorer</h1><p class="subtle">Browse the decisions behind this project and follow how they connect.</p></div>
+          <span class="demo-badge">Illustrative data · no edits</span>
+        </div>`;
+      }
+
+      function workbench() {
+        return `<div class="variant-workbench">${introMarkup()}${overview()}${toolbar()}
+          <div class="layout">${listPanel()}${graphPanel()}${detailPanel()}</div>
+        </div>`;
+      }
+
+      function catalog() {
+        return `<div class="variant-catalog">${introMarkup()}${overview()}${toolbar()}
+          <div class="layout">${listPanel()}
+            <div class="detail-column">${detailPanel()}<div style="height:14px"></div>${graphPanel()}</div>
+          </div>
+        </div>`;
+      }
+
+      function dashboard() {
+        return `<div class="variant-dashboard">${introMarkup()}${overview()}${toolbar()}
+          <div class="layout">${listPanel()}${state.dashboardGraphOpen ? graphPanel() : graphLauncherPanel()}${detailPanel()}</div>
+        </div>`;
+      }
+
+      function render() {
+        if (!projectRecords(state.projectId).some((item) => item.id === state.selectedId)) {
+          state.selectedId = projectRecords(state.projectId)[0]?.id ?? "";
+        }
+        if (!state.visibleNodes.size) resetNeighborhood();
+        const key = variantKey();
+        app.innerHTML = key === "workbench" ? workbench() : key === "catalog" ? catalog() : dashboard();
+        bindControls();
+        updateSwitcher();
+      }
+
+      function bindControls() {
+        document.querySelector("#project-select").addEventListener("change", (event) => {
+          state.projectId = event.target.value;
+          state.selectedId = projectRecords(state.projectId)[0]?.id ?? "";
+          resetNeighborhood();
+          render();
+        });
+        document.querySelector("#record-search").addEventListener("input", (event) => {
+          state.query = event.target.value;
+          const cursor = event.target.selectionStart;
+          render();
+          const input = document.querySelector("#record-search");
+          input.focus();
+          input.setSelectionRange(cursor, cursor);
+        });
+        document.querySelector("#all-projects").addEventListener("change", (event) => {
+          state.allProjects = event.target.checked;
+          render();
+        });
+        document.querySelector("#type-filter").addEventListener("change", (event) => {
+          state.type = event.target.value;
+          render();
+        });
+        document.querySelector("#status-filter").addEventListener("change", (event) => {
+          state.status = event.target.value;
+          render();
+        });
+        document.querySelector("#tag-filter").addEventListener("change", (event) => {
+          state.tag = event.target.value;
+          render();
+        });
+        document.querySelectorAll("[data-edge-kind]").forEach((input) => {
+          input.addEventListener("change", (event) => {
+            if (event.target.checked) state.selectedKinds.add(event.target.dataset.edgeKind);
+            else state.selectedKinds.delete(event.target.dataset.edgeKind);
+            resetNeighborhood();
+            render();
+          });
+        });
+        document.querySelectorAll("[data-record-id]").forEach((button) => {
+          button.addEventListener("click", () => {
+            state.projectId = button.dataset.projectId;
+            state.selectedId = button.dataset.recordId;
+            resetNeighborhood();
+            render();
+          });
+        });
+        document.querySelectorAll('[role="treeitem"]').forEach((button) => {
+          button.addEventListener("keydown", (event) => {
+            if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+            event.preventDefault();
+            const items = [...document.querySelectorAll('[role="treeitem"]')];
+            const index = items.indexOf(button);
+            const direction = event.key === "ArrowDown" ? 1 : -1;
+            items[(index + direction + items.length) % items.length]?.focus();
+          });
+        });
+        document.querySelector("#open-graph")?.addEventListener("click", () => {
+          state.dashboardGraphOpen = true;
+          render();
+        });
+        document.querySelector("#close-graph")?.addEventListener("click", () => {
+          state.dashboardGraphOpen = false;
+          render();
+        });
+        document.querySelector("#expand-neighborhood")?.addEventListener("click", () => {
+          expandNeighborhood();
+          render();
+        });
+        document.querySelector("#reset-neighborhood")?.addEventListener("click", () => {
+          resetNeighborhood();
+          render();
+        });
+      }
+
+      function updateSwitcher() {
+        const current = variantKey();
+        const index = variants.findIndex((item) => item.key === current);
+        document.querySelector("#variant-label").textContent =
+          `${current} · ${variants[index].name}`;
+        document.querySelector("#variant-choices").innerHTML = variants
+          .map(
+            (item) => `<button type="button" data-variant="${item.key}" aria-pressed="${item.key === current}">${item.key.slice(0, 1).toUpperCase()}</button>`,
+          )
+          .join("");
+        const setVariant = (key) => {
+          const url = new URL(location.href);
+          url.searchParams.set("variant", key);
+          history.replaceState({}, "", url);
+          state.dashboardGraphOpen = false;
+          render();
+        };
+        document.querySelector("#previous-variant").onclick = () =>
+          setVariant(variants[(index - 1 + variants.length) % variants.length].key);
+        document.querySelector("#next-variant").onclick = () =>
+          setVariant(variants[(index + 1) % variants.length].key);
+        document.querySelectorAll("[data-variant]").forEach((button) => {
+          button.onclick = () => setVariant(button.dataset.variant);
+        });
+      }
+
+      document.addEventListener("keydown", (event) => {
+        if (event.target.matches("input, textarea, select, [contenteditable='true']")) {
+          return;
+        }
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        event.preventDefault();
+        document
+          .querySelector(event.key === "ArrowLeft" ? "#previous-variant" : "#next-variant")
+          .click();
+      });
+
+      resetNeighborhood();
+      render();
+    </script>
+  </body>
+</html>
