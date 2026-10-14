@@ -2,9 +2,9 @@
 
 decision-graph is a Node.js tool for indexing architecture decision records
 (ADRs) and session decision records (SDRs) so developers and coding agents can
-find applicable decisions. The Phase 4 CLI supports initializing a project,
-importing and syncing records, creating ADR drafts, and querying the local
-decision graph.
+find applicable decisions. The CLI supports initializing a project, importing
+and syncing records, creating ADR drafts, querying the local decision graph,
+and exposing those workflows to agents through an MCP stdio server.
 
 ## Table of Contents
 
@@ -15,6 +15,7 @@ decision graph.
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Configuration](#configuration)
+- [MCP clients](docs/mcp.md)
 - [Security](#security)
 - [How to Contribute](#how-to-contribute)
 - [What's Next](#whats-next)
@@ -26,9 +27,9 @@ decision graph.
 
 This repository is transitioning from the Engineering Journey System (EJS),
 which recorded whole agent sessions, to decision-graph, which is intended to
-make durable decisions and their rules easier to search and apply. The current repository contains the CLI scaffold, its implementation plan, and
-an inactive EJS archive. Decision indexing and other product workflows remain
-planned.
+make durable decisions and their rules easier to search and apply. The local
+CLI, SQLite index, record formats, and MCP stdio server are implemented.
+Multi-project remote storage remains planned.
 
 See the [implementation plan](docs/IMPLEMENTATION-PLAN.md) for planned scope
 and progress, the [user guide](docs/user-guide.md) for the repository's current
@@ -39,29 +40,32 @@ operational status.
 
 | Capability | Status |
 |---|---|
-| CLI scaffold (`dg --help`, `dg --version`) | Implemented |
-| Decision indexing and search | Planned; not implemented |
-| ADR and SDR formats and relationship graph | Planned; not implemented |
-| Agent access through CLI, MCP, or generated instructions | Planned; not implemented |
+| CLI decision indexing, queries, SDR capture, lint, verification, and graph export | Implemented |
+| MCP stdio server (`search`, `context`, `get`, `related`, `list`, `sdr_add`, `lint`) | Implemented |
+| Agent instructions compiled into `AGENTS.md` | Implemented |
 | Multi-project server and remote storage | Planned; not implemented |
 | EJS historical material | Preserved in [`legacy/`](legacy/README.md); inactive and not maintained as runtime tooling |
 
 ## Tech Stack
 
-The CLI scaffold requires Node.js 26 or newer, TypeScript, and Commander.
-SQLite, Postgres, record parsing, and the remaining application capabilities
-are planned; they are not implemented yet.
+The package requires Node.js 26 or newer and uses TypeScript, Commander, the
+Model Context Protocol SDK, and SQLite via `better-sqlite3`. Postgres and the
+multi-project server remain planned.
 
 ## Architecture
 
-The current runtime is a small Node.js CLI scaffold. Its application
-architecture and data stores are not implemented yet; the EJS materials are
-isolated under `legacy/`.
+The local runtime consists of a CLI and stdio MCP server backed by a SQLite
+index. Markdown decision records remain the source of truth; the SQLite
+database is a rebuildable index. The EJS materials are isolated under
+`legacy/`.
 
 ```mermaid
 flowchart LR
-  Contributor --> CLI["dg --help / --version"]
-  CLI --> GitRepository[Git repository]
+  Contributor --> CLI["dg CLI"]
+  Agent --> MCP["dg mcp (stdio)"]
+  CLI --> SQLite[(SQLite index)]
+  MCP --> SQLite
+  SQLite --> GitRepository[Markdown decision records]
   GitRepository --> Plan[Implementation plan]
   GitRepository --> Archive[Inactive EJS archive]
 ```
@@ -83,8 +87,7 @@ been adopted yet; see the [ADR index](docs/adr/README.md).
 
 ## Getting Started
 
-The `dg` CLI scaffold can be built from source. Only `--help` and `--version`
-are implemented; decision-management commands are not available yet.
+Build the CLI from source to use its decision-management and MCP commands.
 
 Prerequisites: Git and Node.js 26 or newer with npm.
 
@@ -96,20 +99,23 @@ npm run build
 node dist/cli.js --help
 ```
 
-Use `node dist/cli.js --version` to print the package version. Contributors can
-run `npm run lint`, `npm run format:check`, `npm run typecheck`, and `npm test`.
-The package is not published to npm yet.
+Use `node dist/cli.js --help` to list commands. For MCP client setup, see the
+[MCP configuration guide](docs/mcp.md). Contributors can run `npm run lint`,
+`npm run format:check`, `npm run typecheck`, and `npm test`. The package is not
+published to npm yet.
 
 ## Configuration
 
-The CLI scaffold has no runtime configuration or environment variables. The
-`.dg/config.json` format and `DG_TEST_PG_URL` mentioned in the implementation
-plan are planned features, not supported settings today.
+`dg init` creates project configuration in `.dg/config.json` and a local
+`.dg/graph.db` index. MCP clients launch `dg mcp` in the project directory; see
+the [MCP configuration guide](docs/mcp.md). `DG_TEST_PG_URL` is reserved for
+the planned Postgres implementation.
 
 ## Security
 
-The CLI scaffold does not run a service or handle credentials, and has no
-application authentication or authorization model.
+The MCP server runs as a local stdio subprocess and accesses the current
+project's Markdown records and SQLite index. It does not bind a network port or
+handle credentials.
 Do not put credentials or other secrets in tracked files. For a suspected
 vulnerability, avoid posting sensitive exploit details publicly; use GitHub's
 private vulnerability reporting if it is enabled for this repository. No
@@ -126,10 +132,10 @@ GitHub pull-request workflow.
 
 ## What's Next
 
-Phases 0-4 are complete. SDR workflows, full agent-instruction compilation,
-verification and linting, MCP, and optional remote storage remain planned; see
-the [implementation plan](docs/IMPLEMENTATION-PLAN.md) for status and
-acceptance criteria.
+Phases 0-7 are complete. Postgres storage, the multi-project server, and
+push/pull remain planned; see the
+[implementation plan](docs/IMPLEMENTATION-PLAN.md) for status and acceptance
+criteria.
 
 ## License
 

@@ -3,14 +3,11 @@ import {
   lstatSync,
   mkdirSync,
   readFileSync,
-  readdirSync,
   realpathSync,
-  statSync,
   writeFileSync,
 } from 'node:fs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
-import picomatch from 'picomatch';
 import { dump, load } from 'js-yaml';
 import type { Command } from 'commander';
 import {
@@ -22,7 +19,10 @@ import {
   type DecisionRecord,
   type SdrRecord,
 } from '../core/index.js';
-import { lintRecords, type LintDiagnostic } from '../core/lint.js';
+import { getContextRules } from '../core/context.js';
+import { collectMarkdownFiles } from '../core/markdown-files.js';
+import { lintProject } from '../core/project-lint.js';
+import { createSdr } from '../core/sdr.js';
 import {
   SQLiteStore,
   type EdgeKind,
@@ -31,6 +31,7 @@ import {
   type NodeFilter,
   type Store,
 } from '../store/index.js';
+import { runMcpServer } from '../mcp/server.js';
 
 const CONFIG_PATH = '.dg/config.json';
 const DEFAULT_ADR_DIR = 'docs/decisions/adr';
@@ -251,105 +252,27 @@ export function registerCommands(program: Command): void {
     .action(async (options: { json?: boolean }) => {
       const runtime = openRuntime(process.cwd());
       try {
-        const indexed = await runtime.store.list(runtime.config.project);
-        const files = new Set([
-          ...collectMarkdownFiles(
-            path.resolve(runtime.root, runtime.config.adrDir),
-          ),
-          ...collectMarkdownFiles(
-            path.resolve(runtime.root, runtime.config.sdrDir),
-          ),
-          ...indexed.map((record) => path.resolve(runtime.root, record.path)),
-        ]);
-        const records: DecisionRecord[] = [];
-        const diagnostics: LintDiagnostic[] = [];
-        for (const file of [...files].sort()) {
-          if (!existsSync(file)) continue;
-          const content = readFileSync(file, 'utf8');
-          const lineCount = countLines(content);
-          const relativePath = path
-            .relative(runtime.root, file)
-            .split(path.sep)
-            .join('/');
-          if (lineCount > 200) {
-            diagnostics.push({
-              severity: 'warning',
-              code: 'line-budget',
-              path: relativePath,
-              message: `Record has ${lineCount} lines; the budget is 200.`,
-            });
-          }
-          try {
-            records.push(parseFile(runtime.root, file, 'auto'));
-          } catch (error) {
-            diagnostics.push({
-              severity: 'error',
-              code: 'schema',
-              path: relativePath,
-              message: error instanceof Error ? error.message : String(error),
-            });
-          }
-        }
-        const analysis = lintRecords(records);
-        diagnostics.push(...analysis.diagnostics);
-        await runtime.store.deleteEdges(
-          runtime.config.project,
-          undefined,
-          'conflicts_with',
+        const result = await lintProject(
+          runtime.root,
+          runtime.config,
+          runtime.store,
         );
-        for (const conflict of analysis.conflicts) {
-          await runtime.store.addEdge(
-            runtime.config.project,
-            conflict.first,
-            conflict.second,
-            'conflicts_with',
-          );
-          await runtime.store.addEdge(
-            runtime.config.project,
-            conflict.second,
-            conflict.first,
-            'conflicts_with',
-          );
-        }
-        diagnostics.sort(
-          (first, second) =>
-            compareText(first.severity, second.severity) ||
-            compareText(first.code, second.code) ||
-            compareText(
-              first.id ?? first.path ?? '',
-              second.id ?? second.path ?? '',
-            ),
-        );
-        const errors = diagnostics.filter(
-          (diagnostic) => diagnostic.severity === 'error',
-        ).length;
         if (options.json) {
-          console.log(
-            JSON.stringify(
-              {
-                ok: errors === 0,
-                errors,
-                warnings: diagnostics.length - errors,
-                diagnostics,
-              },
-              null,
-              2,
-            ),
-          );
-        } else if (diagnostics.length === 0) {
+          console.log(JSON.stringify(result, null, 2));
+        } else if (result.diagnostics.length === 0) {
           console.log('No decision-record issues found.');
         } else {
-          for (const diagnostic of diagnostics) {
+          for (const diagnostic of result.diagnostics) {
             const location = diagnostic.path ? ` ${diagnostic.path}` : '';
             console.log(
               `${diagnostic.severity.toUpperCase()} ${diagnostic.code}${location}: ${diagnostic.message}`,
             );
           }
           console.log(
-            `${errors} error(s), ${diagnostics.length - errors} warning(s).`,
+            `${result.errors} error(s), ${result.warnings} warning(s).`,
           );
         }
-        if (errors > 0) process.exitCode = 1;
+        if (result.errors > 0) process.exitCode = 1;
       } finally {
         runtime.store.close();
       }
@@ -453,8 +376,14 @@ export function registerCommands(program: Command): void {
       ) => {
         const runtime = openRuntime(process.cwd());
         try {
-          const file = await createSdr(runtime, title, options);
-          console.log(`Created ${path.relative(runtime.root, file)}`);
+          const result = await createSdr(
+            runtime.root,
+            runtime.config,
+            runtime.store,
+            title,
+            options,
+          );
+          console.log(`Created ${path.relative(runtime.root, result.path)}`);
         } finally {
           runtime.store.close();
         }
@@ -574,26 +503,10 @@ export function registerCommands(program: Command): void {
     .action(async (files: string[], options: { json?: boolean }) => {
       const runtime = openRuntime(process.cwd());
       try {
-        const normalizedFiles = files.map(normalizeFilePath);
-        const matches = await runtime.store.byGlobMatch(
+        const rules = await getContextRules(
+          runtime.store,
           runtime.config.project,
-          normalizedFiles,
-        );
-        const accepted = matches.filter(
-          (record) => record.type === 'adr' && record.status === 'accepted',
-        );
-        accepted.sort(
-          (a, b) =>
-            ruleSpecificity(b, normalizedFiles) -
-              ruleSpecificity(a, normalizedFiles) || a.id.localeCompare(b.id),
-        );
-        const rules = accepted.flatMap((record) =>
-          record.rules.map((rule) => ({
-            ...rule,
-            recordId: record.id,
-            title: record.title,
-            appliesTo: record.appliesTo,
-          })),
+          files,
         );
         if (options.json) {
           console.log(JSON.stringify(rules, null, 2));
@@ -636,6 +549,11 @@ export function registerCommands(program: Command): void {
         }
       },
     );
+
+  program
+    .command('mcp')
+    .description('Start the Model Context Protocol stdio server')
+    .action(async () => runMcpServer(process.cwd()));
 }
 
 async function initProject(
@@ -833,24 +751,6 @@ function parseFile(
   return parseRecord(readFileSync(file, 'utf8'), relative, format);
 }
 
-function collectMarkdownFiles(target: string): string[] {
-  if (!existsSync(target)) return [];
-  const stat = statSync(target);
-  if (stat.isFile()) return /\.md$/i.test(target) ? [target] : [];
-  if (!stat.isDirectory()) return [];
-  const files: string[] = [];
-  const visit = (directory: string): void => {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      const entryPath = path.join(directory, entry.name);
-      if (entry.isDirectory()) visit(entryPath);
-      else if (entry.isFile() && /\.md$/i.test(entry.name))
-        files.push(entryPath);
-    }
-  };
-  visit(target);
-  return files;
-}
-
 function ensureGitignore(root: string): void {
   const file = path.join(root, '.gitignore');
   const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
@@ -871,74 +771,6 @@ async function confirmImport(directories: string[]): Promise<boolean> {
   } finally {
     prompt.close();
   }
-}
-
-async function createSdr(
-  runtime: Runtime,
-  title: string,
-  options: {
-    decision: string;
-    why: string;
-    alt?: string[];
-    appliesTo?: string[];
-    agent?: string;
-    session?: string;
-  },
-): Promise<string> {
-  const date = new Date().toISOString().slice(0, 10);
-  const dateId = date.replaceAll('-', '');
-  const indexed = await runtime.store.list(runtime.config.project, {
-    type: 'sdr',
-  });
-  const fileRecords = collectMarkdownFiles(
-    path.resolve(runtime.root, runtime.config.sdrDir),
-  ).map((file) => parseFile(runtime.root, file, 'auto'));
-  const next = nextSdrNumber(
-    [...indexed, ...fileRecords].map((record) => record.id),
-    dateId,
-  );
-  const id = `SDR-${dateId}-${String(next).padStart(3, '0')}`;
-  const slug =
-    title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') || 'decision';
-  const relativeFile = path.join(runtime.config.sdrDir, `${id}-${slug}.md`);
-  const absoluteFile = path.join(runtime.root, relativeFile);
-  const metadata = {
-    id,
-    type: 'sdr',
-    title,
-    status: 'open',
-    applies_to: options.appliesTo ?? [],
-    tags: [],
-    date,
-    promoted_to: null,
-    ...(options.agent ? { agent: options.agent } : {}),
-    ...(options.session ? { session: options.session } : {}),
-  };
-  const alternatives = options.alt?.length
-    ? options.alt.map((alternative) => `- ${alternative}`).join('\n')
-    : 'None.';
-  const content = `---\n${dump(metadata, { noRefs: true, lineWidth: -1 }).trimEnd()}\n---\n\n# ${id}: ${title}\n\n## Decision\n\n${options.decision}\n\n## Why\n\n${options.why}\n\n## Alternatives considered\n\n${alternatives}\n`;
-  mkdirSync(path.dirname(absoluteFile), { recursive: true });
-  writeFileSync(absoluteFile, content, { flag: 'wx' });
-  const record = parseRecord(
-    content,
-    relativeFile.split(path.sep).join('/'),
-    'hybrid',
-  );
-  await indexRecords(runtime.store, runtime.config, [record]);
-  return absoluteFile;
-}
-
-function nextSdrNumber(ids: string[], dateId: string): number {
-  return (
-    ids.reduce((max, id) => {
-      const match = new RegExp(`^SDR-${dateId}-(\\d+)$`, 'i').exec(id);
-      return match ? Math.max(max, Number(match[1])) : max;
-    }, 0) + 1
-  );
 }
 
 async function promoteSdr(runtime: Runtime, id: string): Promise<string> {
@@ -1228,19 +1060,6 @@ function parseDepth(value: string): number {
   return depth;
 }
 
-function normalizeFilePath(file: string): string {
-  return path.normalize(file).split(path.sep).join('/').replace(/^\.\//, '');
-}
-
-function ruleSpecificity(record: GraphNode, files: string[]): number {
-  return record.appliesTo.reduce((specificity, pattern) => {
-    const matchesFile = files.some((file) => picomatch.isMatch(file, pattern));
-    return matchesFile
-      ? Math.max(specificity, pattern.replace(/[*?[\]{}!]/g, '').length)
-      : specificity;
-  }, 0);
-}
-
 async function compileInstructions(
   root: string,
   config: Config,
@@ -1490,11 +1309,6 @@ function parsePositiveSeconds(value: string): number {
     throw new Error('Timeout must be a positive number of seconds');
   }
   return seconds;
-}
-
-function countLines(content: string): number {
-  if (content.length === 0) return 0;
-  return content.split(/\r?\n/).length - (/\r?\n$/.test(content) ? 1 : 0);
 }
 
 function renderManagedBlock(
