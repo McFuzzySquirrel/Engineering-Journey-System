@@ -21,6 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
     "commander": "^14.0.2",
     "gray-matter": "^4.0.3",
     "js-yaml": "^4.3.2",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^26.6.5",
     "eslint": "^10.12.0",
