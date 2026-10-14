@@ -21,7 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "better-sqlite3": "^13.0.3",
+    "better-sqlite3": "^12.11.1",
     "commander": "^14.0.2",
     "gray-matter": "^4.0.3",
     "js-yaml": "^4.3.2",

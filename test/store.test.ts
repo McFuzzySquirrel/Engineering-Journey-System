@@ -41,6 +41,64 @@ it('upserts nodes idempotently and keeps projects isolated', async () => {
   await expect(store.get('project-b', adr.id)).resolves.toBeNull();
 });
 
+it('filters listed nodes by type, status, and tag', async () => {
+  const accepted = makeAdr('ADR-0001', 'Use SQLite', ['src/**'], 'accepted', [
+    'storage',
+  ]);
+  const proposed = makeAdr(
+    'ADR-0002',
+    'Consider PostgreSQL',
+    ['src/**'],
+    'proposed',
+    ['database'],
+  );
+  const sdr = parseRecord(
+    `---
+id: SDR-20261013-001
+type: sdr
+title: Capture a session decision
+status: open
+tags: [session]
+---
+
+## Decision
+
+Record the decision.
+`,
+    'docs/decisions/sdr/SDR-20261013-001.md',
+    'hybrid',
+  );
+
+  for (const record of [accepted, proposed, sdr]) {
+    await store.upsertNode('project-a', record);
+  }
+
+  await expect(store.list('project-a', { type: 'adr' })).resolves.toMatchObject(
+    [{ id: accepted.id }, { id: proposed.id }],
+  );
+  await expect(store.list('project-a', { type: 'sdr' })).resolves.toMatchObject(
+    [{ id: sdr.id }],
+  );
+  await expect(
+    store.list('project-a', { status: 'accepted' }),
+  ).resolves.toMatchObject([{ id: accepted.id }]);
+  await expect(
+    store.list('project-a', { status: 'proposed' }),
+  ).resolves.toMatchObject([{ id: proposed.id }]);
+  await expect(
+    store.list('project-a', { status: 'deprecated' }),
+  ).resolves.toEqual([]);
+  await expect(
+    store.list('project-a', { tag: 'storage' }),
+  ).resolves.toMatchObject([{ id: accepted.id }]);
+  await expect(
+    store.list('project-a', { tag: 'database' }),
+  ).resolves.toMatchObject([{ id: proposed.id }]);
+  await expect(store.list('project-a', { tag: 'missing' })).resolves.toEqual(
+    [],
+  );
+});
+
 it('deletes stale nodes, their edges, and full-text entries', async () => {
   const first = makeAdr('ADR-0001', 'Keep SQLite', ['src/**']);
   const stale = makeAdr('ADR-0002', 'Remove PostgreSQL', ['src/**']);
@@ -106,15 +164,21 @@ it('matches any requested file against node globs', async () => {
   await expect(store.byGlobMatch('project-a', [])).resolves.toEqual([]);
 });
 
-function makeAdr(id: string, title: string, appliesTo: string[]) {
+function makeAdr(
+  id: string,
+  title: string,
+  appliesTo: string[],
+  status = 'accepted',
+  tags = ['storage'],
+) {
   return parseRecord(
     `---
 id: ${id}
 type: adr
 title: ${title}
-status: accepted
+status: ${status}
 applies_to: ${JSON.stringify(appliesTo)}
-tags: [storage]
+tags: ${JSON.stringify(tags)}
 ---
 
 # ${id}: ${title}
