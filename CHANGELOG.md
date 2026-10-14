@@ -11,6 +11,7 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Node.js/TypeScript package scaffold with a `dg` help/version CLI and cross-platform CI.
 - Project documentation describing current status, contribution workflow,
   operational limitations, and planned scope.
 - Initial user and administrator guides, an ADR index, and unreleased notes.

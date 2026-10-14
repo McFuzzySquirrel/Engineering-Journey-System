@@ -1,6 +1,6 @@
 # decision-graph (`dg`) — Implementation Plan
 
-> Status: **Phase 0 complete; Phases 1-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
+> Status: **Phase 0 complete; Phase 1 awaiting CI; Phases 2-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
 > Tick boxes as work lands. Each phase has acceptance criteria. The phase is done only when every criterion is met.
 
 ---
@@ -214,15 +214,19 @@ Planned dependencies: `commander`, `better-sqlite3`, `pg`, `zod`, `gray-matter`,
 to origin. The original README and recording instructions are also archived.
 Untracked journeys and ignored logs remain preserved locally, not added to Git.
 The active EJS hook configuration is absent; no EJS workflows are run to validate
-this retirement. Phase 1 remains unstarted.
+this retirement.
 
 ### Phase 1 — Package scaffold
-- [ ] `package.json` (name `decision-graph`, `bin: { dg }`, `engines.node >= 20`, ESM)
-- [ ] `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`, eslint + prettier
-- [ ] `src/cli/index.ts` with `dg --version` / `dg --help`
-- [ ] GitHub Actions CI: install, lint, typecheck, test on Node 20 & 22 (ubuntu, macos, windows)
+- [x] `package.json` (name `decision-graph`, `bin: { dg }`, `engines.node ^20.19 || ^22.13 || >=24`, ESM)
+- [x] `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`, eslint + prettier
+- [x] `src/cli/index.ts` with `dg --version` / `dg --help`
+- [x] GitHub Actions CI: install, lint, format, typecheck, test, build, and smoke-test CLI help/version on Node 20.19, 22.13, and 24 (ubuntu, macos, windows)
 
 **Acceptance:** `npm run build && node dist/cli.js --help` works. CI is green.
+
+**Completion notes:** The build, CLI help/version, lint, format check, typecheck,
+tests, and dependency audit pass locally. The nine-way Node 20.19/22.13/24 ×
+Ubuntu/macOS/Windows CI workflow is configured; its first remote run is pending.
 
 ### Phase 2 — Core model & parsers
 - [ ] zod schemas for ADR, SDR, and config. Errors include file and field
@@ -319,7 +323,7 @@ this retirement. Phase 1 remains unstarted.
 
 ## 7. Risks & notes
 
-- **better-sqlite3 is a native module.** It ships prebuilt binaries for common platforms. Document Node ≥ 20 and the build-from-source fallback.
+- **better-sqlite3 is a native module.** It ships prebuilt binaries for common platforms. Document Node 20.19+, 22.13+, or 24+ and the build-from-source fallback.
 - **`--convert` uses heuristics.** It pulls imperative sentences out of prose. Its output is always `proposed` and needs human review. There is no LLM dependency in v1.
 - **Conflict detection uses heuristics.** It errs toward warnings, not errors.
 - **There is no auth in v1.** The server binds to localhost by default and warns loudly otherwise. Token auth is a follow-up.
