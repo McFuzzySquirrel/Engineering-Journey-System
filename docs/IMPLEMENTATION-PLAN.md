@@ -67,7 +67,7 @@ deciders: [Frontend team]
 
 ## Verify
 
-- **Check:** `rg "<img " app/ && exit 1 || exit 0`
+- **Check:** `test -d app && ! rg -q "<img " app/`
 - **Expected:** The command exits successfully without finding a raw `<img>` tag.
 
 ## Context and Problem Statement
@@ -113,7 +113,7 @@ both performance and layout stability through one enforceable convention.
 
 ## Links
 
-- Related: [Framework image documentation](https://example.com/image-docs)
+None.
 ````
 
 Rules:
@@ -271,7 +271,7 @@ this retirement. Phase 1 remains unstarted.
   - a short usage section ("run `dg context <files>` before editing; record decisions with `dg sdr add`; MCP server: `dg mcp`")
   - a compact index of accepted rules (`ADR-0001#1 [**/*.tsx] MUST …`), trimmed to `tokenBudget`. When trimmed, it says to use `dg context` for the full list
   - deterministic output, so diffs stay clean
-- [ ] `dg verify [id...] [--timeout s]` runs automated `Check` commands from the repo root and compares their observable result with `Expected`. It prints a pass/fail/skip table and exits non-zero on failure; manual checks and records without checks are skipped with the review procedure shown
+- [ ] `dg verify [id...] [--timeout s]` runs automated `Check` commands from the repo root, uses their exit status for pass/fail, and displays `Expected` with the result. It prints a pass/fail/skip table and exits non-zero on failure; manual checks and records without checks are skipped with the review procedure shown
 - [ ] `dg lint`:
   - schema errors, duplicate IDs, unknown link targets, supersede cycles
   - accepted records that are superseded but not marked `superseded`
