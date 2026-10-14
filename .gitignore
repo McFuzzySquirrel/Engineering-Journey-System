@@ -10,6 +10,9 @@ game/package-lock.json
 .ejs.db
 .ejs-session-active
 .ejs-session-incomplete
+.dg/graph.db
+.dg/graph.db-wal
+.dg/graph.db-shm
 __pycache__/
 .pytest_cache/
-logs/*.jsonl
+legacy/logs/*.jsonl
