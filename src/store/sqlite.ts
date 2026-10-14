@@ -55,6 +55,10 @@ export class SQLiteStore implements Store {
   }
 
   async upsertProject(project: Project): Promise<void> {
+    this.upsertProjectSync(project);
+  }
+
+  private upsertProjectSync(project: Project): void {
     this.db
       .prepare(
         `INSERT INTO projects (id, name, type, origin, updated_at)
@@ -66,6 +70,18 @@ export class SQLiteStore implements Store {
            updated_at = excluded.updated_at`,
       )
       .run({ ...project, origin: project.origin ?? null, updatedAt: now() });
+  }
+
+  private updateFtsRecord(projectId: string, record: DecisionRecord): void {
+    this.db
+      .prepare('DELETE FROM nodes_fts WHERE project_id = ? AND node_id = ?')
+      .run(projectId, record.id);
+    this.db
+      .prepare(
+        `INSERT INTO nodes_fts (project_id, node_id, title, body)
+         VALUES (?, ?, ?, ?)`,
+      )
+      .run(projectId, record.id, record.title, record.body);
   }
 
   async listProjects(): Promise<Project[]> {
@@ -92,6 +108,10 @@ export class SQLiteStore implements Store {
     projectId: string,
     record: DecisionRecord,
   ): Promise<boolean> {
+    return this.upsertNodeSync(projectId, record);
+  }
+
+  private upsertNodeSync(projectId: string, record: DecisionRecord): boolean {
     const existing = this.db
       .prepare('SELECT hash, path FROM nodes WHERE project_id = ? AND id = ?')
       .get(projectId, record.id) as { hash: string; path: string } | undefined;
@@ -145,18 +165,57 @@ export class SQLiteStore implements Store {
             updated_at = excluded.updated_at`,
         )
         .run(node);
-      this.db
-        .prepare('DELETE FROM nodes_fts WHERE project_id = ? AND node_id = ?')
-        .run(projectId, record.id);
-      this.db
-        .prepare(
-          `INSERT INTO nodes_fts (project_id, node_id, title, body)
-           VALUES (?, ?, ?, ?)`,
-        )
-        .run(projectId, record.id, record.title, record.body);
+      this.updateFtsRecord(projectId, record);
     });
     update();
     return true;
+  }
+
+  async insertNodeIfAbsent(
+    projectId: string,
+    record: DecisionRecord,
+  ): Promise<boolean> {
+    const node = toNodeRow(projectId, record);
+    return this.db.transaction(() => {
+      const inserted = this.db
+        .prepare(
+          `INSERT INTO nodes (
+            project_id, id, type, title, status, applies_to, tags, rules,
+            verify, body, path, hash, date, updated_at
+          ) VALUES (
+            @project_id, @id, @type, @title, @status, @applies_to, @tags,
+            @rules, @verify, @body, @path, @hash, @date, @updated_at
+          )
+          ON CONFLICT(project_id, id) DO NOTHING`,
+        )
+        .run(node);
+      if (inserted.changes === 0) return false;
+      this.updateFtsRecord(projectId, record);
+      return true;
+    })();
+  }
+
+  async applyProjectPush(
+    project: Project,
+    records: DecisionRecord[],
+    edges: GraphEdge[],
+  ): Promise<number> {
+    return this.db.transaction(() => {
+      this.upsertProjectSync(project);
+      let changed = 0;
+      for (const record of records) {
+        if (this.upsertNodeSync(project.id, record)) changed += 1;
+      }
+      this.db.prepare('DELETE FROM edges WHERE project_id = ?').run(project.id);
+      const insertEdge = this.db.prepare(
+        `INSERT INTO edges (project_id, src, dst, kind)
+         VALUES (?, ?, ?, ?)`,
+      );
+      for (const edge of edges) {
+        insertEdge.run(project.id, edge.src, edge.dst, edge.kind);
+      }
+      return changed;
+    })();
   }
 
   async deleteMissing(projectId: string, ids: string[]): Promise<number> {
@@ -399,6 +458,25 @@ function mapNode(row: NodeRow): GraphNode {
     contentHash: row.hash,
     date: row.date ?? undefined,
     updatedAt: row.updated_at,
+  };
+}
+
+function toNodeRow(projectId: string, record: DecisionRecord): NodeRow {
+  return {
+    project_id: projectId,
+    id: record.id,
+    type: record.type,
+    title: record.title,
+    status: record.status,
+    applies_to: JSON.stringify(record.appliesTo),
+    tags: JSON.stringify(record.tags),
+    rules: JSON.stringify(record.type === 'adr' ? record.rules : []),
+    verify: JSON.stringify(record.type === 'adr' ? record.verify : []),
+    body: record.body,
+    path: record.path,
+    hash: record.contentHash,
+    date: record.date ?? null,
+    updated_at: now(),
   };
 }
 

@@ -144,32 +144,58 @@ it('exposes cross-project query selectors through streamable HTTP MCP', async ()
       name: 'search',
       arguments: { query: 'icon', projectType: 'library' },
     });
-    if (
-      typeof response !== 'object' ||
-      response === null ||
-      !('content' in response) ||
-      !Array.isArray(response.content)
-    ) {
-      throw new Error('MCP tool response has no content array');
-    }
-    const textContent = response.content.find(
-      (item: unknown): item is { type: 'text'; text: string } =>
-        typeof item === 'object' &&
-        item !== null &&
-        'type' in item &&
-        item.type === 'text' &&
-        'text' in item &&
-        typeof item.text === 'string',
-    );
-    if (!textContent) throw new Error('MCP tool response has no text content');
-    expect(JSON.parse(textContent.text)).toMatchObject([
+    expect(JSON.parse(toolText(response))).toMatchObject([
       { projectId: 'project-library', id: 'ADR-0001' },
     ]);
+
+    const sdrResponses = await Promise.all(
+      Array.from({ length: 8 }, (_, index) =>
+        client.callTool({
+          name: 'sdr_add',
+          arguments: {
+            title: `Concurrent decision ${index}`,
+            decision: `Decision ${index}.`,
+            why: 'Preserve every concurrent decision.',
+            project: 'project-library',
+          },
+        }),
+      ),
+    );
+    const sdrIds = sdrResponses.map((result) => {
+      const sdr = JSON.parse(toolText(result)) as { id: string };
+      return sdr.id;
+    });
+    expect(new Set(sdrIds).size).toBe(sdrResponses.length);
+    await expect(
+      serverStore?.list('project-library', { type: 'sdr' }),
+    ).resolves.toHaveLength(8);
   } finally {
     await client.close();
     await transport.close();
   }
 });
+
+function toolText(response: unknown): string {
+  if (
+    typeof response !== 'object' ||
+    response === null ||
+    !('content' in response) ||
+    !Array.isArray(response.content)
+  ) {
+    throw new Error('MCP tool response has no content array');
+  }
+  const textContent = response.content.find(
+    (item: unknown): item is { type: 'text'; text: string } =>
+      typeof item === 'object' &&
+      item !== null &&
+      'type' in item &&
+      item.type === 'text' &&
+      'text' in item &&
+      typeof item.text === 'string',
+  );
+  if (!textContent) throw new Error('MCP tool response has no text content');
+  return textContent.text;
+}
 
 async function startServer(): Promise<void> {
   const root = mkdtempSync(path.join(os.tmpdir(), 'decision-graph-server-'));

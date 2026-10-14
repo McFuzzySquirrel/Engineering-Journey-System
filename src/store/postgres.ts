@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 import picomatch from 'picomatch';
 import type { DecisionRecord } from '../core/schema.js';
 import type {
@@ -82,56 +82,61 @@ export class PostgresStore implements Store {
     record: DecisionRecord,
   ): Promise<boolean> {
     await this.ready;
-    const existing = await this.pool.query<{ hash: string; path: string }>(
-      'SELECT hash, path FROM nodes WHERE project_id = $1 AND id = $2',
-      [projectId, record.id],
-    );
-    if (
-      existing.rows[0]?.hash === record.contentHash &&
-      existing.rows[0]?.path === record.path
-    ) {
-      return false;
+    const client = await this.pool.connect();
+    try {
+      return await this.writeNodeWithClient(client, projectId, record, false);
+    } finally {
+      client.release();
     }
-    await this.pool.query(
-      `INSERT INTO nodes (
-         project_id, id, type, title, status, applies_to, tags, rules,
-         verify, body, path, hash, date, updated_at, search_vector
-       ) VALUES (
-         $1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb,
-         $9::jsonb, $10, $11, $12, $13, NOW(),
-         to_tsvector('english', $4 || ' ' || $10)
-       )
-       ON CONFLICT (project_id, id) DO UPDATE SET
-         type = EXCLUDED.type,
-         title = EXCLUDED.title,
-         status = EXCLUDED.status,
-         applies_to = EXCLUDED.applies_to,
-         tags = EXCLUDED.tags,
-         rules = EXCLUDED.rules,
-         verify = EXCLUDED.verify,
-         body = EXCLUDED.body,
-         path = EXCLUDED.path,
-         hash = EXCLUDED.hash,
-         date = EXCLUDED.date,
-         updated_at = NOW(),
-         search_vector = EXCLUDED.search_vector`,
-      [
-        projectId,
-        record.id,
-        record.type,
-        record.title,
-        record.status,
-        JSON.stringify(record.appliesTo),
-        JSON.stringify(record.tags),
-        JSON.stringify(record.type === 'adr' ? record.rules : []),
-        JSON.stringify(record.type === 'adr' ? record.verify : []),
-        record.body,
-        record.path,
-        record.contentHash,
-        record.date ?? null,
-      ],
-    );
-    return true;
+  }
+
+  async insertNodeIfAbsent(
+    projectId: string,
+    record: DecisionRecord,
+  ): Promise<boolean> {
+    await this.ready;
+    const client = await this.pool.connect();
+    try {
+      return await this.writeNodeWithClient(client, projectId, record, true);
+    } finally {
+      client.release();
+    }
+  }
+
+  async applyProjectPush(
+    project: Project,
+    records: DecisionRecord[],
+    edges: GraphEdge[],
+  ): Promise<number> {
+    await this.ready;
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await this.upsertProjectWithClient(client, project);
+      let changed = 0;
+      for (const record of records) {
+        if (await this.writeNodeWithClient(client, project.id, record, false)) {
+          changed += 1;
+        }
+      }
+      await client.query('DELETE FROM edges WHERE project_id = $1', [
+        project.id,
+      ]);
+      for (const edge of edges) {
+        await client.query(
+          `INSERT INTO edges (project_id, src, dst, kind)
+           VALUES ($1, $2, $3, $4)`,
+          [project.id, edge.src, edge.dst, edge.kind],
+        );
+      }
+      await client.query('COMMIT');
+      return changed;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async deleteMissing(projectId: string, ids: string[]): Promise<number> {
@@ -285,6 +290,76 @@ export class PostgresStore implements Store {
         files.some((file) => picomatch.isMatch(file, pattern)),
       ),
     );
+  }
+
+  private async upsertProjectWithClient(
+    client: PoolClient,
+    project: Project,
+  ): Promise<void> {
+    await client.query(
+      `INSERT INTO projects (id, name, type, origin, updated_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+         type = EXCLUDED.type,
+         origin = EXCLUDED.origin,
+         updated_at = NOW()`,
+      [project.id, project.name, project.type, project.origin ?? null],
+    );
+  }
+
+  private async writeNodeWithClient(
+    client: PoolClient,
+    projectId: string,
+    record: DecisionRecord,
+    insertOnly: boolean,
+  ): Promise<boolean> {
+    const conflictAction = insertOnly
+      ? 'ON CONFLICT (project_id, id) DO NOTHING'
+      : `ON CONFLICT (project_id, id) DO UPDATE SET
+           type = EXCLUDED.type,
+           title = EXCLUDED.title,
+           status = EXCLUDED.status,
+           applies_to = EXCLUDED.applies_to,
+           tags = EXCLUDED.tags,
+           rules = EXCLUDED.rules,
+           verify = EXCLUDED.verify,
+           body = EXCLUDED.body,
+           path = EXCLUDED.path,
+           hash = EXCLUDED.hash,
+           date = EXCLUDED.date,
+           updated_at = NOW(),
+           search_vector = EXCLUDED.search_vector
+         WHERE nodes.hash IS DISTINCT FROM EXCLUDED.hash
+            OR nodes.path IS DISTINCT FROM EXCLUDED.path`;
+    const result = await client.query<{ id: string }>(
+      `INSERT INTO nodes (
+         project_id, id, type, title, status, applies_to, tags, rules,
+         verify, body, path, hash, date, updated_at, search_vector
+       ) VALUES (
+         $1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb,
+         $9::jsonb, $10, $11, $12, $13, NOW(),
+         to_tsvector('english', $4 || ' ' || $10)
+       )
+       ${conflictAction}
+       RETURNING id`,
+      [
+        projectId,
+        record.id,
+        record.type,
+        record.title,
+        record.status,
+        JSON.stringify(record.appliesTo),
+        JSON.stringify(record.tags),
+        JSON.stringify(record.type === 'adr' ? record.rules : []),
+        JSON.stringify(record.type === 'adr' ? record.verify : []),
+        record.body,
+        record.path,
+        record.contentHash,
+        record.date ?? null,
+      ],
+    );
+    return result.rows.length > 0;
   }
 
   private async migrate(): Promise<void> {

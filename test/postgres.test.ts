@@ -34,6 +34,57 @@ describe.skipIf(!connectionString)('PostgresStore', () => {
       await expect(
         store.related(projectId, first.id, 1, ['relates_to']),
       ).resolves.toMatchObject([{ id: second.id }]);
+
+      const updated = makeAdr(first.id, 'Changed storage decision.');
+      const added = makeAdr('ADR-0003', 'Added decision.');
+      await expect(
+        store.applyProjectPush(
+          {
+            id: projectId,
+            name: 'Changed project',
+            type: 'changed',
+          },
+          [updated, added],
+          [{ src: added.id, dst: 'ADR-MISSING', kind: 'relates_to' }],
+        ),
+      ).rejects.toThrow();
+      await expect(store.get(projectId, first.id)).resolves.toMatchObject({
+        title: first.title,
+      });
+      await expect(store.get(projectId, added.id)).resolves.toBeNull();
+      await expect(store.listProjects()).resolves.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: projectId,
+            name: 'Postgres integration test',
+          }),
+        ]),
+      );
+      await expect(
+        store.applyProjectPush(
+          {
+            id: projectId,
+            name: 'Postgres integration test',
+            type: 'library',
+          },
+          [first, second],
+          [{ src: first.id, dst: second.id, kind: 'relates_to' }],
+        ),
+      ).resolves.toBe(0);
+
+      const candidates = Array.from({ length: 10 }, (_, index) =>
+        makeAdr('ADR-COLLISION', `Candidate ${index}.`),
+      );
+      const inserted = await Promise.all(
+        candidates.map((record) => store.insertNodeIfAbsent(projectId, record)),
+      );
+      const winnerIndex = inserted.indexOf(true);
+      expect(winnerIndex).not.toBe(-1);
+      expect(inserted.filter(Boolean)).toHaveLength(1);
+      await expect(
+        store.get(projectId, 'ADR-COLLISION'),
+      ).resolves.toMatchObject({ title: candidates[winnerIndex].title });
+
       await expect(
         store.get(`${projectId}-other`, first.id),
       ).resolves.toBeNull();

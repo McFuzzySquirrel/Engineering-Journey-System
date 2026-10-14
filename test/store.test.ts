@@ -182,6 +182,57 @@ it('matches any requested file against node globs', async () => {
   await expect(store.byGlobMatch('project-a', [])).resolves.toEqual([]);
 });
 
+it('applies a project push atomically when an edge violates a foreign key', async () => {
+  const original = makeAdr('ADR-0001', 'Original', ['src/**']);
+  const related = makeAdr('ADR-0002', 'Related', ['src/**']);
+  await store.upsertNode('project-a', original);
+  await store.upsertNode('project-a', related);
+  await store.addEdge('project-a', original.id, related.id, 'relates_to');
+
+  const updated = makeAdr('ADR-0001', 'Updated', ['src/**']);
+  const added = makeAdr('ADR-0003', 'Added', ['src/**']);
+  await expect(
+    store.applyProjectPush(
+      { id: 'project-a', name: 'Changed name', type: 'changed-type' },
+      [updated, added],
+      [{ src: added.id, dst: 'ADR-MISSING', kind: 'relates_to' }],
+    ),
+  ).rejects.toThrow();
+
+  await expect(store.get('project-a', original.id)).resolves.toMatchObject({
+    title: 'Original',
+  });
+  await expect(store.get('project-a', added.id)).resolves.toBeNull();
+  await expect(store.related('project-a', original.id)).resolves.toMatchObject([
+    { id: related.id },
+  ]);
+  await expect(store.listProjects()).resolves.toEqual(
+    expect.arrayContaining([
+      {
+        id: 'project-a',
+        name: 'Project A',
+        origin: undefined,
+        type: 'cli-tool',
+      },
+    ]),
+  );
+});
+
+it('inserts a colliding node ID once without overwriting its winner', async () => {
+  const candidates = Array.from({ length: 10 }, (_, index) =>
+    makeAdr('ADR-COLLISION', `Candidate ${index}`, ['src/**']),
+  );
+  const inserted = await Promise.all(
+    candidates.map((record) => store.insertNodeIfAbsent('project-a', record)),
+  );
+  const winnerIndex = inserted.indexOf(true);
+  expect(winnerIndex).not.toBe(-1);
+  expect(inserted.filter(Boolean)).toHaveLength(1);
+  await expect(store.get('project-a', 'ADR-COLLISION')).resolves.toMatchObject({
+    title: candidates[winnerIndex].title,
+  });
+});
+
 function makeAdr(
   id: string,
   title: string,

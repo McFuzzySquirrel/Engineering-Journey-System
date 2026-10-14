@@ -265,20 +265,16 @@ async function pushProject(
       }
     }
   }
-  await store.upsertProject({
-    id: projectId,
-    name: payload.project.name,
-    type: payload.project.type,
-    origin: payload.project.origin,
-  });
-  let changed = 0;
-  for (const record of records) {
-    if (await store.upsertNode(projectId, record)) changed += 1;
-  }
-  await store.deleteEdges(projectId);
-  for (const edge of payload.edges) {
-    await store.addEdge(projectId, edge.src, edge.dst, edge.kind);
-  }
+  const changed = await store.applyProjectPush(
+    {
+      id: projectId,
+      name: payload.project.name,
+      type: payload.project.type,
+      origin: payload.project.origin,
+    },
+    records,
+    payload.edges,
+  );
   sendJson(response, 200, {
     project: projectId,
     received: records.length,
@@ -328,39 +324,42 @@ async function addRemoteSdr(
   if (!project) throw new Error(`Project not found: ${projectId}`);
   const date = new Date().toISOString().slice(0, 10);
   const dateId = date.replaceAll('-', '');
-  const ids = (await store.list(projectId, { type: 'sdr' })).map(
-    (node) => node.id,
-  );
-  const numbers = ids
-    .map((id) => new RegExp(`^SDR-${dateId}-(\\d+)$`, 'i').exec(id))
-    .filter((match): match is RegExpExecArray => match !== null)
-    .map((match) => Number(match[1]));
-  const id = `SDR-${dateId}-${String(Math.max(0, ...numbers) + 1).padStart(3, '0')}`;
   const slug =
     title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || 'decision';
-  const relativePath = `remote/${projectId}/sdr/${id}-${slug}.md`;
-  const metadata = {
-    id,
-    type: 'sdr',
-    title,
-    status: 'open',
-    applies_to: input.appliesTo ?? [],
-    tags: [],
-    date,
-    promoted_to: null,
-    ...(input.agent ? { agent: input.agent } : {}),
-    ...(input.session ? { session: input.session } : {}),
-  };
-  const alternatives = input.alt?.length
-    ? input.alt.map((alternative) => `- ${alternative}`).join('\n')
-    : 'None.';
-  const content = `---\n${dump(metadata, { noRefs: true, lineWidth: -1 }).trimEnd()}\n---\n\n# ${id}: ${title}\n\n## Decision\n\n${input.decision}\n\n## Why\n\n${input.why}\n\n## Alternatives considered\n\n${alternatives}\n`;
-  const record = parseRecord(content, relativePath, 'hybrid');
-  await store.upsertNode(projectId, record);
-  return { id, path: relativePath };
+  for (;;) {
+    const ids = (await store.list(projectId, { type: 'sdr' })).map(
+      (node) => node.id,
+    );
+    const numbers = ids
+      .map((id) => new RegExp(`^SDR-${dateId}-(\\d+)$`, 'i').exec(id))
+      .filter((match): match is RegExpExecArray => match !== null)
+      .map((match) => Number(match[1]));
+    const id = `SDR-${dateId}-${String(Math.max(0, ...numbers) + 1).padStart(3, '0')}`;
+    const relativePath = `remote/${projectId}/sdr/${id}-${slug}.md`;
+    const metadata = {
+      id,
+      type: 'sdr',
+      title,
+      status: 'open',
+      applies_to: input.appliesTo ?? [],
+      tags: [],
+      date,
+      promoted_to: null,
+      ...(input.agent ? { agent: input.agent } : {}),
+      ...(input.session ? { session: input.session } : {}),
+    };
+    const alternatives = input.alt?.length
+      ? input.alt.map((alternative) => `- ${alternative}`).join('\n')
+      : 'None.';
+    const content = `---\n${dump(metadata, { noRefs: true, lineWidth: -1 }).trimEnd()}\n---\n\n# ${id}: ${title}\n\n## Decision\n\n${input.decision}\n\n## Why\n\n${input.why}\n\n## Alternatives considered\n\n${alternatives}\n`;
+    const record = parseRecord(content, relativePath, 'hybrid');
+    if (await store.insertNodeIfAbsent(projectId, record)) {
+      return { id, path: relativePath };
+    }
+  }
 }
 
 async function lintRemoteProjects(store: Store): Promise<ProjectLintResult> {
