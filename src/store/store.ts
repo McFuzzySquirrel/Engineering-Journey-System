@@ -49,6 +49,7 @@ export interface SearchResult extends GraphNode {
 
 export interface Store {
   upsertProject(project: Project): Promise<void>;
+  listProjects(): Promise<Project[]>;
   upsertNode(projectId: string, record: DecisionRecord): Promise<boolean>;
   deleteMissing(projectId: string, ids: string[]): Promise<number>;
   deleteEdges(

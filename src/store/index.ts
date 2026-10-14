@@ -1,4 +1,6 @@
 export { SQLiteStore, sanitizeFtsQuery } from './sqlite.js';
+export { PostgresStore } from './postgres.js';
+export { graphNodeToRecord } from './transfer.js';
 export type {
   EdgeKind,
   GraphEdge,

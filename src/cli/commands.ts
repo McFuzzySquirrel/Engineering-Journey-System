@@ -6,6 +6,7 @@ import {
   realpathSync,
   writeFileSync,
 } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { dump, load } from 'js-yaml';
@@ -25,13 +26,17 @@ import { lintProject } from '../core/project-lint.js';
 import { createSdr } from '../core/sdr.js';
 import {
   SQLiteStore,
+  PostgresStore,
+  graphNodeToRecord,
   type EdgeKind,
   type GraphEdge,
   type GraphNode,
   type NodeFilter,
   type Store,
+  type Project,
 } from '../store/index.js';
 import { runMcpServer } from '../mcp/server.js';
+import { createDecisionGraphHttpServer } from '../server/http.js';
 
 const CONFIG_PATH = '.dg/config.json';
 const DEFAULT_ADR_DIR = 'docs/decisions/adr';
@@ -554,6 +559,119 @@ export function registerCommands(program: Command): void {
     .command('mcp')
     .description('Start the Model Context Protocol stdio server')
     .action(async () => runMcpServer(process.cwd()));
+
+  program
+    .command('serve')
+    .description('Serve the project API and streamable-HTTP MCP endpoint')
+    .option(
+      '--db <postgres-url|sqlite-path>',
+      'database URL or SQLite path',
+      '.dg/server.db',
+    )
+    .option('--port <number>', 'HTTP port', parsePort, 3000)
+    .option('--host <host>', 'HTTP bind address', '127.0.0.1')
+    .action(async (options: { db: string; port: number; host: string }) => {
+      await serveProject(process.cwd(), options.db, options.port, options.host);
+    });
+
+  program
+    .command('push')
+    .description('Push the current project index to a decision-graph server')
+    .option('--remote <url>', 'server URL (defaults to .dg/config.json remote)')
+    .action(async (options: { remote?: string }) => {
+      const runtime = openRuntime(process.cwd());
+      try {
+        const remote = requireRemote(options.remote, runtime.config);
+        const result = await synchronize(runtime);
+        const payload = {
+          project: {
+            id: runtime.config.project,
+            name: path.basename(runtime.root),
+            type: runtime.config.projectType,
+            origin: sanitizeRemoteOrigin(remote),
+          },
+          records: await runtime.store.list(runtime.config.project),
+          edges: await runtime.store.listEdges(runtime.config.project),
+        };
+        const response = await requestJson(
+          `${remote}/projects/${encodeURIComponent(runtime.config.project)}/push`,
+          { method: 'POST', body: JSON.stringify(payload) },
+        );
+        console.log(
+          `Pushed ${payload.records.length} record(s) (${result.changed} local change(s)); server: ${JSON.stringify(response)}`,
+        );
+      } finally {
+        runtime.store.close();
+      }
+    });
+
+  program
+    .command('pull')
+    .description(
+      'Import server records read-only into a separate local namespace',
+    )
+    .option('--remote <url>', 'server URL (defaults to .dg/config.json remote)')
+    .option('--project <id>', 'pull one remote project')
+    .action(async (options: { remote?: string; project?: string }) => {
+      const runtime = openRuntime(process.cwd());
+      try {
+        const remote = requireRemote(options.remote, runtime.config);
+        const projects = await requestJson<Project[]>(`${remote}/projects`);
+        const selected = options.project
+          ? projects.filter((project) => project.id === options.project)
+          : projects;
+        if (options.project && selected.length === 0) {
+          throw new Error(`Remote project not found: ${options.project}`);
+        }
+        let imported = 0;
+        for (const project of selected) {
+          const result = await requestJson<{
+            project: Project;
+            records: GraphNode[];
+            edges: GraphEdge[];
+          }>(`${remote}/projects/${encodeURIComponent(project.id)}/records`);
+          const namespace = remoteProjectNamespace(remote, project.id);
+          await runtime.store.upsertProject({
+            id: namespace,
+            name: result.project.name,
+            type: result.project.type,
+            origin: `${sanitizeRemoteOrigin(remote)}/projects/${encodeURIComponent(project.id)}`,
+          });
+          for (const node of result.records) {
+            const importedNode = {
+              ...node,
+              projectId: namespace,
+              path: `remote/${encodeURIComponent(project.id)}/${node.path}`,
+            };
+            if (
+              await runtime.store.upsertNode(
+                namespace,
+                graphNodeToRecord(importedNode),
+              )
+            ) {
+              imported += 1;
+            }
+          }
+          await runtime.store.deleteEdges(namespace);
+          for (const edge of result.edges) {
+            await runtime.store.addEdge(
+              namespace,
+              edge.src,
+              edge.dst,
+              edge.kind,
+            );
+          }
+          console.log(
+            `Pulled ${result.records.length} record(s) from ${project.id} into ${namespace}.`,
+          );
+        }
+        console.log(
+          `Imported ${imported} changed record(s); repository files were not modified.`,
+        );
+      } finally {
+        runtime.store.close();
+      }
+    });
 }
 
 async function initProject(
@@ -625,6 +743,149 @@ function openRuntime(root: string): Runtime {
   const config = parseConfig(readFileSync(configFile, 'utf8'), CONFIG_PATH);
   const store = new SQLiteStore(path.join(root, '.dg', 'graph.db'));
   return { root, config, store };
+}
+
+async function serveProject(
+  root: string,
+  database: string,
+  port: number,
+  host: string,
+): Promise<void> {
+  const isPostgres = /^postgres(?:ql)?:\/\//i.test(database);
+  const configFile = path.join(root, CONFIG_PATH);
+  const config = existsSync(configFile)
+    ? parseConfig(readFileSync(configFile, 'utf8'), CONFIG_PATH)
+    : ConfigSchema.parse({
+        project: 'remote-server',
+        projectType: 'remote-server',
+        adrDir: DEFAULT_ADR_DIR,
+        sdrDir: DEFAULT_SDR_DIR,
+        agentsMd: 'AGENTS.md',
+        tokenBudget: 1500,
+        remote: null,
+      });
+  let store: SQLiteStore | PostgresStore;
+  if (isPostgres) {
+    store = new PostgresStore(database);
+  } else {
+    const file = path.resolve(root, database);
+    mkdirSync(path.dirname(file), { recursive: true });
+    store = new SQLiteStore(file);
+  }
+
+  try {
+    await store.listProjects();
+  } catch (error) {
+    await store.close();
+    throw error;
+  }
+
+  const server = createDecisionGraphHttpServer(store, config);
+  server.once('close', () => {
+    void Promise.resolve(store.close()).catch((error: unknown) => {
+      console.error(
+        `Failed to close decision-graph store: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
+  });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const onListening = () => {
+        server.off('error', onError);
+        resolve();
+      };
+      const onError = (error: Error) => {
+        server.off('listening', onListening);
+        reject(error);
+      };
+      server.once('error', onError);
+      server.once('listening', onListening);
+      server.listen(port, host);
+    });
+  } catch (error) {
+    await store.close();
+    throw error;
+  }
+  if (!isLocalHost(host)) {
+    console.warn(
+      `WARNING: decision-graph server is bound to ${host}:${port} without authentication. Only bind to a trusted network.`,
+    );
+  }
+  console.log(`decision-graph server listening on http://${host}:${port}`);
+}
+
+function isLocalHost(host: string): boolean {
+  return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(
+    host.toLowerCase(),
+  );
+}
+
+function parsePort(value: string): number {
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('Port must be an integer from 1 to 65535');
+  }
+  return port;
+}
+
+function requireRemote(remote: string | undefined, config: Config): string {
+  const value = remote ?? config.remote;
+  if (!value) {
+    throw new Error(
+      'No remote configured; use --remote <url> or set .dg/config.json remote.',
+    );
+  }
+  const parsed = new URL(value);
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error('Remote must use HTTP or HTTPS');
+  }
+  if (parsed.search || parsed.hash) {
+    throw new Error('Remote must be a base URL without a query or fragment');
+  }
+  return parsed.toString().replace(/\/+$/, '');
+}
+
+async function requestJson<T = unknown>(
+  url: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      accept: 'application/json',
+      ...(options.body ? { 'content-type': 'application/json' } : {}),
+      ...options.headers,
+    },
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(
+      `Remote request failed (${response.status} ${response.statusText}): ${text.slice(0, 1000)}`,
+    );
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    throw new Error(
+      `Remote returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
+}
+
+function remoteProjectNamespace(remote: string, projectId: string): string {
+  const fingerprint = createHash('sha256')
+    .update(remote)
+    .digest('hex')
+    .slice(0, 12);
+  return `remote:${fingerprint}:${projectId}`;
+}
+
+function sanitizeRemoteOrigin(remote: string): string {
+  const url = new URL(remote);
+  url.username = '';
+  url.password = '';
+  return url.toString().replace(/\/+$/, '');
 }
 
 async function synchronize(
@@ -754,9 +1015,13 @@ function parseFile(
 function ensureGitignore(root: string): void {
   const file = path.join(root, '.gitignore');
   const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
-  if (current.split(/\r?\n/).includes('.dg/graph.db')) return;
+  const ignored = new Set(current.split(/\r?\n/));
+  const missing = ['.dg/graph.db', '.dg/server.db'].filter(
+    (entry) => !ignored.has(entry),
+  );
+  if (missing.length === 0) return;
   const separator = current && !current.endsWith('\n') ? '\n' : '';
-  writeFileSync(file, `${current}${separator}.dg/graph.db\n`);
+  writeFileSync(file, `${current}${separator}${missing.join('\n')}\n`);
 }
 
 async function confirmImport(directories: string[]): Promise<boolean> {

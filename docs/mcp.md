@@ -90,3 +90,15 @@ Add this server to `.cursor/mcp.json`:
   }
 }
 ```
+
+## Streamable HTTP
+
+`dg serve --db <postgres-url|sqlite-path> --host 127.0.0.1 --port 3000`
+exposes the MCP endpoint at `http://127.0.0.1:3000/mcp` along with the
+decision-graph HTTP API. The MCP server accepts optional `project` and
+`projectType` tool arguments for cross-project queries. With neither selector,
+the remote server searches all projects; local `dg mcp` remains scoped to its
+initialized project.
+
+The server has no authentication in v1. Keep it on localhost or a trusted
+network; do not expose it publicly.

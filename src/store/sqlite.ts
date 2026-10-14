@@ -68,6 +68,26 @@ export class SQLiteStore implements Store {
       .run({ ...project, origin: project.origin ?? null, updatedAt: now() });
   }
 
+  async listProjects(): Promise<Project[]> {
+    return this.db
+      .prepare('SELECT id, name, type, origin FROM projects ORDER BY id')
+      .all()
+      .map((row) => {
+        const project = row as {
+          id: string;
+          name: string;
+          type: string;
+          origin: string | null;
+        };
+        return {
+          id: project.id,
+          name: project.name,
+          type: project.type,
+          origin: project.origin ?? undefined,
+        };
+      });
+  }
+
   async upsertNode(
     projectId: string,
     record: DecisionRecord,
