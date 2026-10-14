@@ -49,7 +49,7 @@ export function parseNygard(source: string, filePath: string) {
       decisionDrivers: [],
       consideredOptions: [],
       decisionOutcome: sections.get('decision') ?? '',
-      positiveConsequences: [],
+      positiveConsequences: listItems(sections.get('consequences')),
       negativeConsequences: [],
       prosAndCons: [],
       links: listItems(sections.get('links')),

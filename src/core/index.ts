@@ -12,6 +12,7 @@ export {
   type SdrRecord,
   type Verification,
 } from './schema.js';
+export { parseConfig } from './config.js';
 export {
   detectFormat,
   parseRecord,

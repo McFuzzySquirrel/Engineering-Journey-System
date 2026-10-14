@@ -28,6 +28,12 @@ export const VerifySchema = z.object({
   expected: z.string().min(1),
 });
 
+const FrontmatterRuleSchema = z.object({
+  id: z.string().optional(),
+  modality: RuleModalitySchema,
+  text: z.string().min(1),
+});
+
 const sharedRecordFields = {
   id: z.string().min(1),
   title: z.string().min(1),
@@ -102,7 +108,7 @@ export const FrontmatterSchema = z.object({
   agent: z.string().optional(),
   session: z.string().optional(),
   promoted_to: z.string().nullable().optional(),
-  rules: z.array(z.union([z.string(), RuleSchema])).optional(),
+  rules: z.array(z.union([z.string(), FrontmatterRuleSchema])).optional(),
   verify: z.array(VerifySchema).optional(),
 });
 
