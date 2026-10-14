@@ -47,7 +47,7 @@ operational status.
 
 ## Tech Stack
 
-The CLI scaffold uses Node.js 20.19+, 22.13+, or 24+, TypeScript, and Commander.
+The CLI scaffold requires Node.js 26 or newer, TypeScript, and Commander.
 SQLite, Postgres, record parsing, and the remaining application capabilities
 are planned; they are not implemented yet.
 
@@ -85,7 +85,7 @@ been adopted yet; see the [ADR index](docs/adr/README.md).
 The `dg` CLI scaffold can be built from source. Only `--help` and `--version`
 are implemented; decision-management commands are not available yet.
 
-Prerequisites: Git and Node.js 20.19+, 22.13+, or 24+ with npm.
+Prerequisites: Git and Node.js 26 or newer with npm.
 
 ```sh
 git clone https://github.com/McFuzzySquirrel/Engineering-Journey-System.git
