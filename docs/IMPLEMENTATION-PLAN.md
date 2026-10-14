@@ -248,11 +248,19 @@ audit pass.
 **Acceptance:** every fixture parses into a `Record` with the expected fields. Malformed files give actionable errors and don't crash.
 
 ### Phase 3 — SQLite store & graph
-- [ ] `Store` interface: `upsertProject`, `upsertNode`, `deleteMissing`, `addEdge`, `get`, `list(filter)`, `search(q, filter)`, `related(id, depth, kinds)`, `byGlobMatch(files)`
-- [ ] better-sqlite3 implementation with migrations and `schema_version`
-- [ ] FTS5 index with query sanitisation (ported from `legacy/scripts/adr-db.py`)
-- [ ] Graph traversal using recursive CTE
-- [ ] Tests on a temp DB: idempotent upserts, deletions, traversal depth, FTS edge cases
+- [x] `Store` interface: `upsertProject`, `upsertNode`, `deleteMissing`, `addEdge`, `get`, `list(filter)`, `search(q, filter)`, `related(id, depth, kinds)`, `byGlobMatch(files)`
+- [x] better-sqlite3 implementation with migrations and `schema_version`
+- [x] FTS5 index with query sanitisation (ported from `legacy/scripts/adr-db.py`)
+- [x] Graph traversal using recursive CTE
+- [x] Tests on a temp DB: idempotent upserts, deletions, traversal depth, FTS edge cases
+
+**Completion notes:** Added the shared store contract and a SQLite implementation
+with versioned schema, project-scoped node/edge operations, idempotent
+content-hash upserts, stale-node cleanup, FTS5 search, bounded recursive graph
+traversal, and glob matching. Temporary-database tests cover idempotency,
+project isolation, cascaded edge and search cleanup, traversal depth and kinds,
+punctuation/operator search, filters, and glob matches. Lint, format, typecheck,
+tests, and build pass.
 
 **Acceptance:** syncing the same files twice gives zero changes. `related` returns the correct transitive closure.
 
