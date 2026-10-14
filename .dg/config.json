@@ -1,0 +1,9 @@
+{
+  "project": "engineering-journey-system",
+  "projectType": "cli-tool",
+  "adrDir": "docs/decisions/adr",
+  "sdrDir": "docs/decisions/sdr",
+  "agentsMd": "AGENTS.md",
+  "tokenBudget": 1500,
+  "remote": null
+}
