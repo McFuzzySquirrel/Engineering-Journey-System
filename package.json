@@ -21,15 +21,24 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "commander": "^14.0.2"
+    "commander": "^14.0.2",
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.3.2",
+    "picomatch": "^4.0.7",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^26.6.5",
     "eslint": "^10.12.0",
     "prettier": "^3.9.10",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.71.2",
     "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "js-yaml": "^4.3.2"
   }
 }
