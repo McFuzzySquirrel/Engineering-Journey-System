@@ -4,29 +4,28 @@
 
 This guide is for contributors and prospective users evaluating
 decision-graph. The planned users are developers and coding agents that need to
-find and follow relevant architecture decisions. The product is not implemented
-or released, so there are no in-product user workflows yet.
+find and follow relevant architecture decisions. The CLI scaffold is implemented
+but not released; it currently supports only `dg --help` and `dg --version`.
 
 ## Before You Begin
 
-You can browse this repository with Git and a Markdown viewer. Start with the
-[README](../README.md) and
-[implementation plan](IMPLEMENTATION-PLAN.md). There is no application to
-install and no account or project configuration to create.
+You need Git and Node.js 20 or later with npm to build the CLI from this
+repository. Start with the [README](../README.md) and
+[implementation plan](IMPLEMENTATION-PLAN.md). The CLI is not published and
+does not yet support project configuration.
 
 ## Sign In and First Use
 
-Signing in to decision-graph is not applicable: no application or hosted
-service exists yet. To use the repository, clone it from
-[GitHub](https://github.com/McFuzzySquirrel/Engineering-Journey-System) and
-read the plan to distinguish completed repository work from proposed features.
+Signing in is not applicable: there is no hosted service. Clone the repository,
+run `npm ci` and `npm run build`, then use `node dist/cli.js --help` or
+`node dist/cli.js --version`.
 
 ## Main Workflows
 
-The current workflow is reviewing the plan and contributing to the repository
-through issues and pull requests. The planned `dg` commands for initializing a
-project, importing and searching decisions, and selecting rules for files are
-not available. Consult the plan for their proposed behavior and phase status.
+The current CLI workflow is limited to displaying help and version information.
+Commands for initializing a project, importing and searching decisions, and
+selecting rules for files are planned but unavailable. Consult the plan for
+their proposed behavior and phase status.
 
 ## Offline and Reconnect Behavior
 
@@ -61,8 +60,8 @@ private data, or session content that should not be public.
 
 ## Troubleshooting
 
-- **Looking for an install command?** The CLI has not been implemented or
-  published; there is no install or run command.
+- **Looking for decision search or import?** Those commands are planned; the
+  current CLI only supports help and version.
 - **Unsure whether a feature exists?** Check its phase and checkbox status in
   the [implementation plan](IMPLEMENTATION-PLAN.md).
 - **Found old EJS instructions?** They are historical. Do not run archived

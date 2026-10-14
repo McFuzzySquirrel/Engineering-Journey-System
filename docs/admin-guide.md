@@ -2,28 +2,28 @@
 
 ## Responsibilities and Architecture
 
-There is currently no decision-graph service, package, database, or deployed
-runtime to administer. Repository maintainers manage the GitHub repository and
-keep the implementation status accurate. The current scope and future
-architecture are documented in the
+There is currently no decision-graph service, database, or deployed runtime to
+administer. The repository contains an unreleased CLI scaffold. Repository
+maintainers manage the GitHub repository and keep the implementation status
+accurate. The current scope and future architecture are documented in the
 [implementation plan](IMPLEMENTATION-PLAN.md).
 
 ## Prerequisites
 
-Git is the only prerequisite for checking out or maintaining the current
-documentation repository. No Node.js, database, container runtime, or cloud
-service is currently required by an implemented application.
+Git and Node.js 20 or later with npm are required to build and validate the CLI
+scaffold. No database, container runtime, or cloud service is currently
+required.
 
 ## Installation
 
-There is no application installation procedure yet. To obtain the repository,
-use the clone command in the [README](../README.md). Package installation is
-planned only after the CLI scaffold and package metadata exist.
+The package is not published to npm. To build it from source, clone the
+repository, run `npm ci`, and then `npm run build`; see the
+[README](../README.md) for details.
 
 ## Configuration
 
-No active application settings, ports, endpoints, or environment variables
-exist. The `.dg/config.json` and `DG_TEST_PG_URL` examples in the plan are
+The CLI scaffold has no runtime settings, ports, endpoints, or environment
+variables. The `.dg/config.json` and `DG_TEST_PG_URL` examples in the plan are
 proposals and must not be treated as operational configuration.
 
 ## Identity, Secrets, and TLS
@@ -48,16 +48,15 @@ platform.
 
 ## Upgrades and Rollback
 
-No decision-graph release or package version exists, so application upgrades
-and rollbacks do not apply. The `ejs-final` Git tag marks the prior EJS project
-state and is not a decision-graph release. Follow the implementation plan for
-development milestones; do not mistake planned compatibility for a tested
-upgrade path.
+The CLI package is not released, so application upgrades and rollbacks do not
+apply. The `ejs-final` Git tag marks the prior EJS project state and is not a
+decision-graph release. Follow the implementation plan for development
+milestones; do not mistake planned compatibility for a tested upgrade path.
 
 ## Troubleshooting
 
-- **No executable command or package is found:** this is expected until the
-  package scaffold is implemented.
+- **Looking for decision commands:** only `--help` and `--version` are
+  implemented; other CLI workflows remain planned.
 - **A planned setting does not work:** planned examples are not active
   configuration; check the implementation status before using them.
 - **Archived scripts or hooks are present:** they are preserved for historical

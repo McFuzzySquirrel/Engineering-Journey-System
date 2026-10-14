@@ -1,8 +1,9 @@
 # decision-graph (`dg`)
 
-decision-graph is a planned tool for indexing architecture decision records
+decision-graph is a Node.js tool for indexing architecture decision records
 (ADRs) and session decision records (SDRs) so developers and coding agents can
-find applicable decisions. **The CLI is not implemented or published yet.**
+find applicable decisions. The Phase 1 CLI scaffold is implemented; currently,
+`dg` only supports `--help` and `--version`.
 
 ## Table of Contents
 
@@ -24,9 +25,9 @@ find applicable decisions. **The CLI is not implemented or published yet.**
 
 This repository is transitioning from the Engineering Journey System (EJS),
 which recorded whole agent sessions, to decision-graph, which is intended to
-make durable decisions and their rules easier to search and apply. The current
-repository contains the implementation plan and an inactive EJS archive; it
-does not contain a runnable decision-graph application.
+make durable decisions and their rules easier to search and apply. The current repository contains the CLI scaffold, its implementation plan, and
+an inactive EJS archive. Decision indexing and other product workflows remain
+planned.
 
 See the [implementation plan](docs/IMPLEMENTATION-PLAN.md) for planned scope
 and progress, the [user guide](docs/user-guide.md) for the repository's current
@@ -37,7 +38,8 @@ operational status.
 
 | Capability | Status |
 |---|---|
-| Decision-graph CLI, indexing, and search | Planned; not implemented |
+| CLI scaffold (`dg --help`, `dg --version`) | Implemented |
+| Decision indexing and search | Planned; not implemented |
 | ADR and SDR formats and relationship graph | Planned; not implemented |
 | Agent access through CLI, MCP, or generated instructions | Planned; not implemented |
 | Multi-project server and remote storage | Planned; not implemented |
@@ -45,20 +47,20 @@ operational status.
 
 ## Tech Stack
 
-The active project is currently documentation and Git history; there is no
-application runtime or dependency manifest. The implementation plan proposes
-Node.js with TypeScript, SQLite, and optional Postgres, but these are planned
-choices, not installed or supported components yet.
+The CLI scaffold uses Node.js 20 or later, TypeScript, and Commander. SQLite,
+Postgres, record parsing, and the remaining application capabilities are
+planned; they are not implemented yet.
 
 ## Architecture
 
-There is no running application architecture in the current repository. Today,
-contributors use Git to review the project documentation and implementation
-plan; the EJS materials are isolated under `legacy/`.
+The current runtime is a small Node.js CLI scaffold. Its application
+architecture and data stores are not implemented yet; the EJS materials are
+isolated under `legacy/`.
 
 ```mermaid
 flowchart LR
-  Contributor --> GitRepository[Git repository]
+  Contributor --> CLI["dg --help / --version"]
+  CLI --> GitRepository[Git repository]
   GitRepository --> Plan[Implementation plan]
   GitRepository --> Archive[Inactive EJS archive]
 ```
@@ -69,40 +71,44 @@ been adopted yet; see the [ADR index](docs/adr/README.md).
 
 ## Project Structure
 
+- `src/cli/` — The `dg` CLI entry point and command program.
+- `test/` — CLI scaffold tests.
 - `docs/` — Current implementation plan and project guides.
 - `legacy/` — Inactive historical EJS files; do not run its hooks, skills, or scripts.
+- `package.json` and TypeScript/tool configuration — Package scripts and development toolchain.
 - `.github/copilot-instructions.md` — Points contributors to the implementation plan.
 - `.gitignore` — Git ignore rules for the repository.
 - `LICENSE` — MIT license.
 
 ## Getting Started
 
-The repository can be read and edited now, but there is no CLI to install or
-run.
+The `dg` CLI scaffold can be built from source. Only `--help` and `--version`
+are implemented; decision-management commands are not available yet.
 
-Prerequisite: Git.
+Prerequisites: Git and Node.js 20 or later with npm.
 
 ```sh
 git clone https://github.com/McFuzzySquirrel/Engineering-Journey-System.git
 cd Engineering-Journey-System
+npm ci
+npm run build
+node dist/cli.js --help
 ```
 
-Start with this README and the
-[implementation plan](docs/IMPLEMENTATION-PLAN.md). To verify the checkout,
-`git status --short` should report the working-tree state. There are no
-application build, test, or lint commands in the current repository.
+Use `node dist/cli.js --version` to print the package version. Contributors can
+run `npm run lint`, `npm run format:check`, `npm run typecheck`, and `npm test`.
+The package is not published to npm yet.
 
 ## Configuration
 
-There are no active application configuration files, command-line flags, or
-environment variables because the application has not been implemented. The
+The CLI scaffold has no runtime configuration or environment variables. The
 `.dg/config.json` format and `DG_TEST_PG_URL` mentioned in the implementation
-plan are proposed development details only, not supported settings today.
+plan are planned features, not supported settings today.
 
 ## Security
 
-This repository does not currently run an application or service, and therefore
-has no application authentication, authorization, or secret-management model.
+The CLI scaffold does not run a service or handle credentials, and has no
+application authentication or authorization model.
 Do not put credentials or other secrets in tracked files. For a suspected
 vulnerability, avoid posting sensitive exploit details publicly; use GitHub's
 private vulnerability reporting if it is enabled for this repository. No
@@ -110,18 +116,17 @@ separate security policy is currently documented.
 
 ## How to Contribute
 
-There is no `CONTRIBUTING.md` or code/test toolchain yet. For changes, open an
-issue to discuss substantial scope, then submit a pull request with a focused
-diff and a description of what changed. Keep proposed behavior clearly labeled
-as planned, follow the phase acceptance criteria in the
+For changes, open an issue to discuss substantial scope, then submit a pull
+request with a focused diff and a description of what changed. Keep unimplemented
+behavior clearly labeled as planned, follow the phase acceptance criteria in the
 [implementation plan](docs/IMPLEMENTATION-PLAN.md), and do not activate or run
 anything under `legacy/`. Review and merge happen through the repository's
 GitHub pull-request workflow.
 
 ## What's Next
 
-The immediate planned work is the Phase 1 package scaffold. Later phases cover
-record parsing and storage, CLI commands, SDR workflows, generated agent
+The Phase 1 package scaffold is complete. Later phases cover record parsing and
+storage, decision-management commands, SDR workflows, generated agent
 instructions, verification and linting, MCP, and optional remote storage. None
 of these features should be treated as shipped; see the
 [implementation plan](docs/IMPLEMENTATION-PLAN.md) for status and acceptance
