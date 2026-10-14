@@ -12,13 +12,13 @@ other product workflows remain planned.
 
 - Adds a Node.js/TypeScript CLI scaffold with lint, format, typecheck, test, and
   build commands.
-- Adds cross-platform GitHub Actions checks for Node 20.19, 22.13, and 24.
+- Adds cross-platform GitHub Actions checks for Node 26.
 - Records that EJS is retired from active use and retained only as a historical
   archive.
 
 ## Compatibility and Prerequisites
 
-The package supports Node.js 20.19+, 22.13+, or 24+ and has version `0.1.0`;
+The package supports Node.js 26+ and has version `0.1.0`;
 it is not published to npm. The `ejs-final` tag belongs to the previous EJS
 project state, not to decision-graph.
 
@@ -41,7 +41,7 @@ from EJS to a feature-complete decision-graph tool; the
 
 Local build, CLI help/version, and dependency audit checks pass. GitHub Actions
 runs lint, format, typecheck, tests, build, and CLI help/version smoke checks on
-Node 20.19, 22.13, and 24 across Ubuntu, macOS, and Windows; the dependency
+Node 26 across Ubuntu, macOS, and Windows; the dependency
 audit is local-only.
 
 ## Security and Privacy

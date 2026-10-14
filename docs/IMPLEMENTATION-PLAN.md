@@ -1,6 +1,6 @@
 # decision-graph (`dg`) — Implementation Plan
 
-> Status: **Phases 0 and 2 complete; Phase 1 awaiting CI; Phases 3-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
+> Status: **Phases 0, 2, and 3 complete; Phase 1 awaiting CI; Phases 4-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
 > Tick boxes as work lands. Each phase has acceptance criteria. The phase is done only when every criterion is met.
 
 ---
@@ -217,16 +217,16 @@ The active EJS hook configuration is absent; no EJS workflows are run to validat
 this retirement.
 
 ### Phase 1 — Package scaffold
-- [x] `package.json` (name `decision-graph`, `bin: { dg }`, `engines.node ^20.19 || ^22.13 || >=24`, ESM)
+- [x] `package.json` (name `decision-graph`, `bin: { dg }`, `engines.node >=26`, ESM)
 - [x] `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`, eslint + prettier
 - [x] `src/cli/index.ts` with `dg --version` / `dg --help`
-- [x] GitHub Actions CI: install, lint, format, typecheck, test, build, and smoke-test CLI help/version on Node 20.19, 22.13, and 24 (ubuntu, macos, windows)
+- [x] GitHub Actions CI: install, lint, format, typecheck, test, build, and smoke-test CLI help/version on Node 26 (ubuntu, macos, windows)
 
 **Acceptance:** `npm run build && node dist/cli.js --help` works. CI is green.
 
 **Completion notes:** The build, CLI help/version, lint, format check, typecheck,
-tests, and dependency audit pass locally. The nine-way Node 20.19/22.13/24 ×
-Ubuntu/macOS/Windows CI workflow is configured; its first remote run is pending.
+tests, and dependency audit pass locally. The Node 26 CI matrix is configured
+for Ubuntu, macOS, and Windows; the first remote run is pending.
 
 ### Phase 2 — Core model & parsers
 - [x] zod schemas for ADR, SDR, and config. Errors include file and field
@@ -248,11 +248,19 @@ audit pass.
 **Acceptance:** every fixture parses into a `Record` with the expected fields. Malformed files give actionable errors and don't crash.
 
 ### Phase 3 — SQLite store & graph
-- [ ] `Store` interface: `upsertProject`, `upsertNode`, `deleteMissing`, `addEdge`, `get`, `list(filter)`, `search(q, filter)`, `related(id, depth, kinds)`, `byGlobMatch(files)`
-- [ ] better-sqlite3 implementation with migrations and `schema_version`
-- [ ] FTS5 index with query sanitisation (ported from `legacy/scripts/adr-db.py`)
-- [ ] Graph traversal using recursive CTE
-- [ ] Tests on a temp DB: idempotent upserts, deletions, traversal depth, FTS edge cases
+- [x] `Store` interface: `upsertProject`, `upsertNode`, `deleteMissing`, `addEdge`, `get`, `list(filter)`, `search(q, filter)`, `related(id, depth, kinds)`, `byGlobMatch(files)`
+- [x] better-sqlite3 implementation with migrations and `schema_version`
+- [x] FTS5 index with query sanitisation (ported from `legacy/scripts/adr-db.py`)
+- [x] Graph traversal using recursive CTE
+- [x] Tests on a temp DB: idempotent upserts, deletions, traversal depth, FTS edge cases
+
+**Completion notes:** Added the shared store contract and a SQLite implementation
+with versioned schema, project-scoped node/edge operations, idempotent
+content-hash upserts, stale-node cleanup, FTS5 search, bounded recursive graph
+traversal, and glob matching. Temporary-database tests cover idempotency,
+project isolation, cascaded edge and search cleanup, traversal depth and kinds,
+punctuation/operator search, filters, and glob matches. Lint, format, typecheck,
+tests, and build pass.
 
 **Acceptance:** syncing the same files twice gives zero changes. `related` returns the correct transitive closure.
 
@@ -329,7 +337,7 @@ audit pass.
 
 ## 7. Risks & notes
 
-- **better-sqlite3 is a native module.** It ships prebuilt binaries for common platforms. Document Node 20.19+, 22.13+, or 24+ and the build-from-source fallback.
+- **better-sqlite3 is a native module.** It ships prebuilt binaries for common platforms. Document Node 26+ and the build-from-source fallback.
 - **`--convert` uses heuristics.** It pulls imperative sentences out of prose. Its output is always `proposed` and needs human review. There is no LLM dependency in v1.
 - **Conflict detection uses heuristics.** It errs toward warnings, not errors.
 - **There is no auth in v1.** The server binds to localhost by default and warns loudly otherwise. Token auth is a follow-up.
