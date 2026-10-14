@@ -294,6 +294,109 @@ it('supports draft creation, import conversion, and JSON query commands', async 
   expect(JSON.parse(log.mock.calls[0][0] as string)).toHaveLength(1);
 });
 
+it('adds, lists, promotes, and discards SDRs with lifecycle edges', async () => {
+  const root = createTempProject();
+  process.chdir(root);
+  await invoke('init', '--yes');
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  await invoke(
+    'sdr',
+    'add',
+    'Use SQLite',
+    '--decision',
+    'Use SQLite for local storage.',
+    '--why',
+    'It avoids a separate service.',
+    '--alt',
+    'Use Postgres',
+    'Keep files only',
+    '--applies-to',
+    'src/**/*.ts',
+    '--agent',
+    'copilot-cli',
+    '--session',
+    'session-1',
+  );
+  const sdrPath = log.mock.calls[0][0] as string;
+  expect(sdrPath).toMatch(/SDR-\d{8}-001-use-sqlite\.md$/);
+  const sdrFile = path.join(root, sdrPath.replace(/^Created /, ''));
+  const sdrContent = readFileSync(sdrFile, 'utf8');
+  expect(sdrContent).toContain('Use SQLite for local storage.');
+  expect(sdrContent).toContain('- Use Postgres\n- Keep files only');
+  log.mockClear();
+
+  await invoke('sdr', 'list', '--json');
+  const listed = JSON.parse(log.mock.calls[0][0] as string) as {
+    id: string;
+    status: string;
+  }[];
+  expect(listed).toMatchObject([{ status: 'open' }]);
+  const sdrId = listed[0].id;
+  log.mockClear();
+
+  await invoke('sdr', 'promote', sdrId);
+  expect(log.mock.calls[0][0]).toBe(`Promoted ${sdrId} to ADR-0001`);
+  const promotedSdr = readFileSync(sdrFile, 'utf8');
+  expect(promotedSdr).toContain('status: promoted');
+  expect(promotedSdr).toContain('promoted_to: ADR-0001');
+  const adrPath = path.join(root, 'docs/decisions/adr/ADR-0001-use-sqlite.md');
+  const adrContent = readFileSync(adrPath, 'utf8');
+  expect(adrContent).toContain('derived_from:\n  - SDR-');
+  expect(adrContent).toContain('It avoids a separate service.');
+  expect(adrContent).toContain('Use SQLite for local storage.');
+  log.mockClear();
+
+  await invoke('related', sdrId, '--kind', 'promoted_to', '--json');
+  expect(JSON.parse(log.mock.calls[0][0] as string)).toMatchObject([
+    { id: 'ADR-0001' },
+  ]);
+  log.mockClear();
+  await invoke('related', 'ADR-0001', '--kind', 'derived_from', '--json');
+  expect(JSON.parse(log.mock.calls[0][0] as string)).toMatchObject([
+    { id: sdrId },
+  ]);
+  log.mockClear();
+  await expect(invoke('sdr', 'promote', sdrId)).rejects.toThrow(
+    `Cannot promote SDR ${sdrId}: status is promoted`,
+  );
+
+  await invoke(
+    'sdr',
+    'add',
+    'Discard this choice',
+    '--decision',
+    'Try the other option.',
+    '--why',
+    'The first option is no longer relevant.',
+  );
+  const secondId = /SDR-\d{8}-\d{3}/.exec(log.mock.calls[0][0] as string)?.[0];
+  expect(secondId).toBeDefined();
+  log.mockClear();
+  await invoke(
+    'sdr',
+    'discard',
+    secondId!,
+    '--reason',
+    'Requirements changed.',
+  );
+  const secondPath = (log.mock.calls[0][0] as string).replace(
+    /^Discarded /,
+    '',
+  );
+  expect(secondPath).toBe(secondId);
+  const discardedFile = readFileSync(
+    path.join(root, 'docs/decisions/sdr', `${secondId}-discard-this-choice.md`),
+    'utf8',
+  );
+  expect(discardedFile).toContain('status: discarded');
+  expect(discardedFile).toContain('## Discard Reason\n\nRequirements changed.');
+  log.mockClear();
+
+  await invoke('sdr', 'list', '--json');
+  expect(JSON.parse(log.mock.calls[0][0] as string)).toEqual([]);
+});
+
 function createTempProject(): string {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'decision-graph-'));
   temporaryDirectories.push(directory);
