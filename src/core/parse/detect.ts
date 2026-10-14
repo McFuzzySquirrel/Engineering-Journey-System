@@ -42,6 +42,9 @@ export function parseRecord(
     case 'agent':
       return parseAgent(source, filePath);
     default:
-      throw new RecordParseError(filePath, `unsupported record format: ${detected}`);
+      throw new RecordParseError(
+        filePath,
+        `unsupported record format: ${detected}`,
+      );
   }
 }

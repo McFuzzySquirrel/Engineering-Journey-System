@@ -34,9 +34,10 @@ export function parseAgent(source: string, filePath: string) {
       status: normalizeStatus(metadata.status),
       appliesTo: metadata.applies_to ?? [],
       tags: metadata.tags ?? [],
-      date: metadata.date instanceof Date
-        ? metadata.date.toISOString().slice(0, 10)
-        : metadata.date,
+      date:
+        metadata.date instanceof Date
+          ? metadata.date.toISOString().slice(0, 10)
+          : metadata.date,
       path: filePath,
       contentHash: createHash('sha256').update(source).digest('hex'),
       supersedes: metadata.supersedes ?? [],

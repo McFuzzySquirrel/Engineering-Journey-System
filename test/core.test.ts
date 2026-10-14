@@ -59,10 +59,7 @@ it('imports agent frontmatter rules and detects that format', async () => {
 
 it('imports Nygard records and recognizes superseding links', async () => {
   const source = await fixture('0012-local-first.md');
-  const record = parseRecord(
-    source,
-    'docs/adr/0012-local-first.md',
-  );
+  const record = parseRecord(source, 'docs/adr/0012-local-first.md');
 
   expect(detectFormat(source, 'docs/adr/0012-local-first.md')).toBe('nygard');
   expect(record.id).toBe('ADR-0012');
@@ -98,13 +95,13 @@ it('validates project configuration and reports invalid fields', () => {
   );
   expect(valid.projectType).toBe('cli-tool');
 
-  expect(() =>
-    parseConfig('{"project":"demo"}', '.dg/config.json'),
-  ).toThrow(/\.dg\/config\.json: invalid record \(projectType:/);
+  expect(() => parseConfig('{"project":"demo"}', '.dg/config.json')).toThrow(
+    /\.dg\/config\.json: invalid record \(projectType:/,
+  );
 });
 
 it('rejects malformed frontmatter without crashing', () => {
-  expect(() =>
-    parseRecord('---\nid: [\n---\n# Broken', 'broken.md'),
-  ).toThrow(RecordParseError);
+  expect(() => parseRecord('---\nid: [\n---\n# Broken', 'broken.md')).toThrow(
+    RecordParseError,
+  );
 });

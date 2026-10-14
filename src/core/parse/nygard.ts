@@ -18,10 +18,12 @@ export function parseNygard(source: string, filePath: string) {
   }
 
   const statusText = sections.get('status') ?? '';
-  const supersededBy = statusText.match(/superseded by\s+(?:\[([^\]]+)\]|(ADR-\d{4}))/i);
-  const supersedes = data.supersedes ?? (
-    supersededBy ? [supersededBy[1] ?? supersededBy[2]] : []
+  const supersededBy = statusText.match(
+    /superseded by\s+(?:\[([^\]]+)\]|(ADR-\d{4}))/i,
   );
+  const supersedes =
+    data.supersedes ??
+    (supersededBy ? [supersededBy[1] ?? supersededBy[2]] : []);
 
   return validateRecord(
     {
@@ -31,9 +33,10 @@ export function parseNygard(source: string, filePath: string) {
       status: normalizeStatus(statusText),
       appliesTo: data.applies_to ?? [],
       tags: data.tags ?? [],
-      date: data.date instanceof Date
-        ? data.date.toISOString().slice(0, 10)
-        : data.date,
+      date:
+        data.date instanceof Date
+          ? data.date.toISOString().slice(0, 10)
+          : data.date,
       path: filePath,
       contentHash: createHash('sha256').update(source).digest('hex'),
       supersedes,

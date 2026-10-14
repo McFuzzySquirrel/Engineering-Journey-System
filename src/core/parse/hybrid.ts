@@ -13,8 +13,13 @@ import {
 export function parseHybrid(source: string, filePath: string) {
   const { data, content } = parseSource(source, filePath);
   if (!data.id || !data.title || !data.type || !data.status) {
-    const missing = ['id', 'title', 'type', 'status'].filter((key) => !data[key as keyof typeof data]);
-    throw new RecordParseError(filePath, `missing required frontmatter field(s): ${missing.join(', ')}`);
+    const missing = ['id', 'title', 'type', 'status'].filter(
+      (key) => !data[key as keyof typeof data],
+    );
+    throw new RecordParseError(
+      filePath,
+      `missing required frontmatter field(s): ${missing.join(', ')}`,
+    );
   }
 
   const sections = getSections(content);
@@ -45,7 +50,10 @@ export function parseHybrid(source: string, filePath: string) {
         decision,
         why,
         alternatives: sections.get('alternatives considered')
-          ? sections.get('alternatives considered')!.split(/\r?\n/).filter(Boolean)
+          ? sections
+              .get('alternatives considered')!
+              .split(/\r?\n/)
+              .filter(Boolean)
           : [],
         body: content.trim(),
       },

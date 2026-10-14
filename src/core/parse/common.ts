@@ -41,9 +41,14 @@ export function parseSource(source: string, filePath: string): ParsedSource {
   }
 }
 
-export function validationError(filePath: string, error: z.ZodError): RecordParseError {
+export function validationError(
+  filePath: string,
+  error: z.ZodError,
+): RecordParseError {
   const details = error.issues
-    .map((issue) => `${issue.path.join('.') || 'frontmatter'}: ${issue.message}`)
+    .map(
+      (issue) => `${issue.path.join('.') || 'frontmatter'}: ${issue.message}`,
+    )
     .join('; ');
   return new RecordParseError(filePath, `invalid record (${details})`);
 }
@@ -64,7 +69,10 @@ export function getSections(content: string): Map<string, string> {
     const heading = headings[index];
     const start = (heading.index ?? 0) + heading[0].length;
     const end = headings[index + 1]?.index ?? content.length;
-    sections.set(normalizeHeading(heading[1]), content.slice(start, end).trim());
+    sections.set(
+      normalizeHeading(heading[1]),
+      content.slice(start, end).trim(),
+    );
   }
   return sections;
 }
@@ -84,18 +92,23 @@ export function listItems(section: string | undefined): string[] {
     .filter((item): item is string => Boolean(item));
 }
 
-const modalityPattern = /[-*+]\s+(?:\*\*)?(MUST NOT|SHOULD NOT|MUST|SHOULD|MAY)(?:\*\*)?:\s*(.+)/i;
+const modalityPattern =
+  /[-*+]\s+(?:\*\*)?(MUST NOT|SHOULD NOT|MUST|SHOULD|MAY)(?:\*\*)?:\s*(.+)/i;
 
 export function parseRules(section: string | undefined): Rule[] {
   if (!section) return [];
-  return section
-    .split(/\r?\n/)
-    .flatMap((line) => {
-      const match = line.match(modalityPattern);
-      return match
-        ? [{ id: '', modality: match[1].toUpperCase() as Rule['modality'], text: cleanInline(match[2]) }]
-        : [];
-    });
+  return section.split(/\r?\n/).flatMap((line) => {
+    const match = line.match(modalityPattern);
+    return match
+      ? [
+          {
+            id: '',
+            modality: match[1].toUpperCase() as Rule['modality'],
+            text: cleanInline(match[2]),
+          },
+        ]
+      : [];
+  });
 }
 
 export function parseVerification(section: string | undefined): Verification[] {
@@ -123,9 +136,17 @@ export function cleanInline(value: string): string {
 export function getFrontmatterRules(data: Frontmatter): Rule[] {
   return (data.rules ?? []).flatMap((rule) => {
     if (typeof rule === 'string') {
-      const match = rule.match(/^(MUST NOT|SHOULD NOT|MUST|SHOULD|MAY):?\s+(.+)$/i);
+      const match = rule.match(
+        /^(MUST NOT|SHOULD NOT|MUST|SHOULD|MAY):?\s+(.+)$/i,
+      );
       return match
-        ? [{ id: '', modality: match[1].toUpperCase() as Rule['modality'], text: match[2] }]
+        ? [
+            {
+              id: '',
+              modality: match[1].toUpperCase() as Rule['modality'],
+              text: match[2],
+            },
+          ]
         : [];
     }
     return [{ ...rule, id: '' }];
