@@ -1,6 +1,6 @@
 # decision-graph (`dg`) — Implementation Plan
 
-> Status: **Phases 0-6 complete; Phases 7-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
+> Status: **Phases 0-7 complete; Phases 8-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
 > Tick boxes as work lands. Each phase has acceptance criteria. The phase is done only when every criterion is met.
 
 ---
@@ -331,10 +331,16 @@ format, typecheck, all tests, and build pass on Node 26.
 **Acceptance:** golden-file tests for compile output. Lint fixtures cover each rule. Verify reports correctly on passing, failing, and timed-out commands.
 
 ### Phase 7 — MCP (stdio)
-- [ ] Shared tool definitions in `src/mcp/tools.ts`: `search`, `context`, `get`, `related`, `list`, `sdr_add`, `lint`
-- [ ] `dg mcp` stdio transport
-- [ ] Config snippets for Copilot CLI / VS Code, Claude Code, and Cursor (docs)
-- [ ] Tests using the MCP SDK client against the server in-process
+- [x] Shared tool definitions in `src/mcp/tools.ts`: `search`, `context`, `get`, `related`, `list`, `sdr_add`, `lint`
+- [x] `dg mcp` stdio transport
+- [x] Config snippets for Copilot CLI / VS Code, Claude Code, and Cursor (docs)
+- [x] Tests using the MCP SDK client against the server in-process
+
+**Completion notes:** Added MCP SDK 1.32.1 tool registration over the shared
+store interface, a `dg mcp` stdio command, shared context and project-lint
+operations, and MCP-backed SDR creation. Added client configuration examples
+for Copilot CLI, VS Code, Claude Code, and Cursor. In-process MCP client tests
+verify tool discovery, CLI-equivalent context results, and all seven tools.
 
 **Acceptance:** an MCP client can list the tools and get `context` results that match the CLI's.
 
