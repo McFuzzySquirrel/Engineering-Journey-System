@@ -1,6 +1,6 @@
 # decision-graph (`dg`) — Implementation Plan
 
-> Status: **Phase 0 complete; Phase 1 awaiting CI; Phases 2-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
+> Status: **Phases 0 and 2 complete; Phase 1 awaiting CI; Phases 3-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
 > Tick boxes as work lands. Each phase has acceptance criteria. The phase is done only when every criterion is met.
 
 ---
@@ -229,15 +229,21 @@ tests, and dependency audit pass locally. The nine-way Node 20.19/22.13/24 ×
 Ubuntu/macOS/Windows CI workflow is configured; its first remote run is pending.
 
 ### Phase 2 — Core model & parsers
-- [ ] zod schemas for ADR, SDR, and config. Errors include file and field
-- [ ] Native hybrid MADR parser: frontmatter; agent rule lines (`MUST` / `MUST NOT` / `SHOULD` / `SHOULD NOT` / `MAY`); verification checks and expected results; context, drivers, options, outcome, consequences, pros/cons, and links
-- [ ] Rule-ID assignment (`<id>#<n>`)
-- [ ] MADR import parser (status, context, decision outcome, consequences)
-- [ ] Agent-optimized import parser (frontmatter, rules, Verify block, Context)
-- [ ] Nygard / adr-tools parser (numbered `NNNN-title.md`, `## Status` / `## Context` / `## Decision` / `## Consequences`, "Superseded by" links)
-- [ ] Format auto-detection
-- [ ] Content hash for incremental sync
-- [ ] Fixtures + unit tests for each format, including malformed inputs
+- [x] zod schemas for ADR, SDR, and config. Errors include file and field
+- [x] Native hybrid MADR parser: frontmatter; agent rule lines (`MUST` / `MUST NOT` / `SHOULD` / `SHOULD NOT` / `MAY`); verification checks and expected results; context, drivers, options, outcome, consequences, pros/cons, and links
+- [x] Rule-ID assignment (`<id>#<n>`)
+- [x] MADR import parser (status, context, decision outcome, consequences)
+- [x] Agent-optimized import parser (frontmatter, rules, Verify block, Context)
+- [x] Nygard / adr-tools parser (numbered `NNNN-title.md`, `## Status` / `## Context` / `## Decision` / `## Consequences`, "Superseded by" links)
+- [x] Format auto-detection
+- [x] Content hash for incremental sync
+- [x] Fixtures + unit tests for each format, including malformed inputs
+
+**Completion notes:** Added zod models and file-aware validation, parser support
+for hybrid MADR, MADR, agent-optimized, and Nygard records, deterministic rule
+IDs, and SHA-256 content hashes. Parser fixtures cover each format and malformed
+frontmatter; lint, format, typecheck, tests, build, CLI smoke checks, and npm
+audit pass.
 
 **Acceptance:** every fixture parses into a `Record` with the expected fields. Malformed files give actionable errors and don't crash.
 
