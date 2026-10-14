@@ -155,7 +155,9 @@ export function parseVerification(section: string | undefined): Verification[] {
   let check = '';
   for (const line of lines) {
     const checkMatch = line.match(/^\s*[-*+]\s+\*\*Check:\*\*\s*(.+)$/i);
-    const expectedMatch = line.match(/^\s*[-*+]\s+\*\*Expected:\*\*\s*(.+)$/i);
+    const expectedMatch = line.match(
+      /^\s*(?:[-*+]\s+)?\*\*Expected:\*\*\s*(.+)$/i,
+    );
     if (checkMatch) {
       check = cleanInline(checkMatch[1]);
     } else if (expectedMatch && check) {

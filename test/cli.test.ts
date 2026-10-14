@@ -58,8 +58,8 @@ it('initializes, syncs, and returns only applicable accepted rules', async () =>
   expect(readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toContain(
     '<!-- dg:begin -->',
   );
-  expect(readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).not.toContain(
-    'dg sdr add',
+  expect(readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toContain(
+    'Record decisions with `dg sdr add`.',
   );
   log.mockClear();
 
@@ -105,6 +105,246 @@ it('does not prompt to import when no Markdown records are present', async () =>
       String(chunk).includes('Import records from'),
     ),
   ).toBe(false);
+});
+
+it('compiles a deterministic, budgeted managed block without changing surrounding text', async () => {
+  const root = createTempProject();
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0001-images.md',
+    hybridRecord(
+      'ADR-0001',
+      ['src/**/*.tsx'],
+      'MUST',
+      'Use the shared image rendering component for all image content.',
+    ),
+  );
+  writeFileSync(path.join(root, 'AGENTS.md'), 'Project guidance before.\n');
+  process.chdir(root);
+  await invoke('init', '--yes');
+
+  const file = path.join(root, 'AGENTS.md');
+  const initial = readFileSync(file, 'utf8');
+  const begin = initial.indexOf('<!-- dg:begin -->');
+  const end = initial.indexOf('<!-- dg:end -->') + '<!-- dg:end -->'.length;
+  expect(initial.slice(begin, end)).toBe(
+    [
+      '<!-- dg:begin -->',
+      'Run `dg context <files>` before editing.',
+      'Record decisions with `dg sdr add`.',
+      'MCP server: `dg mcp`.',
+      '',
+      '## Accepted rules',
+      'ADR-0001#1 [src/**/*.tsx] MUST Use the shared image rendering component for all image content.',
+      '<!-- dg:end -->',
+    ].join('\n'),
+  );
+  writeFileSync(file, `${initial.trimEnd()}\nProject guidance after.\n`);
+  const configFile = path.join(root, '.dg/config.json');
+  const config = JSON.parse(readFileSync(configFile, 'utf8')) as {
+    tokenBudget: number;
+  };
+  config.tokenBudget = 58;
+  writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
+
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+  await invoke('compile');
+  const compiled = readFileSync(file, 'utf8');
+  expect(compiled).toContain('Project guidance before.');
+  expect(compiled).toContain('Project guidance after.');
+  expect(compiled).toContain(
+    'Rule index trimmed; run `dg context <files>` for the full list.',
+  );
+  expect(compiled).not.toContain('Use the shared image rendering component');
+  expect(compiled.match(/<!-- dg:begin -->/g)).toHaveLength(1);
+  log.mockClear();
+
+  await invoke('compile');
+  expect(readFileSync(file, 'utf8')).toBe(compiled);
+});
+
+it('verifies automated checks, reports manual reviews, and times out long checks', async () => {
+  const root = createTempProject();
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0001-checks.md',
+    `---
+id: ADR-0001
+type: adr
+title: Verify checks
+status: accepted
+applies_to: []
+tags: []
+---
+
+# ADR-0001: Verify checks
+
+## Verify
+
+- **Check:** node -e "process.exit(0)"
+  **Expected:** exits successfully
+- **Check:** node -e "process.exit(2)"
+  **Expected:** exits unsuccessfully
+- **Check:** manual review: inspect the deployment configuration
+  **Expected:** deployment settings match the project requirements
+- **Check:** node -e "setTimeout(() => {}, 2000)"
+  **Expected:** completes within the timeout
+`,
+  );
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0002-timeout.md',
+    `---
+id: ADR-0002
+type: adr
+title: Time out checks
+status: accepted
+applies_to: []
+tags: []
+---
+
+# ADR-0002: Time out checks
+
+## Verify
+
+- **Check:** node -e "setTimeout(() => {}, 2000)"
+  **Expected:** completes within the timeout
+`,
+  );
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0003-no-checks.md',
+    hybridRecord('ADR-0003', ['**/*.md'], 'MUST', 'Keep the source.'),
+  );
+  process.chdir(root);
+  await invoke('init', '--yes');
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  process.exitCode = undefined;
+  await invoke('verify', 'ADR-0001', '--timeout', '3');
+  const output = log.mock.calls.map(([line]) => String(line)).join('\n');
+  expect(output).toContain('PASS | ADR-0001');
+  expect(output).toContain('FAIL | ADR-0001');
+  expect(output).toContain('SKIP | ADR-0001');
+  expect(output).toContain(
+    'Manual review: inspect the deployment configuration',
+  );
+  expect(output).not.toContain('Timed out after');
+  expect(process.exitCode).toBe(1);
+  process.exitCode = undefined;
+  log.mockClear();
+
+  await invoke('verify', 'ADR-0002', '--timeout', '0.05');
+  const timeoutOutput = log.mock.calls.map(([line]) => String(line)).join('\n');
+  expect(timeoutOutput).toContain('Timed out after 0.05s.');
+  expect(process.exitCode).toBe(1);
+  process.exitCode = undefined;
+  log.mockClear();
+  await invoke('verify', 'ADR-0003');
+  expect(log.mock.calls.map(([line]) => String(line)).join('\n')).toContain(
+    'No automated checks; review docs/decisions/adr/ADR-0003-no-checks.md.',
+  );
+});
+
+it('lints record and graph errors, detects conflicts, and exports the graph', async () => {
+  const root = createTempProject();
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0001-first.md',
+    hybridRecord(
+      'ADR-0001',
+      ['src/*/a.ts'],
+      'MUST',
+      'Use the shared storage interface.',
+      ['ADR-9999'],
+    ).replace(
+      'status: accepted',
+      'status: accepted\nsupersedes:\n  - ADR-0002',
+    ),
+  );
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0002-second.md',
+    hybridRecord(
+      'ADR-0002',
+      ['src/foo/*.ts'],
+      'MUST NOT',
+      'Use the shared storage interface.',
+    ).replace(
+      'status: accepted',
+      'status: accepted\nsupersedes:\n  - ADR-0001',
+    ),
+  );
+  writeRecord(
+    root,
+    'docs/decisions/adr/duplicate.md',
+    hybridRecord('ADR-0001', ['src/**/*.ts'], 'SHOULD', 'Keep the source.'),
+  );
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0003-long.md',
+    `${hybridRecord('ADR-0003', ['docs/**/*.md'], 'MUST', 'Keep the source.')}${'Long note.\n'.repeat(205)}`,
+  );
+  process.chdir(root);
+  await invoke('init', '--yes');
+  writeRecord(
+    root,
+    'docs/decisions/adr/broken.md',
+    '---\nid: [\n---\n# Invalid',
+  );
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  process.exitCode = undefined;
+  await invoke('lint', '--json');
+  const report = JSON.parse(log.mock.calls[0][0] as string) as {
+    ok: boolean;
+    diagnostics: { code: string }[];
+  };
+  expect(report.ok).toBe(false);
+  expect(report.diagnostics.map(({ code }) => code)).toEqual(
+    expect.arrayContaining([
+      'schema',
+      'line-budget',
+      'duplicate-id',
+      'unknown-link',
+      'supersede-cycle',
+      'superseded-status',
+      'conflicting-rules',
+      'near-duplicate-rule',
+    ]),
+  );
+  expect(process.exitCode).toBe(1);
+  process.exitCode = undefined;
+  const store = new SQLiteStore(path.join(root, '.dg/graph.db'));
+  const project = (
+    JSON.parse(readFileSync(path.join(root, '.dg/config.json'), 'utf8')) as {
+      project: string;
+    }
+  ).project;
+  const edges = await store.listEdges(project);
+  store.close();
+  expect(edges).toEqual(
+    expect.arrayContaining([
+      { src: 'ADR-0001', dst: 'ADR-0002', kind: 'conflicts_with' },
+      { src: 'ADR-0002', dst: 'ADR-0001', kind: 'conflicts_with' },
+    ]),
+  );
+  log.mockClear();
+
+  await invoke(
+    'graph',
+    '--format',
+    'mermaid',
+    '--root',
+    'ADR-0001',
+    '--depth',
+    '1',
+  );
+  expect(log.mock.calls[0][0]).toContain('flowchart TD');
+  expect(log.mock.calls[0][0]).toContain('supersedes');
+  log.mockClear();
+  await invoke('graph', '--format', 'dot');
+  expect(log.mock.calls[0][0]).toContain('digraph decision_graph');
 });
 
 it('keeps unrelated graph edges when importing a single record', async () => {

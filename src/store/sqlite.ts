@@ -3,6 +3,7 @@ import picomatch from 'picomatch';
 import { migrate } from './migrations/001_initial.js';
 import type {
   EdgeKind,
+  GraphEdge,
   GraphNode,
   NodeFilter,
   Project,
@@ -162,20 +163,28 @@ export class SQLiteStore implements Store {
     return staleIds.length;
   }
 
-  async deleteEdges(projectId: string, sources?: string[]): Promise<void> {
-    if (sources === undefined) {
+  async deleteEdges(
+    projectId: string,
+    sources?: string[],
+    kind?: EdgeKind,
+  ): Promise<void> {
+    if (sources === undefined && kind === undefined) {
       this.db.prepare('DELETE FROM edges WHERE project_id = ?').run(projectId);
       return;
     }
-    if (sources.length === 0) return;
-    const deleteSources = (batch: string[]) =>
+    if (sources?.length === 0) return;
+    const deleteSources = (batch?: string[]) =>
       this.db
         .prepare(
-          `DELETE FROM edges WHERE project_id = ? AND src IN (${batch.map(() => '?').join(', ')})`,
+          `DELETE FROM edges WHERE project_id = ?${kind ? ' AND kind = ?' : ''}${batch ? ` AND src IN (${batch.map(() => '?').join(', ')})` : ''}`,
         )
-        .run(projectId, ...batch);
-    for (let index = 0; index < sources.length; index += 900) {
-      deleteSources(sources.slice(index, index + 900));
+        .run(projectId, ...(kind ? [kind] : []), ...(batch ?? []));
+    if (sources === undefined) {
+      deleteSources();
+    } else {
+      for (let index = 0; index < sources.length; index += 900) {
+        deleteSources(sources.slice(index, index + 900));
+      }
     }
   }
 
@@ -198,6 +207,14 @@ export class SQLiteStore implements Store {
       .prepare('SELECT * FROM nodes WHERE project_id = ? AND id = ?')
       .get(projectId, id) as NodeRow | undefined;
     return row ? mapNode(row) : null;
+  }
+
+  async listEdges(projectId: string): Promise<GraphEdge[]> {
+    return this.db
+      .prepare(
+        'SELECT src, dst, kind FROM edges WHERE project_id = ? ORDER BY src, dst, kind',
+      )
+      .all(projectId) as GraphEdge[];
   }
 
   async list(projectId: string, filter: NodeFilter = {}): Promise<GraphNode[]> {

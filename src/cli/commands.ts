@@ -6,6 +6,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 import picomatch from 'picomatch';
 import { dump, load } from 'js-yaml';
@@ -19,9 +20,11 @@ import {
   type DecisionRecord,
   type SdrRecord,
 } from '../core/index.js';
+import { lintRecords, type LintDiagnostic } from '../core/lint.js';
 import {
   SQLiteStore,
   type EdgeKind,
+  type GraphEdge,
   type GraphNode,
   type NodeFilter,
   type Store,
@@ -127,11 +130,271 @@ export function registerCommands(program: Command): void {
         console.log(
           `Indexed ${result.indexed} record(s); ${result.changed} changed, ${result.removed} removed.`,
         );
-        await compileInstructions(runtime.root, runtime.config);
+        await compileInstructions(
+          runtime.root,
+          runtime.config,
+          await runtime.store.list(runtime.config.project, {
+            type: 'adr',
+            status: 'accepted',
+          }),
+        );
       } finally {
         runtime.store.close();
       }
     });
+
+  program
+    .command('compile')
+    .description(
+      'Compile accepted decision rules into the managed AGENTS.md block',
+    )
+    .action(async () => {
+      const runtime = openRuntime(process.cwd());
+      try {
+        const accepted = await runtime.store.list(runtime.config.project, {
+          type: 'adr',
+          status: 'accepted',
+        });
+        await compileInstructions(runtime.root, runtime.config, accepted);
+        console.log(
+          `Compiled ${accepted.length} accepted record(s) into ${runtime.config.agentsMd}`,
+        );
+      } finally {
+        runtime.store.close();
+      }
+    });
+
+  program
+    .command('verify')
+    .description('Run decision-record verification checks')
+    .argument('[ids...]', 'record IDs to verify')
+    .option(
+      '--timeout <seconds>',
+      'timeout for each automated check',
+      parsePositiveSeconds,
+      30,
+    )
+    .action(async (ids: string[], options: { timeout: number }) => {
+      const runtime = openRuntime(process.cwd());
+      try {
+        const records = await runtime.store.list(runtime.config.project);
+        const selected = ids.length
+          ? records.filter((record) => ids.includes(record.id))
+          : records;
+        const rows: VerifyRow[] = [];
+        for (const id of ids) {
+          if (!records.some((record) => record.id === id)) {
+            rows.push({
+              status: 'FAIL',
+              record: id,
+              check: 'record lookup',
+              expected: 'Record exists in the index.',
+              result: `Record not found: ${id}`,
+            });
+          }
+        }
+        for (const record of selected) {
+          if (record.type !== 'adr' || record.verify.length === 0) {
+            rows.push({
+              status: 'SKIP',
+              record: record.id,
+              check: '—',
+              expected: 'Manual review required.',
+              result: `No automated checks; review ${record.path}.`,
+            });
+            continue;
+          }
+          for (const verification of record.verify) {
+            if (isManualCheck(verification.check)) {
+              rows.push({
+                status: 'SKIP',
+                record: record.id,
+                check: verification.check,
+                expected: verification.expected,
+                result: `Manual review: ${verification.check.replace(/^manual(?:\s+review)?\s*:\s*/i, '')}`,
+              });
+              continue;
+            }
+            const result = await runVerification(
+              runtime.root,
+              verification.check,
+              options.timeout * 1000,
+            );
+            rows.push({
+              status: result.timedOut
+                ? 'FAIL'
+                : result.code === 0
+                  ? 'PASS'
+                  : 'FAIL',
+              record: record.id,
+              check: verification.check,
+              expected: verification.expected,
+              result: result.timedOut
+                ? `Timed out after ${options.timeout}s.`
+                : `Exit code ${result.code}${result.output ? `: ${result.output}` : ''}`,
+            });
+          }
+        }
+        printVerifyTable(rows);
+        if (rows.some((row) => row.status === 'FAIL')) process.exitCode = 1;
+      } finally {
+        runtime.store.close();
+      }
+    });
+
+  program
+    .command('lint')
+    .description('Validate indexed decision records and their graph')
+    .option('--json', 'output diagnostics as JSON')
+    .action(async (options: { json?: boolean }) => {
+      const runtime = openRuntime(process.cwd());
+      try {
+        const indexed = await runtime.store.list(runtime.config.project);
+        const files = new Set([
+          ...collectMarkdownFiles(
+            path.resolve(runtime.root, runtime.config.adrDir),
+          ),
+          ...collectMarkdownFiles(
+            path.resolve(runtime.root, runtime.config.sdrDir),
+          ),
+          ...indexed.map((record) => path.resolve(runtime.root, record.path)),
+        ]);
+        const records: DecisionRecord[] = [];
+        const diagnostics: LintDiagnostic[] = [];
+        for (const file of [...files].sort()) {
+          if (!existsSync(file)) continue;
+          const content = readFileSync(file, 'utf8');
+          const lineCount = countLines(content);
+          const relativePath = path
+            .relative(runtime.root, file)
+            .split(path.sep)
+            .join('/');
+          if (lineCount > 200) {
+            diagnostics.push({
+              severity: 'warning',
+              code: 'line-budget',
+              path: relativePath,
+              message: `Record has ${lineCount} lines; the budget is 200.`,
+            });
+          }
+          try {
+            records.push(parseFile(runtime.root, file, 'auto'));
+          } catch (error) {
+            diagnostics.push({
+              severity: 'error',
+              code: 'schema',
+              path: relativePath,
+              message: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+        const analysis = lintRecords(records);
+        diagnostics.push(...analysis.diagnostics);
+        await runtime.store.deleteEdges(
+          runtime.config.project,
+          undefined,
+          'conflicts_with',
+        );
+        for (const conflict of analysis.conflicts) {
+          await runtime.store.addEdge(
+            runtime.config.project,
+            conflict.first,
+            conflict.second,
+            'conflicts_with',
+          );
+          await runtime.store.addEdge(
+            runtime.config.project,
+            conflict.second,
+            conflict.first,
+            'conflicts_with',
+          );
+        }
+        diagnostics.sort(
+          (first, second) =>
+            compareText(first.severity, second.severity) ||
+            compareText(first.code, second.code) ||
+            compareText(
+              first.id ?? first.path ?? '',
+              second.id ?? second.path ?? '',
+            ),
+        );
+        const errors = diagnostics.filter(
+          (diagnostic) => diagnostic.severity === 'error',
+        ).length;
+        if (options.json) {
+          console.log(
+            JSON.stringify(
+              {
+                ok: errors === 0,
+                errors,
+                warnings: diagnostics.length - errors,
+                diagnostics,
+              },
+              null,
+              2,
+            ),
+          );
+        } else if (diagnostics.length === 0) {
+          console.log('No decision-record issues found.');
+        } else {
+          for (const diagnostic of diagnostics) {
+            const location = diagnostic.path ? ` ${diagnostic.path}` : '';
+            console.log(
+              `${diagnostic.severity.toUpperCase()} ${diagnostic.code}${location}: ${diagnostic.message}`,
+            );
+          }
+          console.log(
+            `${errors} error(s), ${diagnostics.length - errors} warning(s).`,
+          );
+        }
+        if (errors > 0) process.exitCode = 1;
+      } finally {
+        runtime.store.close();
+      }
+    });
+
+  program
+    .command('graph')
+    .description('Export the decision graph')
+    .option('--format <format>', 'output format: mermaid or dot', 'mermaid')
+    .option('--root <id>', 'start at a record and follow outgoing edges')
+    .option('--depth <number>', 'maximum depth from the root', parseDepth)
+    .action(
+      async (options: { format: string; root?: string; depth?: number }) => {
+        if (options.format !== 'mermaid' && options.format !== 'dot') {
+          throw new Error('Graph format must be mermaid or dot');
+        }
+        const runtime = openRuntime(process.cwd());
+        try {
+          const allNodes = await runtime.store.list(runtime.config.project);
+          const allEdges = await runtime.store.listEdges(
+            runtime.config.project,
+          );
+          let nodes = allNodes;
+          if (options.root) {
+            const root = allNodes.find((node) => node.id === options.root);
+            if (!root) throw new Error(`Record not found: ${options.root}`);
+            const related = await runtime.store.related(
+              runtime.config.project,
+              options.root,
+              options.depth ?? 1,
+            );
+            const included = new Set([
+              root.id,
+              ...related.map((node) => node.id),
+            ]);
+            nodes = allNodes.filter((node) => included.has(node.id));
+          }
+          const included = new Set(nodes.map((node) => node.id));
+          const edges = allEdges.filter(
+            (edge) => included.has(edge.src) && included.has(edge.dst),
+          );
+          console.log(renderGraph(nodes, edges, options.format));
+        } finally {
+          runtime.store.close();
+        }
+      },
+    );
 
   program
     .command('new')
@@ -415,7 +678,14 @@ async function initProject(
       runtime,
       importCandidates ? candidates : [],
     );
-    await compileInstructions(root, config);
+    await compileInstructions(
+      root,
+      config,
+      await runtime.store.list(config.project, {
+        type: 'adr',
+        status: 'accepted',
+      }),
+    );
     console.log(`Initialized decision-graph in ${root}`);
     console.log(
       `Indexed ${result.indexed} record(s); ${result.changed} changed, ${result.removed} removed.`,
@@ -972,6 +1242,7 @@ function ruleSpecificity(record: GraphNode, files: string[]): number {
 async function compileInstructions(
   root: string,
   config: Config,
+  acceptedRecords: GraphNode[],
 ): Promise<void> {
   const projectRoot = path.resolve(root);
   const file = path.resolve(projectRoot, config.agentsMd);
@@ -988,12 +1259,79 @@ async function compileInstructions(
   const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
   const begin = '<!-- dg:begin -->';
   const end = '<!-- dg:end -->';
-  const block = `${begin}\nUse \`dg context <files>\` before editing.\n${end}`;
+  const rules = acceptedRecords
+    .filter((record) => record.type === 'adr' && record.status === 'accepted')
+    .sort((first, second) => compareText(first.id, second.id))
+    .flatMap((record) =>
+      record.rules.map(
+        (rule) =>
+          `${rule.id} [${record.appliesTo.join(', ')}] ${rule.modality} ${rule.text}`,
+      ),
+    );
+  const instructionLines = [
+    'Run `dg context <files>` before editing.',
+    'Record decisions with `dg sdr add`.',
+    'MCP server: `dg mcp`.',
+    '',
+    '## Accepted rules',
+    ...(rules.length ? rules : ['No accepted rules are indexed.']),
+  ];
+  const includedRules = rules.length ? [] : ['No accepted rules are indexed.'];
+  let omittedRules = false;
+  for (const rule of rules) {
+    const candidate = renderManagedBlock(
+      [...instructionLines.slice(0, 5), ...includedRules, rule],
+      begin,
+      end,
+    );
+    if (estimateTokens(candidate) <= config.tokenBudget) {
+      includedRules.push(rule);
+    } else {
+      omittedRules = true;
+    }
+  }
+  if (omittedRules) {
+    const note =
+      'Rule index trimmed; run `dg context <files>` for the full list.';
+    while (
+      includedRules.length > 0 &&
+      estimateTokens(
+        renderManagedBlock(
+          [...instructionLines.slice(0, 5), ...includedRules, note],
+          begin,
+          end,
+        ),
+      ) > config.tokenBudget
+    ) {
+      includedRules.pop();
+    }
+    instructionLines.splice(
+      5,
+      instructionLines.length - 5,
+      ...includedRules,
+      note,
+    );
+  } else {
+    instructionLines.splice(5, instructionLines.length - 5, ...includedRules);
+  }
+  const block = renderManagedBlock(instructionLines, begin, end);
+  if (estimateTokens(block) > config.tokenBudget) {
+    throw new Error(
+      `tokenBudget ${config.tokenBudget} is too small for the managed usage instructions in ${config.agentsMd}`,
+    );
+  }
   const beginAt = current.indexOf(begin);
   const endAt = current.indexOf(end);
+  const beginCount = current.split(begin).length - 1;
+  const endCount = current.split(end).length - 1;
   let output: string;
   if (beginAt !== -1 || endAt !== -1) {
-    if (beginAt === -1 || endAt < beginAt) {
+    if (
+      beginAt === -1 ||
+      endAt < beginAt ||
+      beginCount !== 1 ||
+      endCount !== 1
+    ) {
       throw new Error(
         `Malformed managed decision-graph block in ${config.agentsMd}`,
       );
@@ -1004,4 +1342,187 @@ async function compileInstructions(
   }
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, output);
+}
+
+interface VerifyRow {
+  status: 'PASS' | 'FAIL' | 'SKIP';
+  record: string;
+  check: string;
+  expected: string;
+  result: string;
+}
+
+function isManualCheck(check: string): boolean {
+  return /^manual(?:\s+review)?\s*:/i.test(check);
+}
+
+function runVerification(
+  root: string,
+  command: string,
+  timeoutMs: number,
+): Promise<{ code: number | null; timedOut: boolean; output: string }> {
+  return new Promise((resolve) => {
+    const child = spawn(command, {
+      cwd: root,
+      shell: true,
+      detached: process.platform !== 'win32',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let output = '';
+    let timedOut = false;
+    let settled = false;
+    const append = (chunk: Buffer) => {
+      output += chunk.toString();
+    };
+    child.stdout.on('data', append);
+    child.stderr.on('data', append);
+    const timer = setTimeout(() => {
+      timedOut = true;
+      if (child.pid !== undefined && process.platform !== 'win32') {
+        try {
+          process.kill(-child.pid, 'SIGKILL');
+        } catch (error) {
+          output += `Unable to stop process group: ${error instanceof Error ? error.message : String(error)}. `;
+          child.kill('SIGKILL');
+        }
+      } else if (child.pid !== undefined) {
+        const killer = spawn(
+          'taskkill',
+          ['/PID', String(child.pid), '/T', '/F'],
+          { stdio: 'ignore', windowsHide: true },
+        );
+        killer.once('error', () => child.kill('SIGKILL'));
+      } else {
+        child.kill('SIGKILL');
+      }
+    }, timeoutMs);
+    timer.unref();
+
+    child.once('error', (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({
+        code: 127,
+        timedOut,
+        output: error.message,
+      });
+    });
+    child.once('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({
+        code,
+        timedOut,
+        output: output.trim().replace(/\s+/g, ' ').slice(0, 500),
+      });
+    });
+  });
+}
+
+function printVerifyTable(rows: VerifyRow[]): void {
+  console.log('STATUS | RECORD | CHECK | EXPECTED | RESULT');
+  for (const row of rows) {
+    console.log(
+      [row.status, row.record, row.check, row.expected, row.result]
+        .map((cell) => cell.replace(/\s+/g, ' ').replace(/\|/g, '\\|'))
+        .join(' | '),
+    );
+  }
+}
+
+function parsePositiveSeconds(value: string): number {
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    throw new Error('Timeout must be a positive number of seconds');
+  }
+  return seconds;
+}
+
+function countLines(content: string): number {
+  if (content.length === 0) return 0;
+  return content.split(/\r?\n/).length - (/\r?\n$/.test(content) ? 1 : 0);
+}
+
+function renderManagedBlock(
+  lines: string[],
+  begin: string,
+  end: string,
+): string {
+  return `${begin}\n${lines.join('\n')}\n${end}`;
+}
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+function renderGraph(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  format: 'mermaid' | 'dot',
+): string {
+  const orderedNodes = [...nodes].sort((first, second) =>
+    compareText(first.id, second.id),
+  );
+  const identifiers = new Map(
+    orderedNodes.map((node, index) => [node.id, `n${index}`]),
+  );
+  if (format === 'mermaid') {
+    const lines = ['flowchart TD'];
+    for (const node of orderedNodes) {
+      const id = identifiers.get(node.id);
+      if (id) {
+        lines.push(
+          `  ${id}["${escapeGraphLabel(`${node.id}: ${node.title}`)}"]`,
+        );
+      }
+    }
+    for (const edge of [...edges].sort(compareEdges)) {
+      const source = identifiers.get(edge.src);
+      const target = identifiers.get(edge.dst);
+      if (source && target) {
+        lines.push(`  ${source} -->|${edge.kind}| ${target}`);
+      }
+    }
+    return lines.join('\n');
+  }
+
+  const lines = ['digraph decision_graph {'];
+  for (const node of orderedNodes) {
+    const id = identifiers.get(node.id);
+    if (id) {
+      lines.push(
+        `  ${id} [label="${escapeGraphLabel(`${node.id}: ${node.title}`)}"];`,
+      );
+    }
+  }
+  for (const edge of [...edges].sort(compareEdges)) {
+    const source = identifiers.get(edge.src);
+    const target = identifiers.get(edge.dst);
+    if (source && target) {
+      lines.push(`  ${source} -> ${target} [label="${edge.kind}"];`);
+    }
+  }
+  lines.push('}');
+  return lines.join('\n');
+}
+
+function compareEdges(first: GraphEdge, second: GraphEdge): number {
+  return (
+    compareText(first.src, second.src) ||
+    compareText(first.dst, second.dst) ||
+    compareText(first.kind, second.kind)
+  );
+}
+
+function compareText(first: string, second: string): number {
+  return first < second ? -1 : first > second ? 1 : 0;
+}
+
+function escapeGraphLabel(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\r?\n/g, ' ');
 }
