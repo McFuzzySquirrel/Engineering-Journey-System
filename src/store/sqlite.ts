@@ -73,7 +73,7 @@ export class SQLiteStore implements Store {
   ): Promise<boolean> {
     const existing = this.db
       .prepare('SELECT hash, path FROM nodes WHERE project_id = ? AND id = ?')
-      .get(projectId, record.id) as { hash: string } | undefined;
+      .get(projectId, record.id) as { hash: string; path: string } | undefined;
     if (
       existing?.hash === record.contentHash &&
       existing.path === record.path
@@ -183,10 +183,7 @@ export class SQLiteStore implements Store {
     return row ? mapNode(row) : null;
   }
 
-  async list(
-    projectId: string,
-    filter: NodeFilter = {},
-  ): Promise<GraphNode[]> {
+  async list(projectId: string, filter: NodeFilter = {}): Promise<GraphNode[]> {
     const { where, params } = buildFilter(filter);
     const rows = this.db
       .prepare(`SELECT * FROM nodes WHERE project_id = ?${where} ORDER BY id`)
@@ -267,10 +264,7 @@ export class SQLiteStore implements Store {
     return rows.map(mapNode);
   }
 
-  async byGlobMatch(
-    projectId: string,
-    files: string[],
-  ): Promise<GraphNode[]> {
+  async byGlobMatch(projectId: string, files: string[]): Promise<GraphNode[]> {
     if (files.length === 0) return [];
     const nodes = await this.list(projectId);
     return nodes.filter((node) =>
