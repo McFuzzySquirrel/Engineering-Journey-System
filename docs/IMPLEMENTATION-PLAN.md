@@ -11,7 +11,7 @@ EJS recorded entire sessions: journey files, hooks, prompt logs, and story narra
 
 **decision-graph** keeps the useful parts of EJS: the SQLite/FTS index, frontmatter parsing, DB-first querying, and a tiny always-on instruction surface. It drops the journey system and adds:
 
-- **Agent-optimized ADRs** (based on [actual.ai: agent-optimized ADRs](https://actual.ai/blog/agent-optimized-adrs)). Each one has a stable ID, `applies_to` globs, imperative `MUST` / `MUST NOT` / `SHOULD` rules, and a `Verify` command. Records are never edited after acceptance; a new record supersedes them.
+- **Hybrid MADR ADRs** combining MADR's human-readable rationale with [agent-optimized ADRs](https://actual.ai/blog/agent-optimized-adrs). Each one has a stable ID, `applies_to` globs, imperative `MUST` / `MUST NOT` / `SHOULD` rules, and concrete verification checks. Decision content is immutable after acceptance; a new record supersedes it, while lifecycle metadata and links may be updated.
 - **SDRs (Session Decision Records)**. These are small records of decisions an agent makes during a session. An SDR can be promoted to an ADR.
 - **A knowledge graph.** Records are nodes. Relationships are edges: supersedes, relates_to, derived_from, promoted_to, conflicts_with.
 - **Agent access** in three ways: a CLI, an MCP server, and a compiled `AGENTS.md` block that stays in sync.
@@ -29,6 +29,7 @@ EJS recorded entire sessions: journey files, hooks, prompt logs, and story narra
 | AGENTS.md content | Short usage instructions + compact index of accepted rules (ID, scope, MUST lines) under a token budget |
 | SDR capture | Agents call `dg sdr add` (or the MCP `sdr_add` tool). No hooks |
 | Server | `dg serve` in the same package: HTTP API + remote MCP. **No auth in v1** (localhost / trusted network only) |
+| Native ADR format | Hybrid MADR: decision rationale and option analysis for humans, scoped rules and verification checks for agents |
 | Import formats | MADR, Nygard / adr-tools, agent-optimized frontmatter |
 | v1 extras | `dg verify`, `dg lint` (duplicates/conflicts), SDR→ADR promotion, graph export (Mermaid/DOT) |
 | Dogfooding | Convert this repo's ADRs 0010–0018 once. Record the pivot as ADR-0001 |
@@ -51,30 +52,77 @@ supersedes: []              # record ids
 relates_to: []
 derived_from: []            # SDR ids
 date: 2026-10-13
+deciders: [Frontend team]
 ---
 
-# Image rendering
+# ADR-0001: Use the framework image component
 
-MUST: Render images with the framework's `Image` component.
-MUST NOT: Use a raw `<img>` tag.
-SHOULD: Provide `width` and `height`, or use `fill`.
+**Technical Story:** Improve image performance and prevent layout shift.
+
+## Agent Rules
+
+- **MUST:** Render images with the framework's `Image` component.
+- **MUST NOT:** Use a raw `<img>` tag.
+- **SHOULD:** Provide `width` and `height`, or use `fill`.
 
 ## Verify
 
-```sh
-rg "<img " app/ && exit 1 || exit 0
-```
+- **Check:** `test -d app && ! rg -q "<img " app/`
+- **Expected:** The command exits successfully without finding a raw `<img>` tag.
 
-## Context
+## Context and Problem Statement
 
-One or two short paragraphs. Link out for the long story.
+Raw image elements bypass the framework's image optimization and make dimensions
+easy to omit. How should application images be rendered?
+
+## Decision Drivers
+
+- Prevent avoidable layout shift.
+- Apply the framework's image optimization consistently.
+
+## Considered Options
+
+- Use the framework's `Image` component.
+- Continue using raw `<img>` elements.
+
+## Decision Outcome
+
+Chosen option: "Use the framework's `Image` component", because it addresses
+both performance and layout stability through one enforceable convention.
+
+### Positive Consequences
+
+- Images receive the framework's optimization behavior.
+- A repository check can detect violations.
+
+### Negative Consequences
+
+- Callers must provide dimensions or explicitly use `fill`.
+
+## Pros and Cons of the Options
+
+### Framework `Image` component
+
+- Good, because optimization and sizing behavior are built in.
+- Bad, because it requires framework-specific props.
+
+### Raw `<img>` elements
+
+- Good, because they use the standard HTML API.
+- Bad, because optimization and layout stability depend on each caller.
+
+## Links
+
+None.
 ````
 
 Rules:
 - `id` never changes after creation.
 - Individual rules get the IDs `ADR-0001#1`, `ADR-0001#2`, … in file order. Reviews and commits can cite them.
+- Populate every section; write `None` when a section has nothing to record rather than removing its heading.
+- Prefer automated checks. When automation is not practical, `Check` names a concrete manual review procedure and `Expected` states its observable result.
 - Keep files ≤ ~200 lines. `dg lint` warns above that.
-- An accepted record is immutable. To change a decision, write a new record with `supersedes: [ADR-0001]`.
+- Accepted decision content is immutable. To change a decision, write a new record with `supersedes: [ADR-0001]`, mark the old record `superseded`, and link the records in both directions.
 
 ### 3.2 SDR — `docs/decisions/sdr/SDR-20261013-001-<slug>.md`
 
@@ -137,13 +185,13 @@ schema_version(version)
 
 ```
 src/
-  core/      model.ts, schema.ts (zod), parse/{agent,madr,nygard,detect}.ts,
+  core/      model.ts, schema.ts (zod), parse/{hybrid,agent,madr,nygard,detect}.ts,
              rules.ts, globs.ts (picomatch), compile.ts, lint.ts, graph.ts
   store/     store.ts (interface), sqlite.ts, postgres.ts, migrations/
   cli/       index.ts (commander), commands/*.ts
   mcp/       tools.ts (shared defs), stdio.ts, http.ts
   server/    app.ts (HTTP API), routes/*.ts
-test/        unit + integration (vitest), fixtures/{madr,nygard,agent,ejs}
+test/        unit + integration (vitest), fixtures/{hybrid,madr,nygard,agent,ejs}
 ```
 
 Planned dependencies: `commander`, `better-sqlite3`, `pg`, `zod`, `gray-matter`, `picomatch`, `@modelcontextprotocol/sdk`, `hono` (or node:http). Dev dependencies: `typescript`, `tsup`, `vitest`, `eslint`, `prettier`.
@@ -178,9 +226,10 @@ this retirement. Phase 1 remains unstarted.
 
 ### Phase 2 — Core model & parsers
 - [ ] zod schemas for ADR, SDR, and config. Errors include file and field
-- [ ] Agent-optimized parser: frontmatter, rule lines (`MUST` / `MUST NOT` / `SHOULD` / `SHOULD NOT` / `MAY`), `## Verify` fenced block, `## Context`
+- [ ] Native hybrid MADR parser: frontmatter; agent rule lines (`MUST` / `MUST NOT` / `SHOULD` / `SHOULD NOT` / `MAY`); verification checks and expected results; context, drivers, options, outcome, consequences, pros/cons, and links
 - [ ] Rule-ID assignment (`<id>#<n>`)
-- [ ] MADR parser (status, context, decision outcome, consequences)
+- [ ] MADR import parser (status, context, decision outcome, consequences)
+- [ ] Agent-optimized import parser (frontmatter, rules, Verify block, Context)
 - [ ] Nygard / adr-tools parser (numbered `NNNN-title.md`, `## Status` / `## Context` / `## Decision` / `## Consequences`, "Superseded by" links)
 - [ ] Format auto-detection
 - [ ] Content hash for incremental sync
@@ -199,9 +248,9 @@ this retirement. Phase 1 remains unstarted.
 
 ### Phase 4 — Core CLI
 - [ ] `dg init [--type <projectType>] [--yes]`: writes config, creates dirs, adds `.dg/graph.db` to `.gitignore`, scans common ADR dirs (`doc/adr`, `docs/adr`, `docs/decisions`, `adr`, `architecture/decisions`) and offers to import them, runs the first sync and compile
-- [ ] `dg import <path> [--format auto|madr|nygard|agent] [--convert]`: indexes records in place. `--convert` writes agent-optimized drafts (`status: proposed`) into `adrDir` and keeps the originals
+- [ ] `dg import <path> [--format auto|hybrid|madr|nygard|agent] [--convert]`: indexes records in place. `--convert` writes hybrid MADR drafts (`status: proposed`) into `adrDir` and keeps the originals
 - [ ] `dg sync`: incremental, file-hash based, removes records whose files are gone, then runs `compile`
-- [ ] `dg new "<title>" [--applies-to <glob>...] [--tags ...]`: next ADR id from the template
+- [ ] `dg new "<title>" [--applies-to <glob>...] [--tags ...]`: next ADR id from the hybrid MADR template
 - [ ] `dg list [--status] [--type] [--tag]`, `dg get <id>`, `dg search <query>`
 - [ ] `dg context <files...>`: accepted rules whose `applies_to` matches any of the files, ordered by specificity. This is the main entry point for agents
 - [ ] `dg related <id> [--depth N] [--kind ...]`
@@ -222,7 +271,7 @@ this retirement. Phase 1 remains unstarted.
   - a short usage section ("run `dg context <files>` before editing; record decisions with `dg sdr add`; MCP server: `dg mcp`")
   - a compact index of accepted rules (`ADR-0001#1 [**/*.tsx] MUST …`), trimmed to `tokenBudget`. When trimmed, it says to use `dg context` for the full list
   - deterministic output, so diffs stay clean
-- [ ] `dg verify [id...] [--timeout s]` runs Verify blocks from the repo root. Prints a pass/fail table and exits non-zero on failure. Records without a Verify block are skipped
+- [ ] `dg verify [id...] [--timeout s]` runs automated `Check` commands from the repo root, uses their exit status for pass/fail, and displays `Expected` with the result. It prints a pass/fail/skip table and exits non-zero on failure; manual checks and records without checks are skipped with the review procedure shown
 - [ ] `dg lint`:
   - schema errors, duplicate IDs, unknown link targets, supersede cycles
   - accepted records that are superseded but not marked `superseded`
@@ -256,7 +305,7 @@ this retirement. Phase 1 remains unstarted.
 
 ### Phase 9 — Dogfood & docs
 - [ ] Run `dg init --type cli-tool` in this repo
-- [ ] Convert `legacy/ejs-docs/adr/0010–0018` into agent-optimized ADRs. Mark the EJS-specific ones `deprecated` or have ADR-0001 supersede them
+- [ ] Convert `legacy/ejs-docs/adr/0010–0018` into hybrid MADR ADRs. Mark the EJS-specific ones `deprecated` or have ADR-0001 supersede them
 - [ ] Write **ADR-0001: Pivot from EJS to decision-graph**
 - [ ] Record SDRs for the significant implementation decisions made in Phases 1–8
 - [ ] `dg lint` and `dg verify` both pass. AGENTS.md is generated
