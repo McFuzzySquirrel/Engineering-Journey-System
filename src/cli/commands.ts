@@ -1,8 +1,10 @@
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
@@ -1244,18 +1246,7 @@ async function compileInstructions(
   config: Config,
   acceptedRecords: GraphNode[],
 ): Promise<void> {
-  const projectRoot = path.resolve(root);
-  const file = path.resolve(projectRoot, config.agentsMd);
-  const relativeFile = path.relative(projectRoot, file);
-  if (
-    relativeFile === '..' ||
-    relativeFile.startsWith(`..${path.sep}`) ||
-    path.isAbsolute(relativeFile)
-  ) {
-    throw new Error(
-      `agentsMd must resolve within the project root: ${config.agentsMd}`,
-    );
-  }
+  const file = resolveManagedFile(root, config.agentsMd);
   const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
   const begin = '<!-- dg:begin -->';
   const end = '<!-- dg:end -->';
@@ -1344,6 +1335,49 @@ async function compileInstructions(
   writeFileSync(file, output);
 }
 
+function resolveManagedFile(root: string, configuredPath: string): string {
+  const projectRoot = path.resolve(root);
+  const absoluteFile = path.resolve(projectRoot, configuredPath);
+  const errorMessage = `agentsMd must resolve within the project root: ${configuredPath}`;
+  if (!isPathWithin(projectRoot, absoluteFile)) throw new Error(errorMessage);
+
+  const canonicalRoot = realpathSync(projectRoot);
+  let ancestor = absoluteFile;
+  const missingSegments: string[] = [];
+  while (true) {
+    try {
+      lstatSync(ancestor);
+      break;
+    } catch (error) {
+      if (!(
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      )) {
+        throw error;
+      }
+      const parent = path.dirname(ancestor);
+      if (parent === ancestor) throw error;
+      missingSegments.unshift(path.basename(ancestor));
+      ancestor = parent;
+    }
+  }
+
+  const target = path.resolve(realpathSync(ancestor), ...missingSegments);
+  if (!isPathWithin(canonicalRoot, target)) throw new Error(errorMessage);
+  return target;
+}
+
+function isPathWithin(root: string, target: string): boolean {
+  const relative = path.relative(root, target);
+  return (
+    relative === '' ||
+    (relative !== '..' &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative))
+  );
+}
+
 interface VerifyRow {
   status: 'PASS' | 'FAIL' | 'SKIP';
   record: string;
@@ -1369,10 +1403,20 @@ function runVerification(
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';
+    let capturedBytes = 0;
+    let outputTruncated = false;
     let timedOut = false;
     let settled = false;
     const append = (chunk: Buffer) => {
-      output += chunk.toString();
+      const remaining = MAX_VERIFICATION_OUTPUT_BYTES - capturedBytes;
+      if (remaining <= 0) {
+        outputTruncated = true;
+        return;
+      }
+      const retained = chunk.subarray(0, remaining);
+      output += retained.toString();
+      capturedBytes += retained.byteLength;
+      if (retained.byteLength < chunk.byteLength) outputTruncated = true;
     };
     child.stdout.on('data', append);
     child.stderr.on('data', append);
@@ -1415,10 +1459,18 @@ function runVerification(
       resolve({
         code,
         timedOut,
-        output: output.trim().replace(/\s+/g, ' ').slice(0, 500),
+        output: formatVerificationOutput(output, outputTruncated),
       });
     });
   });
+}
+
+const MAX_VERIFICATION_OUTPUT_BYTES = 16 * 1024;
+
+function formatVerificationOutput(output: string, truncated: boolean): string {
+  const compact = output.trim().replace(/\s+/g, ' ');
+  const marker = truncated ? ' [output truncated]' : '';
+  return `${compact.slice(0, 500 - marker.length)}${marker}`;
 }
 
 function printVerifyTable(rows: VerifyRow[]): void {

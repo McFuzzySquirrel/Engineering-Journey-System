@@ -238,9 +238,15 @@ function patternsOverlap(first: string, second: string): boolean {
     ...globWitnesses(first, hints),
     ...globWitnesses(second, hints),
   ]);
-  return [...candidates].some(
-    (file) => picomatch.isMatch(file, first) && picomatch.isMatch(file, second),
-  );
+  if (
+    [...candidates].some(
+      (file) =>
+        picomatch.isMatch(file, first) && picomatch.isMatch(file, second),
+    )
+  ) {
+    return true;
+  }
+  return mayOverlapByFixedParts(first, second);
 }
 
 function globWitnesses(pattern: string, hints: string[]): string[] {
@@ -272,4 +278,35 @@ function literalGlobSegments(pattern: string): string[] {
     .replace(/[*?[\]]/g, '')
     .split('/')
     .filter(Boolean);
+}
+
+function mayOverlapByFixedParts(first: string, second: string): boolean {
+  const firstBounds = fixedGlobBounds(first);
+  const secondBounds = fixedGlobBounds(second);
+  if (!firstBounds || !secondBounds) return true;
+  const prefixesCompatible =
+    firstBounds.prefix.startsWith(secondBounds.prefix) ||
+    secondBounds.prefix.startsWith(firstBounds.prefix);
+  const suffixesCompatible =
+    firstBounds.suffix.endsWith(secondBounds.suffix) ||
+    secondBounds.suffix.endsWith(firstBounds.suffix);
+  return prefixesCompatible && suffixesCompatible;
+}
+
+function fixedGlobBounds(
+  pattern: string,
+): { prefix: string; suffix: string } | null {
+  if (/[{}[\]()!+@\\]/.test(pattern)) return null;
+  const firstWildcard = pattern.search(/[*?]/);
+  if (firstWildcard === -1) {
+    return { prefix: pattern, suffix: pattern };
+  }
+  const lastWildcard = Math.max(
+    pattern.lastIndexOf('*'),
+    pattern.lastIndexOf('?'),
+  );
+  return {
+    prefix: pattern.slice(0, firstWildcard),
+    suffix: pattern.slice(lastWildcard + 1),
+  };
 }

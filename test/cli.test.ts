@@ -4,6 +4,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -216,6 +217,26 @@ tags: []
     'docs/decisions/adr/ADR-0003-no-checks.md',
     hybridRecord('ADR-0003', ['**/*.md'], 'MUST', 'Keep the source.'),
   );
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0004-large-output.md',
+    `---
+id: ADR-0004
+type: adr
+title: Bound verification output
+status: accepted
+applies_to: []
+tags: []
+---
+
+# ADR-0004: Bound verification output
+
+## Verify
+
+- **Check:** node -e "process.stdout.write('x'.repeat(1000000))"
+  **Expected:** exits successfully
+`,
+  );
   process.chdir(root);
   await invoke('init', '--yes');
   const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -244,6 +265,11 @@ tags: []
   expect(log.mock.calls.map(([line]) => String(line)).join('\n')).toContain(
     'No automated checks; review docs/decisions/adr/ADR-0003-no-checks.md.',
   );
+  log.mockClear();
+  await invoke('verify', 'ADR-0004');
+  expect(log.mock.calls.map(([line]) => String(line)).join('\n')).toContain(
+    '[output truncated]',
+  );
 });
 
 it('lints record and graph errors, detects conflicts, and exports the graph', async () => {
@@ -253,7 +279,7 @@ it('lints record and graph errors, detects conflicts, and exports the graph', as
     'docs/decisions/adr/ADR-0001-first.md',
     hybridRecord(
       'ADR-0001',
-      ['src/*/a.ts'],
+      ['x/ab*b'],
       'MUST',
       'Use the shared storage interface.',
       ['ADR-9999'],
@@ -267,7 +293,7 @@ it('lints record and graph errors, detects conflicts, and exports the graph', as
     'docs/decisions/adr/ADR-0002-second.md',
     hybridRecord(
       'ADR-0002',
-      ['src/foo/*.ts'],
+      ['x/a*ab'],
       'MUST NOT',
       'Use the shared storage interface.',
     ).replace(
@@ -430,6 +456,31 @@ it('rejects generated instruction paths outside the project', async () => {
   );
   expect(readFileSync(outside, 'utf8')).toBe('Do not overwrite.');
   unlinkSync(outside);
+});
+
+it('rejects managed instruction paths through symlinks outside the project', async () => {
+  const root = createTempProject();
+  const outside = createTempProject();
+  const outsideFile = path.join(outside, 'AGENTS.md');
+  writeFileSync(outsideFile, 'Do not overwrite.');
+  process.chdir(root);
+  await invoke('init', '--yes');
+  symlinkSync(
+    outside,
+    path.join(root, 'linked'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  );
+  const configFile = path.join(root, '.dg/config.json');
+  const config = JSON.parse(readFileSync(configFile, 'utf8')) as {
+    agentsMd: string;
+  };
+  config.agentsMd = 'linked/AGENTS.md';
+  writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
+
+  await expect(invoke('compile')).rejects.toThrow(
+    'agentsMd must resolve within the project root',
+  );
+  expect(readFileSync(outsideFile, 'utf8')).toBe('Do not overwrite.');
 });
 
 it('orders matching context by specificity using normalized file paths', async () => {
