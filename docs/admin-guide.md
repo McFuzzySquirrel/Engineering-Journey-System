@@ -2,90 +2,131 @@
 
 ## Responsibilities and Architecture
 
-decision-graph runs as a CLI and stdio MCP server with a SQLite index per
-project. `dg serve` can expose a multi-project HTTP API and streamable-HTTP MCP
-using either SQLite or Postgres. Repository maintainers manage the GitHub
-repository and keep the implementation status accurate. See the
-[implementation plan](IMPLEMENTATION-PLAN.md) for scope and acceptance criteria.
+decision-graph has no hosted control plane or user-account system. Operators
+install the CLI, maintain Markdown decision records, and rebuild or back up
+the index. `dg serve` exposes a multi-project HTTP API and streamable-HTTP MCP
+using SQLite or PostgreSQL. Operators are responsible for access controls,
+network boundaries, backups, and any TLS termination.
 
 ## Prerequisites
 
-Git and Node.js 26 or newer with npm are required to build and validate the
-CLI. Local SQLite storage is provided by `better-sqlite3`; Postgres is required
-only when serving with a Postgres connection URL or running the optional
-integration tests.
+Node.js 26 or newer and npm are required. Git is required to clone the
+repository. SQLite uses the native `better-sqlite3` module. PostgreSQL is
+required only when using a PostgreSQL server or running its optional
+integration tests. Docker Compose or Podman Compose is needed only for the
+local PostgreSQL service.
 
 ## Installation
 
-The package is not published to npm. To build it from source, clone the
-repository, run `npm ci`, and then `npm run build`; see the
-[README](../README.md) for details.
+The package is not published to npm. From a checkout, run `npm ci` and
+`npm run build`. To install the built package locally, run `npm pack` and
+install the generated `decision-graph-0.1.0.tgz` tarball with npm. Do not
+assume registry installation or upgrades are available until a release is
+published. See the [README](../README.md#getting-started) for exact commands.
 
 ## Configuration
 
-`dg init` creates the project's `.dg/config.json` and `.dg/graph.db`. Set the
-`remote` field to an HTTP(S) decision-graph server URL, or supply `--remote` to
-`dg push` / `dg pull`. Start a local server with
-`dg serve --db .dg/server.db`; for Postgres, use
-`dg serve --db "$DG_TEST_PG_URL"`. `docker-compose.yml` provides a
-localhost-only Postgres instance for development and tests. MCP client setup
-is documented in the [MCP client guide](mcp.md).
+`dg init` writes `.dg/config.json`. The configuration fields are:
+
+| Field | Purpose | Default |
+|---|---|---|
+| `project` | Project ID used to scope index records | Derived from the directory name |
+| `projectType` | Project type used for remote cross-project selection | `cli-tool` |
+| `adrDir` | Source directory for ADR Markdown | `docs/decisions/adr` |
+| `sdrDir` | Source directory for SDR Markdown | `docs/decisions/sdr` |
+| `agentsMd` | File where `dg compile` writes its managed block | `AGENTS.md` |
+| `tokenBudget` | Maximum size of the managed instruction block | `1500` |
+| `remote` | Default HTTP(S) server URL for push and pull, or `null` | `null` |
+
+`dg serve` accepts `--db` (default `.dg/server.db`), `--port` (default
+`3000`), and `--host` (default `127.0.0.1`). `dg push` and `dg pull` accept
+`--remote`; `dg pull` also accepts `--project`.
+
+`DG_TEST_PG_URL` configures the optional PostgreSQL integration tests. The
+local `docker-compose.yml` also supports `DG_PG_PORT` and
+`POSTGRES_PASSWORD`; its fallback is for local development only and must not
+be reused as a deployment credential.
 
 ## Identity, Secrets, and TLS
 
-The stdio MCP server does not open a network listener. `dg serve` has no
-authentication in v1; it warns when bound to a non-local interface, but
-administrators must still restrict network access and must not expose it to an
-untrusted network. Use TLS termination and network controls if deploying behind
-a trusted network boundary. Never store credentials in tracked files. Use
-GitHub's private vulnerability reporting if enabled for this repository; a
-separate security policy is not currently present.
+The stdio MCP server does not open a network listener. The HTTP server has no
+authentication in v1. It binds to `127.0.0.1` by default and warns when bound
+to a non-local interface, but that warning is not an access control. Do not
+expose the server to an untrusted network. If remote access is required,
+provide network restrictions and TLS termination outside decision-graph.
+Keep server URLs and credentials out of tracked files and logs. Use the
+repository's private vulnerability reporting if enabled; do not publish
+sensitive vulnerability details in public issues.
 
 ## Storage and Backups
 
-Markdown decision records are the source of truth; `.dg/graph.db` is a local,
-rebuildable index. Back up or version the Markdown records through Git. If the
-index is lost, recreate it with `dg sync`. Repository administrators should use
-the backup and retention controls provided by their Git hosting organization.
+Markdown files are the source of truth. `.dg/graph.db` and `.dg/server.db` are
+ignored local SQLite databases; the project index can be rebuilt with
+`dg sync`. Back up and version record directories through Git. For a running
+SQLite server, use a consistent SQLite backup procedure rather than copying a
+live database file. For PostgreSQL, use the database platform's backup and
+retention controls.
+
+`dg push` updates server records and edges but does not delete server records
+missing from a local project. `dg pull` copies server records into a separate
+`remote:<fingerprint>:<project>` namespace and never edits repository
+Markdown.
 
 ## Health Checks and Monitoring
 
-For a running service, `GET /projects` is a basic liveness check. Monitor the
-process and Postgres availability using the deployment platform's standard
-health and database checks; the server does not currently expose metrics.
+`GET /projects` is a basic HTTP liveness check. The server does not expose
+metrics or a dedicated health endpoint. Monitor the process and, when used,
+PostgreSQL availability with the deployment platform's standard tools.
+
+The HTTP API also provides:
+
+- `POST /projects/:id/push`
+- `GET /projects/:id/records`
+- `GET /search?q=...&project=...&projectType=...`
+- `GET /context?files=...&project=...&projectType=...`
+- `GET /records/:project/:id/related?depth=...&kind=...`
+- MCP at `/mcp`
 
 ## Upgrades and Rollback
 
-The CLI package is not released, so application upgrades and rollbacks do not
-apply. The `ejs-final` Git tag marks the prior EJS project state and is not a
-decision-graph release. Follow the implementation plan for development
-milestones; do not mistake planned compatibility for a tested upgrade path.
+The package manifest is version `0.1.0`, but no npm release has been
+published. Install locally from a tarball or build from source; do not assume
+registry upgrades are available. Markdown records are the canonical data, so
+retain a Git revision before changing their format. The `ejs-final` tag marks
+the historical EJS project state, not a decision-graph release or upgrade
+target.
 
 ## Troubleshooting
 
-- **Looking for decision commands:** use `dg --help` to see the implemented
-  local workflows.
-- **MCP client cannot start:** for stdio, ensure the project is initialized;
-  for streamable HTTP, verify the server URL and `/mcp` endpoint. Build the
-  package and check the [MCP client guide](mcp.md).
-- **Archived scripts or hooks are present:** they are preserved for historical
-  reference and must not be installed or executed as part of decision-graph.
+- **Configuration validation fails:** check `.dg/config.json` against the
+  fields and types above; `remote` must be an HTTP(S) URL or `null`.
+- **PostgreSQL connection fails:** verify the URL supplied to `dg serve
+  --db` or `DG_TEST_PG_URL`, database availability, and local firewall rules.
+- **Remote push or pull fails:** verify the server URL, that the server is
+  running, and that it is reachable from the client.
+- **SQLite index is stale or missing:** run `dg sync` from the initialized
+  project root.
+- **MCP client cannot start:** verify the configured executable path, Node.js
+  runtime, project working directory, and `/mcp` URL for HTTP transport.
+- **Archived scripts or hooks are present:** do not install or execute them;
+  they are not decision-graph tooling.
 
 ## Security and Privacy Checklist
 
-- Keep credentials and private data out of committed files and public issues.
-- Review repository visibility and collaborator permissions in GitHub.
-- Use private vulnerability reporting for sensitive reports when available.
+- Keep credentials and private data out of Markdown, `.dg/config.json`, and
+  public issues.
+- Do not bind the unauthenticated server to an untrusted interface.
+- Use TLS termination and network access controls if remote access is
+  required; these are operator-provided, not built into the server.
+- Restrict PostgreSQL credentials, backups, and logs through the hosting
+  platform.
 - Do not install or run archived EJS hooks, skills, bootstrap scripts, or
   session-recording workflows.
-- Reassess authentication, network exposure, secret management, and data
-  retention before deploying the unauthenticated multi-project server.
 
 ## Recovery and Support
 
-Rebuild the local SQLite index from the repository's Markdown records with
-`dg sync`. Recover repository state using the hosting provider's supported Git
-recovery procedures and organizational backups. For project questions, use the
+Rebuild a project index from its Markdown records with `dg sync`. Restore
+server databases from operator-managed backups. Recover source files through
+Git or the repository host. For questions, use the
 [GitHub issue tracker](https://github.com/McFuzzySquirrel/Engineering-Journey-System/issues);
-do not include secret values or sensitive vulnerability details in public
-reports.
+do not include credentials or sensitive vulnerability details.

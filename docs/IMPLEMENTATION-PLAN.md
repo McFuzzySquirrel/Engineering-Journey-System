@@ -1,6 +1,6 @@
 # decision-graph (`dg`) — Implementation Plan
 
-> Status: **Phases 0-8 complete; Phase 9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
+> Status: **Phases 0-8 complete; Phase 9 implementation complete (npm publication pending)** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
 > Tick boxes as work lands. Each phase has acceptance criteria. The phase is done only when every criterion is met.
 
 ---
@@ -367,14 +367,23 @@ flow pass; the compose file supplies a localhost-only Postgres service.
 **Acceptance:** two fixture repos of different project types push to one server, and a cross-project search by `projectType` returns the expected records. Re-pushing is safe (no duplicates).
 
 ### Phase 9 — Dogfood & docs
-- [ ] Run `dg init --type cli-tool` in this repo
-- [ ] Convert `legacy/ejs-docs/adr/0010–0018` into hybrid MADR ADRs. Mark the EJS-specific ones `deprecated` or have ADR-0001 supersede them
-- [ ] Write **ADR-0001: Pivot from EJS to decision-graph**
-- [ ] Record SDRs for the significant implementation decisions made in Phases 1–8
-- [ ] `dg lint` and `dg verify` both pass. AGENTS.md is generated
-- [ ] README: concept, record formats, quickstart, command reference, MCP setup, server setup, a migration note for EJS users
-- [ ] CI job runs `dg lint` and `dg verify` on this repo
+- [x] Run `dg init --type cli-tool` in this repo
+- [x] Convert `legacy/ejs-docs/adr/0010–0018` into hybrid MADR ADRs. Mark the EJS-specific ones `deprecated` or have ADR-0001 supersede them
+- [x] Write **ADR-0001: Pivot from EJS to decision-graph**
+- [x] Record SDRs for the significant implementation decisions made in Phases 1–8
+- [x] `dg lint` and `dg verify` both pass. AGENTS.md is generated
+- [x] README: concept, record formats, quickstart, command reference, MCP setup, server setup, a migration note for EJS users
+- [x] CI job runs `dg lint` and `dg verify` on this repo
 - [ ] Publish to npm (manual step, `0.1.0`)
+
+**Completion notes:** Initialized this repository as `cli-tool`, converted ADRs
+0010–0018 to deprecated hybrid MADRs, and added accepted ADR-0001 to supersede
+them. Eight SDRs capture the significant design decisions across Phases 1–8.
+The generated `AGENTS.md`, README, and CI checks are in place. `dg lint` and
+`dg verify` pass. A local `0.1.0` tarball was installed into a temporary fixture
+with an existing hybrid MADR; `dg init`, indexing, `dg context`, and AGENTS.md
+generation succeeded. The npm registry publication remains a separate manual
+release step.
 
 **Acceptance:** a fresh clone can run `npx decision-graph init` in an unrelated repo with existing MADR ADRs. In that repo, `dg context` returns rules and AGENTS.md is generated.
 

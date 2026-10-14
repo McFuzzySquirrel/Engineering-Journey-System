@@ -16,3 +16,4 @@ game/package-lock.json
 __pycache__/
 .pytest_cache/
 legacy/logs/*.jsonl
+.dg/server.db
