@@ -1,6 +1,7 @@
 import {
   mkdtempSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
   unlinkSync,
@@ -10,6 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createProgram } from '../src/cli/program.js';
+import { SQLiteStore } from '../src/store/sqlite.js';
 
 const originalCwd = process.cwd();
 const temporaryDirectories: string[] = [];
@@ -298,6 +300,16 @@ it('adds, lists, promotes, and discards SDRs with lifecycle edges', async () => 
   const root = createTempProject();
   process.chdir(root);
   await invoke('init', '--yes');
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0001-existing.md',
+    hybridRecord(
+      'ADR-0001',
+      ['**/*.ts'],
+      'MUST',
+      'Keep the existing decision.',
+    ),
+  );
   const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
   await invoke(
@@ -336,11 +348,11 @@ it('adds, lists, promotes, and discards SDRs with lifecycle edges', async () => 
   log.mockClear();
 
   await invoke('sdr', 'promote', sdrId);
-  expect(log.mock.calls[0][0]).toBe(`Promoted ${sdrId} to ADR-0001`);
+  expect(log.mock.calls[0][0]).toBe(`Promoted ${sdrId} to ADR-0002`);
   const promotedSdr = readFileSync(sdrFile, 'utf8');
   expect(promotedSdr).toContain('status: promoted');
-  expect(promotedSdr).toContain('promoted_to: ADR-0001');
-  const adrPath = path.join(root, 'docs/decisions/adr/ADR-0001-use-sqlite.md');
+  expect(promotedSdr).toContain('promoted_to: ADR-0002');
+  const adrPath = path.join(root, 'docs/decisions/adr/ADR-0002-use-sqlite.md');
   const adrContent = readFileSync(adrPath, 'utf8');
   expect(adrContent).toContain('derived_from:\n  - SDR-');
   expect(adrContent).toContain('It avoids a separate service.');
@@ -349,17 +361,17 @@ it('adds, lists, promotes, and discards SDRs with lifecycle edges', async () => 
 
   await invoke('related', sdrId, '--kind', 'promoted_to', '--json');
   expect(JSON.parse(log.mock.calls[0][0] as string)).toMatchObject([
-    { id: 'ADR-0001' },
+    { id: 'ADR-0002' },
   ]);
   log.mockClear();
-  await invoke('related', 'ADR-0001', '--kind', 'derived_from', '--json');
+  await invoke('related', 'ADR-0002', '--kind', 'derived_from', '--json');
   expect(JSON.parse(log.mock.calls[0][0] as string)).toMatchObject([
     { id: sdrId },
   ]);
   log.mockClear();
-  await expect(invoke('sdr', 'promote', sdrId)).rejects.toThrow(
-    `Cannot promote SDR ${sdrId}: status is promoted`,
-  );
+  await invoke('sdr', 'promote', sdrId);
+  expect(log.mock.calls[0][0]).toBe(`Promoted ${sdrId} to ADR-0002`);
+  log.mockClear();
 
   await invoke(
     'sdr',
@@ -395,6 +407,61 @@ it('adds, lists, promotes, and discards SDRs with lifecycle edges', async () => 
 
   await invoke('sdr', 'list', '--json');
   expect(JSON.parse(log.mock.calls[0][0] as string)).toEqual([]);
+});
+
+it('resumes promotion when indexing the SDR lifecycle update fails', async () => {
+  const root = createTempProject();
+  process.chdir(root);
+  await invoke('init', '--yes');
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  await invoke(
+    'sdr',
+    'add',
+    'Use SQLite',
+    '--decision',
+    'Use SQLite for local storage.',
+    '--why',
+    'It avoids a separate service.',
+  );
+  const sdrId = /SDR-\d{8}-\d{3}/.exec(log.mock.calls[0][0] as string)?.[0];
+  expect(sdrId).toBeDefined();
+  log.mockClear();
+
+  const upsertNode = SQLiteStore.prototype.upsertNode;
+  const upsertSpy = vi
+    .spyOn(SQLiteStore.prototype, 'upsertNode')
+    .mockImplementation(async function (this: SQLiteStore, projectId, record) {
+      if (record.type === 'sdr' && record.status === 'promoted') {
+        throw new Error('simulated SDR index failure');
+      }
+      return upsertNode.call(this, projectId, record);
+    });
+
+  await expect(invoke('sdr', 'promote', sdrId!)).rejects.toThrow(
+    'simulated SDR index failure',
+  );
+  upsertSpy.mockRestore();
+  expect(
+    readFileSync(
+      path.join(root, `docs/decisions/sdr/${sdrId}-use-sqlite.md`),
+      'utf8',
+    ),
+  ).toContain('status: promoted');
+
+  await invoke('sdr', 'promote', sdrId!);
+  expect(log.mock.calls[0][0]).toBe(`Promoted ${sdrId} to ADR-0001`);
+  expect(
+    readFileSync(
+      path.join(root, 'docs/decisions/adr/ADR-0001-use-sqlite.md'),
+      'utf8',
+    ),
+  ).toContain(`derived_from:\n  - ${sdrId}`);
+  expect(
+    readdirSync(path.join(root, 'docs/decisions/adr')).filter((file) =>
+      file.startsWith('ADR-'),
+    ),
+  ).toHaveLength(1);
 });
 
 function createTempProject(): string {

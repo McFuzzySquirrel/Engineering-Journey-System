@@ -671,6 +671,24 @@ function nextSdrNumber(ids: string[], dateId: string): number {
 
 async function promoteSdr(runtime: Runtime, id: string): Promise<string> {
   const source = await loadSdr(runtime, id);
+  const existingAdr = readAdrRecords(runtime).find((record) =>
+    record.derivedFrom.includes(id),
+  );
+  if (existingAdr) {
+    if (
+      source.status !== 'open' &&
+      (source.status !== 'promoted' || source.promotedTo !== existingAdr.id)
+    ) {
+      throw new Error(`Cannot promote SDR ${id}: status is ${source.status}`);
+    }
+    await indexRecords(runtime.store, runtime.config, [existingAdr]);
+    if (source.status === 'open') {
+      await setSdrLifecycle(runtime, id, 'promoted', existingAdr.id);
+    } else {
+      await indexRecords(runtime.store, runtime.config, [source]);
+    }
+    return existingAdr.id;
+  }
   if (source.status !== 'open') {
     throw new Error(`Cannot promote SDR ${id}: status is ${source.status}`);
   }
@@ -755,7 +773,11 @@ async function createAdrDraft(
   const records = await runtime.store.list(runtime.config.project, {
     type: 'adr',
   });
-  const next = nextAdrNumber(records.map((record) => record.id));
+  const adrRecords = readAdrRecords(runtime);
+  const next = nextAdrNumber([
+    ...records.map((record) => record.id),
+    ...adrRecords.map((record) => record.id),
+  ]);
   const id = `ADR-${String(next).padStart(4, '0')}`;
   const slug =
     title
@@ -788,6 +810,12 @@ async function createAdrDraft(
   );
   await indexRecords(runtime.store, runtime.config, [record]);
   return absoluteFile;
+}
+
+function readAdrRecords(runtime: Runtime): AdrRecord[] {
+  return collectMarkdownFiles(path.resolve(runtime.root, runtime.config.adrDir))
+    .map((file) => parseFile(runtime.root, file, 'auto'))
+    .filter((record): record is AdrRecord => record.type === 'adr');
 }
 
 async function writeConvertedDraft(
