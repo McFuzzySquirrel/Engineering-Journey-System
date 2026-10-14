@@ -1,6 +1,6 @@
 # decision-graph (`dg`) — Implementation Plan
 
-> Status: **Phases 0, 2, and 3 complete; Phase 1 awaiting CI; Phases 4-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
+> Status: **Phases 0-4 complete; Phases 5-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
 > Tick boxes as work lands. Each phase has acceptance criteria. The phase is done only when every criterion is met.
 
 ---
@@ -225,8 +225,8 @@ this retirement.
 **Acceptance:** `npm run build && node dist/cli.js --help` works. CI is green.
 
 **Completion notes:** The build, CLI help/version, lint, format check, typecheck,
-tests, and dependency audit pass locally. The Node 26 CI matrix is configured
-for Ubuntu, macOS, and Windows; the first remote run is pending.
+tests, and dependency audit pass locally. The Node 26 CI matrix passed on
+Ubuntu, macOS, and Windows.
 
 ### Phase 2 — Core model & parsers
 - [x] zod schemas for ADR, SDR, and config. Errors include file and field
@@ -265,14 +265,22 @@ tests, and build pass.
 **Acceptance:** syncing the same files twice gives zero changes. `related` returns the correct transitive closure.
 
 ### Phase 4 — Core CLI
-- [ ] `dg init [--type <projectType>] [--yes]`: writes config, creates dirs, adds `.dg/graph.db` to `.gitignore`, scans common ADR dirs (`doc/adr`, `docs/adr`, `docs/decisions`, `adr`, `architecture/decisions`) and offers to import them, runs the first sync and compile
-- [ ] `dg import <path> [--format auto|hybrid|madr|nygard|agent] [--convert]`: indexes records in place. `--convert` writes hybrid MADR drafts (`status: proposed`) into `adrDir` and keeps the originals
-- [ ] `dg sync`: incremental, file-hash based, removes records whose files are gone, then runs `compile`
-- [ ] `dg new "<title>" [--applies-to <glob>...] [--tags ...]`: next ADR id from the hybrid MADR template
-- [ ] `dg list [--status] [--type] [--tag]`, `dg get <id>`, `dg search <query>`
-- [ ] `dg context <files...>`: accepted rules whose `applies_to` matches any of the files, ordered by specificity. This is the main entry point for agents
-- [ ] `dg related <id> [--depth N] [--kind ...]`
-- [ ] Every query command supports `--json`
+- [x] `dg init [--type <projectType>] [--yes]`: writes config, creates dirs, adds `.dg/graph.db` to `.gitignore`, scans common ADR dirs (`doc/adr`, `docs/adr`, `docs/decisions`, `adr`, `architecture/decisions`) and offers to import them, runs the first sync and compile
+- [x] `dg import <path> [--format auto|hybrid|madr|nygard|agent] [--convert]`: indexes records in place. `--convert` writes hybrid MADR drafts (`status: proposed`) into `adrDir` and keeps the originals
+- [x] `dg sync`: incremental, file-hash based, removes records whose files are gone, then runs `compile`
+- [x] `dg new "<title>" [--applies-to <glob>...] [--tags ...]`: next ADR id from the hybrid MADR template
+- [x] `dg list [--status] [--type] [--tag]`, `dg get <id>`, `dg search <query>`
+- [x] `dg context <files...>`: accepted rules whose `applies_to` matches any of the files, ordered by specificity. This is the main entry point for agents
+- [x] `dg related <id> [--depth N] [--kind ...]`
+- [x] Every query command supports `--json`
+
+**Completion notes:** Implemented the complete local CLI flow, including config
+initialization, common-directory import prompting, markdown parsing, incremental
+SQLite indexing, stale-record removal, relationship rebuilding, hybrid draft
+creation and import conversion, graph queries, and managed AGENTS.md usage
+instructions. Conversion is idempotent. Temp-project integration tests cover
+`init → sync → context`, import/conversion, draft creation, all query commands,
+and JSON output; lint, format, typecheck, tests, and build pass.
 
 **Acceptance:** in a temp repo with fixture ADRs, `init → sync → context src/x.tsx` returns exactly the matching rules. Integration tests cover each command.
 

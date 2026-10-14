@@ -1,5 +1,25 @@
-import { expect, it } from 'vitest';
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, expect, it, vi } from 'vitest';
 import { createProgram } from '../src/cli/program.js';
+
+const originalCwd = process.cwd();
+const temporaryDirectories: string[] = [];
+afterEach(() => {
+  process.chdir(originalCwd);
+  for (const directory of temporaryDirectories.splice(0)) {
+    rmSync(directory, { recursive: true, force: true });
+  }
+  vi.restoreAllMocks();
+});
 
 it('exposes the package version', () => {
   expect(createProgram().version()).toBe('0.1.0');
@@ -15,3 +35,174 @@ it('shows help for the CLI', () => {
   expect(output).toContain('Usage: dg');
   expect(output).toContain('--version');
 });
+
+it('initializes, syncs, and returns only applicable accepted rules', async () => {
+  const root = createTempProject();
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0001-images.md',
+    hybridRecord('ADR-0001', ['**/*.tsx'], 'MUST', 'Use image components.'),
+  );
+  process.chdir(root);
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  await invoke('init', '--yes', '--type', 'app');
+  expect(readFileSync(path.join(root, '.dg/config.json'), 'utf8')).toContain(
+    '"projectType": "app"',
+  );
+  expect(readFileSync(path.join(root, '.gitignore'), 'utf8')).toContain(
+    '.dg/graph.db',
+  );
+  expect(readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toContain(
+    '<!-- dg:begin -->',
+  );
+  log.mockClear();
+
+  await invoke('sync');
+  expect(log).toHaveBeenCalledWith(
+    'Indexed 1 record(s); 0 changed, 0 removed.',
+  );
+  log.mockClear();
+
+  await invoke('context', 'src/card.tsx', '--json');
+  const output = JSON.parse(log.mock.calls[0][0] as string) as {
+    id: string;
+    text: string;
+  }[];
+  expect(output).toEqual([
+    expect.objectContaining({
+      id: 'ADR-0001#1',
+      text: 'Use image components.',
+    }),
+  ]);
+  log.mockClear();
+
+  await invoke('list', '--type', 'adr', '--tag', 'testing', '--json');
+  expect(JSON.parse(log.mock.calls[0][0] as string)).toHaveLength(1);
+  unlinkSync(path.join(root, 'docs/decisions/adr/ADR-0001-images.md'));
+  log.mockClear();
+
+  await invoke('sync');
+  expect(log).toHaveBeenCalledWith(
+    'Indexed 0 record(s); 0 changed, 1 removed.',
+  );
+});
+
+it('supports draft creation, import conversion, and JSON query commands', async () => {
+  const root = createTempProject();
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0001-images.md',
+    hybridRecord('ADR-0001', ['**/*.tsx'], 'MUST', 'Use image components.'),
+  );
+  process.chdir(root);
+  await invoke('init', '--yes');
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  await invoke(
+    'new',
+    'Prefer typed components',
+    '--applies-to',
+    'src/**/*.tsx',
+    '--tags',
+    'typescript',
+  );
+  expect(log.mock.calls[0][0]).toContain('ADR-0002-prefer-typed-components.md');
+  log.mockClear();
+
+  mkdirSync(path.join(root, 'incoming'), { recursive: true });
+  writeRecord(
+    root,
+    'incoming/0003-existing.md',
+    '# 3. Existing decision\n\n## Status\n\nAccepted\n\n## Context\n\nExisting context.\n\n## Decision\n\nKeep the source file.\n',
+  );
+  await invoke(
+    'import',
+    'incoming/0003-existing.md',
+    '--format',
+    'nygard',
+    '--convert',
+  );
+  expect(log.mock.calls[0][0]).toBe('Indexed 2 record(s); 1 changed.');
+  log.mockClear();
+
+  await invoke(
+    'import',
+    'incoming/0003-existing.md',
+    '--format',
+    'nygard',
+    '--convert',
+  );
+  expect(log.mock.calls[0][0]).toBe('Indexed 2 record(s); 0 changed.');
+  log.mockClear();
+
+  await invoke('list', '--status', 'proposed', '--json');
+  const listed = JSON.parse(log.mock.calls[0][0] as string) as { id: string }[];
+  expect(listed.map(({ id }) => id)).toEqual(['ADR-0002', 'ADR-0004']);
+  log.mockClear();
+
+  await invoke('related', 'ADR-0004', '--kind', 'relates_to', '--json');
+  expect(JSON.parse(log.mock.calls[0][0] as string)).toMatchObject([
+    { id: 'ADR-0003' },
+  ]);
+  log.mockClear();
+
+  await invoke('get', 'ADR-0001', '--json');
+  expect(JSON.parse(log.mock.calls[0][0] as string)).toMatchObject([
+    {
+      id: 'ADR-0001',
+      title: 'Use a decision',
+    },
+  ]);
+  log.mockClear();
+
+  await invoke('search', 'image', '--json');
+  expect(JSON.parse(log.mock.calls[0][0] as string)).toHaveLength(1);
+});
+
+function createTempProject(): string {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'decision-graph-'));
+  temporaryDirectories.push(directory);
+  return directory;
+}
+
+function writeRecord(root: string, file: string, content: string): void {
+  const absolute = path.join(root, file);
+  mkdirSync(path.dirname(absolute), { recursive: true });
+  writeFileSync(absolute, content);
+}
+
+function hybridRecord(
+  id: string,
+  appliesTo: string[],
+  modality: string,
+  text: string,
+): string {
+  return `---
+id: ${id}
+type: adr
+title: Use a decision
+status: accepted
+applies_to:
+${appliesTo.map((pattern) => `  - "${pattern}"`).join('\n')}
+tags:
+  - testing
+---
+
+# ${id}: Use a decision
+
+## Agent Rules
+
+- **${modality}:** ${text}
+
+## Decision Outcome
+
+Use this decision.
+`;
+}
+
+async function invoke(...args: string[]): Promise<void> {
+  await createProgram()
+    .exitOverride()
+    .parseAsync(['node', 'dg', ...args]);
+}

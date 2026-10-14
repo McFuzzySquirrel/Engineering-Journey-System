@@ -162,6 +162,10 @@ export class SQLiteStore implements Store {
     return staleIds.length;
   }
 
+  async deleteEdges(projectId: string): Promise<void> {
+    this.db.prepare('DELETE FROM edges WHERE project_id = ?').run(projectId);
+  }
+
   async addEdge(
     projectId: string,
     src: string,
