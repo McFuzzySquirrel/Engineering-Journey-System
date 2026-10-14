@@ -9,8 +9,8 @@ but not released; it currently supports only `dg --help` and `dg --version`.
 
 ## Before You Begin
 
-You need Git and Node.js 20 or later with npm to build the CLI from this
-repository. Start with the [README](../README.md) and
+You need Git and Node.js 20.19+, 22.13+, or 24+ with npm to build the CLI from
+this repository. Start with the [README](../README.md) and
 [implementation plan](IMPLEMENTATION-PLAN.md). The CLI is not published and
 does not yet support project configuration.
 

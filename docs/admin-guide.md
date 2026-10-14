@@ -10,9 +10,9 @@ accurate. The current scope and future architecture are documented in the
 
 ## Prerequisites
 
-Git and Node.js 20 or later with npm are required to build and validate the CLI
-scaffold. No database, container runtime, or cloud service is currently
-required.
+Git and Node.js 20.19+, 22.13+, or 24+ with npm are required to build and
+validate the CLI scaffold. No database, container runtime, or cloud service is
+currently required.
 
 ## Installation
 
