@@ -21,7 +21,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "commander": "^14.0.2"
+    "commander": "^14.0.2",
+    "gray-matter": "^4.0.3",
+    "picomatch": "^4.0.7",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
