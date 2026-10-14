@@ -15,8 +15,8 @@
   "scripts": {
     "build": "tsup",
     "lint": "eslint src test",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"*.config.ts\" package.json tsconfig.json",
-    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"*.config.ts\" package.json tsconfig.json",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"*.config.ts\" eslint.config.js package.json tsconfig.json",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"*.config.ts\" eslint.config.js package.json tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -24,7 +24,8 @@
     "commander": "^14.0.2"
   },
   "devDependencies": {
-    "eslint": "^9.39.1",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
     "prettier": "^3.9.10",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
