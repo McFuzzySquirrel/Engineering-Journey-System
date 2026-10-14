@@ -56,6 +56,9 @@ it('initializes, syncs, and returns only applicable accepted rules', async () =>
   expect(readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toContain(
     '<!-- dg:begin -->',
   );
+  expect(readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).not.toContain(
+    'dg sdr add',
+  );
   log.mockClear();
 
   await invoke('sync');
@@ -86,6 +89,137 @@ it('initializes, syncs, and returns only applicable accepted rules', async () =>
   expect(log).toHaveBeenCalledWith(
     'Indexed 0 record(s); 0 changed, 1 removed.',
   );
+});
+
+it('does not prompt to import when no Markdown records are present', async () => {
+  const root = createTempProject();
+  process.chdir(root);
+  const stdoutWrite = vi.spyOn(process.stdout, 'write');
+
+  await invoke('init');
+
+  expect(
+    stdoutWrite.mock.calls.some(([chunk]) =>
+      String(chunk).includes('Import records from'),
+    ),
+  ).toBe(false);
+});
+
+it('keeps unrelated graph edges when importing a single record', async () => {
+  const root = createTempProject();
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0001-source.md',
+    hybridRecord(
+      'ADR-0001',
+      ['src/**/*.tsx'],
+      'MUST',
+      'Use image components.',
+      ['ADR-0002'],
+    ),
+  );
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0002-target.md',
+    hybridRecord('ADR-0002', ['src/**/*.tsx'], 'MUST', 'Use typed props.'),
+  );
+  process.chdir(root);
+  await invoke('init', '--yes');
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  writeRecord(
+    root,
+    'incoming/ADR-0003-unrelated.md',
+    hybridRecord('ADR-0003', ['src/**/*.tsx'], 'MUST', 'Keep records indexed.'),
+  );
+  await invoke('import', 'incoming/ADR-0003-unrelated.md');
+  log.mockClear();
+  await invoke('related', 'ADR-0001', '--json');
+
+  expect(JSON.parse(log.mock.calls[0][0] as string)).toMatchObject([
+    { id: 'ADR-0002' },
+  ]);
+});
+
+it('assigns distinct IDs when converting multiple records in one import', async () => {
+  const root = createTempProject();
+  process.chdir(root);
+  await invoke('init', '--yes');
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+  mkdirSync(path.join(root, 'incoming'), { recursive: true });
+  for (const [number, title] of [
+    ['0003', 'First imported decision'],
+    ['0004', 'Second imported decision'],
+  ]) {
+    writeRecord(
+      root,
+      `incoming/${number}-decision.md`,
+      `# ${number.slice(1)}. ${title}\n\n## Status\n\nAccepted\n\n## Context\n\nExisting context.\n\n## Decision\n\nKeep the source file.\n`,
+    );
+  }
+
+  await invoke('import', 'incoming', '--format', 'nygard', '--convert');
+  await invoke('list', '--status', 'proposed', '--json');
+
+  const proposed = JSON.parse(log.mock.calls[1][0] as string) as {
+    id: string;
+  }[];
+  expect(proposed.map(({ id }) => id)).toEqual(['ADR-0005', 'ADR-0006']);
+});
+
+it('rejects generated instruction paths outside the project', async () => {
+  const root = createTempProject();
+  process.chdir(root);
+  await invoke('init', '--yes');
+  const outside = path.join(
+    path.dirname(root),
+    `${path.basename(root)}-outside.md`,
+  );
+  writeFileSync(outside, 'Do not overwrite.');
+  const configFile = path.join(root, '.dg/config.json');
+  const config = JSON.parse(readFileSync(configFile, 'utf8')) as {
+    agentsMd: string;
+  };
+  config.agentsMd = `../${path.basename(outside)}`;
+  writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
+
+  await expect(invoke('sync')).rejects.toThrow(
+    'agentsMd must resolve within the project root',
+  );
+  expect(readFileSync(outside, 'utf8')).toBe('Do not overwrite.');
+  unlinkSync(outside);
+});
+
+it('orders matching context by specificity using normalized file paths', async () => {
+  const root = createTempProject();
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0001-general.md',
+    hybridRecord('ADR-0001', ['**/*.tsx'], 'MUST', 'Use general guidance.'),
+  );
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0002-specific.md',
+    hybridRecord(
+      'ADR-0002',
+      ['src/card.tsx'],
+      'MUST',
+      'Use specific guidance.',
+    ),
+  );
+  process.chdir(root);
+  await invoke('init', '--yes');
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  await invoke('context', path.join('src', 'card.tsx'), '--json');
+
+  const rules = JSON.parse(log.mock.calls[0][0] as string) as {
+    recordId: string;
+  }[];
+  expect(rules.map(({ recordId }) => recordId)).toEqual([
+    'ADR-0002',
+    'ADR-0001',
+  ]);
 });
 
 it('supports draft creation, import conversion, and JSON query commands', async () => {
@@ -177,6 +311,7 @@ function hybridRecord(
   appliesTo: string[],
   modality: string,
   text: string,
+  relatesTo: string[] = [],
 ): string {
   return `---
 id: ${id}
@@ -185,6 +320,7 @@ title: Use a decision
 status: accepted
 applies_to:
 ${appliesTo.map((pattern) => `  - "${pattern}"`).join('\n')}
+${relatesTo.length ? `relates_to:\n${relatesTo.map((target) => `  - ${target}`).join('\n')}` : ''}
 tags:
   - testing
 ---

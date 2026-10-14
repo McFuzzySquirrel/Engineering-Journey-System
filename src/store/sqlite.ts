@@ -162,8 +162,21 @@ export class SQLiteStore implements Store {
     return staleIds.length;
   }
 
-  async deleteEdges(projectId: string): Promise<void> {
-    this.db.prepare('DELETE FROM edges WHERE project_id = ?').run(projectId);
+  async deleteEdges(projectId: string, sources?: string[]): Promise<void> {
+    if (sources === undefined) {
+      this.db.prepare('DELETE FROM edges WHERE project_id = ?').run(projectId);
+      return;
+    }
+    if (sources.length === 0) return;
+    const deleteSources = (batch: string[]) =>
+      this.db
+        .prepare(
+          `DELETE FROM edges WHERE project_id = ? AND src IN (${batch.map(() => '?').join(', ')})`,
+        )
+        .run(projectId, ...batch);
+    for (let index = 0; index < sources.length; index += 900) {
+      deleteSources(sources.slice(index, index + 900));
+    }
   }
 
   async addEdge(

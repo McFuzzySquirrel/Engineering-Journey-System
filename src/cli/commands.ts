@@ -221,17 +221,18 @@ export function registerCommands(program: Command): void {
     .action(async (files: string[], options: { json?: boolean }) => {
       const runtime = openRuntime(process.cwd());
       try {
+        const normalizedFiles = files.map(normalizeFilePath);
         const matches = await runtime.store.byGlobMatch(
           runtime.config.project,
-          files.map(normalizeFilePath),
+          normalizedFiles,
         );
         const accepted = matches.filter(
           (record) => record.type === 'adr' && record.status === 'accepted',
         );
         accepted.sort(
           (a, b) =>
-            ruleSpecificity(b, files) - ruleSpecificity(a, files) ||
-            a.id.localeCompare(b.id),
+            ruleSpecificity(b, normalizedFiles) -
+              ruleSpecificity(a, normalizedFiles) || a.id.localeCompare(b.id),
         );
         const rules = accepted.flatMap((record) =>
           record.rules.map((rule) => ({
@@ -316,8 +317,9 @@ async function initProject(
       name: projectName,
       type: config.projectType,
     });
-    const candidates = COMMON_ADR_DIRS.filter((directory) =>
-      existsSync(path.join(root, directory)),
+    const candidates = COMMON_ADR_DIRS.filter(
+      (directory) =>
+        collectMarkdownFiles(path.resolve(root, directory)).length > 0,
     );
     const importCandidates =
       candidates.length > 0 && (yes || (await confirmImport(candidates)));
@@ -402,7 +404,10 @@ async function rebuildEdges(
   projectId: string,
   records: DecisionRecord[],
 ): Promise<void> {
-  await store.deleteEdges(projectId);
+  await store.deleteEdges(
+    projectId,
+    records.map((record) => record.id),
+  );
   for (const record of records) {
     if (record.type === 'adr') {
       for (const target of record.supersedes) {
@@ -552,10 +557,13 @@ async function writeConvertedDraft(
   runtime: Runtime,
   source: Extract<DecisionRecord, { type: 'adr' }>,
 ): Promise<DecisionRecord> {
-  for (const file of collectMarkdownFiles(
+  const adrFiles = collectMarkdownFiles(
     path.resolve(runtime.root, runtime.config.adrDir),
-  )) {
+  );
+  const adrRecords: DecisionRecord[] = [];
+  for (const file of adrFiles) {
     const existing = parseFile(runtime.root, file, 'auto');
+    adrRecords.push(existing);
     if (
       existing.type === 'adr' &&
       existing.status === 'proposed' &&
@@ -568,7 +576,10 @@ async function writeConvertedDraft(
   const records = await runtime.store.list(runtime.config.project, {
     type: 'adr',
   });
-  const next = nextAdrNumber(records.map((record) => record.id));
+  const next = nextAdrNumber([
+    ...records.map((record) => record.id),
+    ...adrRecords.map((record) => record.id),
+  ]);
   const id = `ADR-${String(next).padStart(4, '0')}`;
   const relativeFile = path.join(
     runtime.config.adrDir,
@@ -692,11 +703,22 @@ async function compileInstructions(
   root: string,
   config: Config,
 ): Promise<void> {
-  const file = path.join(root, config.agentsMd);
+  const projectRoot = path.resolve(root);
+  const file = path.resolve(projectRoot, config.agentsMd);
+  const relativeFile = path.relative(projectRoot, file);
+  if (
+    relativeFile === '..' ||
+    relativeFile.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeFile)
+  ) {
+    throw new Error(
+      `agentsMd must resolve within the project root: ${config.agentsMd}`,
+    );
+  }
   const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
   const begin = '<!-- dg:begin -->';
   const end = '<!-- dg:end -->';
-  const block = `${begin}\nUse \`dg context <files>\` before editing. Record session decisions with \`dg sdr add\`.\n${end}`;
+  const block = `${begin}\nUse \`dg context <files>\` before editing.\n${end}`;
   const beginAt = current.indexOf(begin);
   const endAt = current.indexOf(end);
   let output: string;
