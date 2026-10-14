@@ -1,6 +1,6 @@
 # decision-graph (`dg`) — Implementation Plan
 
-> Status: **Phases 0-5 complete; Phases 6-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
+> Status: **Phases 0-6 complete; Phases 7-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
 > Tick boxes as work lands. Each phase has acceptance criteria. The phase is done only when every criterion is met.
 
 ---
@@ -301,19 +301,32 @@ promotion, both edges, repeat-promotion rejection, and discard.
 **Acceptance:** after promote, both files and the edges are correct, and running promote again is rejected.
 
 ### Phase 6 — AGENTS.md compile, verify, lint, graph export
-- [ ] `dg compile` writes the managed block between `<!-- dg:begin -->` and `<!-- dg:end -->`. Content outside the markers is left alone, and the file is created if missing. The block contains:
+- [x] `dg compile` writes the managed block between `<!-- dg:begin -->` and `<!-- dg:end -->`. Content outside the markers is left alone, and the file is created if missing. The block contains:
   - a short usage section ("run `dg context <files>` before editing; record decisions with `dg sdr add`; MCP server: `dg mcp`")
   - a compact index of accepted rules (`ADR-0001#1 [**/*.tsx] MUST …`), trimmed to `tokenBudget`. When trimmed, it says to use `dg context` for the full list
   - deterministic output, so diffs stay clean
-- [ ] `dg verify [id...] [--timeout s]` runs automated `Check` commands from the repo root, uses their exit status for pass/fail, and displays `Expected` with the result. It prints a pass/fail/skip table and exits non-zero on failure; manual checks and records without checks are skipped with the review procedure shown
-- [ ] `dg lint`:
+- [x] `dg verify [id...] [--timeout s]` runs automated `Check` commands from the repo root, uses their exit status for pass/fail, and displays `Expected` with the result. It prints a pass/fail/skip table and exits non-zero on failure; manual checks and records without checks are skipped with the review procedure shown
+- [x] `dg lint`:
   - schema errors, duplicate IDs, unknown link targets, supersede cycles
   - accepted records that are superseded but not marked `superseded`
   - files over the line budget
   - near-duplicate rules (normalized token Jaccard ≥ threshold) across records
   - conflicts: overlapping `applies_to` + the same normalized subject with opposite modality (MUST vs MUST NOT). Adds `conflicts_with` edges
   - `--json`, exits non-zero on errors
-- [ ] `dg graph [--format mermaid|dot] [--root id] [--depth N]`
+- [x] `dg graph [--format mermaid|dot] [--root id] [--depth N]`
+
+**Completion notes:** `dg compile` now generates a deterministic accepted-rule
+index under the managed AGENTS.md markers, preserves surrounding content, and
+trims the index to the configured token budget with a `dg context` fallback.
+`dg verify` runs checks from the project root with per-command timeouts, shows
+expected results, and reports manual or absent checks as skips. `dg lint`
+reports schema and graph errors, line-budget and near-duplicate warnings,
+supersede cycles, stale accepted statuses, and overlapping opposite rules; it
+also rebuilds `conflicts_with` edges. `dg graph` exports deterministic Mermaid
+or DOT output with optional root/depth filtering. CLI tests cover golden compile
+output, marker preservation, token trimming, passing/failing/skipped/timed-out
+checks, lint diagnostics and conflict edges, and both graph formats. Lint,
+format, typecheck, all tests, and build pass on Node 26.
 
 **Acceptance:** golden-file tests for compile output. Lint fixtures cover each rule. Verify reports correctly on passing, failing, and timed-out commands.
 
