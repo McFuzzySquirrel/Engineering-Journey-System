@@ -109,6 +109,131 @@ it('pushes two project types, searches by type, and pulls without writing files'
   }
 });
 
+it('serves the read-only explorer API across projects and returns record relationships', async () => {
+  await startServer();
+  await serverStore?.upsertProject({
+    id: 'project-library',
+    name: 'Library',
+    type: 'library',
+  });
+  await serverStore?.upsertProject({
+    id: 'project-app',
+    name: 'Application',
+    type: 'app',
+  });
+  const libraryAdr = makeGraphRecord(
+    'ADR-0001',
+    'Zebra architecture decision',
+    'adr',
+    'accepted',
+    ['ui', 'common'],
+  );
+  const librarySdr = makeGraphRecord(
+    'SDR-20261015-001',
+    'Decision explorer notes',
+    'sdr',
+    'open',
+    ['ui'],
+  );
+  const appAdr = makeGraphRecord(
+    'ADR-0001',
+    'Alpha architecture decision',
+    'adr',
+    'accepted',
+    ['common', 'app'],
+  );
+  const appDraft = makeGraphRecord(
+    'ADR-0002',
+    'Draft application decision',
+    'adr',
+    'proposed',
+    ['infra'],
+  );
+  await serverStore?.upsertNode('project-library', libraryAdr);
+  await serverStore?.upsertNode('project-library', librarySdr);
+  await serverStore?.upsertNode('project-app', appAdr);
+  await serverStore?.upsertNode('project-app', appDraft);
+  await serverStore?.addEdge(
+    'project-library',
+    libraryAdr.id,
+    librarySdr.id,
+    'relates_to',
+  );
+
+  const home = await fetch(serverUrl);
+  expect(home.status).toBe(200);
+  expect(home.headers.get('content-type')).toContain('text/html');
+  expect(home.headers.get('content-security-policy')).toContain(
+    "default-src 'self'",
+  );
+  expect(await home.text()).toContain(
+    '<title>Decision record explorer</title>',
+  );
+
+  const facets = await fetch(`${serverUrl}/facets`).then((response) =>
+    response.json(),
+  );
+  expect(facets).toEqual({
+    types: ['adr', 'sdr'],
+    statuses: ['accepted', 'open', 'proposed'],
+    tags: ['app', 'common', 'infra', 'ui'],
+  });
+  const libraryFacets = await fetch(
+    `${serverUrl}/facets?project=project-library`,
+  ).then((response) => response.json());
+  expect(libraryFacets).toEqual({
+    types: ['adr', 'sdr'],
+    statuses: ['accepted', 'open'],
+    tags: ['common', 'ui'],
+  });
+
+  const browse = await fetch(
+    `${serverUrl}/search?q=&type=adr&type=sdr&status=accepted&status=open&tag=ui&tag=common`,
+  ).then((response) => response.json());
+  expect(browse.map((item: { title: string }) => item.title)).toEqual([
+    'Alpha architecture decision',
+    'Decision explorer notes',
+    'Zebra architecture decision',
+  ]);
+
+  const textSearch = await fetch(`${serverUrl}/search?q=architecture`).then(
+    (response) => response.json(),
+  );
+  expect(textSearch).toMatchObject([
+    { projectId: 'project-app', title: 'Alpha architecture decision' },
+    { projectId: 'project-library', title: 'Zebra architecture decision' },
+  ]);
+
+  const scopedBrowse = await fetch(
+    `${serverUrl}/search?q=&project=project-app&type=adr`,
+  ).then((response) => response.json());
+  expect(scopedBrowse.map((item: { id: string }) => item.id)).toEqual([
+    'ADR-0001',
+    'ADR-0002',
+  ]);
+
+  const detailResponse = await fetch(
+    `${serverUrl}/records/project-library/ADR-0001`,
+  );
+  expect(detailResponse.status).toBe(200);
+  const detail = await detailResponse.json();
+  expect(detail).toMatchObject({
+    record: { id: libraryAdr.id, projectId: 'project-library' },
+    relationships: [
+      {
+        kind: 'relates_to',
+        direction: 'outgoing',
+        record: { id: librarySdr.id },
+      },
+    ],
+  });
+  await expect(
+    fetch(`${serverUrl}/records/project-library/MISSING`).then(
+      (response) => response.status,
+    ),
+  ).resolves.toBe(404);
+});
+
 it('exposes cross-project query selectors through streamable HTTP MCP', async () => {
   await startServer();
   await serverStore?.upsertProject({
@@ -257,6 +382,35 @@ tags: [remote]
 
 - **MUST:** ${text}
 `;
+}
+
+function makeGraphRecord(
+  id: string,
+  title: string,
+  type: 'adr' | 'sdr',
+  status: string,
+  tags: string[],
+) {
+  const content = `---
+id: ${id}
+type: ${type}
+title: ${title}
+status: ${status}
+applies_to: ["src/**/*.ts"]
+tags: ${JSON.stringify(tags)}
+---
+
+# ${id}: ${title}
+
+## Decision
+
+This record describes a decision for browsing.
+`;
+  return parseRecord(
+    content,
+    `docs/decisions/${type === 'adr' ? 'adr' : 'sdr'}/${id}.md`,
+    'hybrid',
+  );
 }
 
 async function runIn(root: string, ...args: string[]): Promise<void> {

@@ -3,6 +3,9 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from 'node:http';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { dump } from 'js-yaml';
 import { z } from 'zod';
 import { lintRecords, type LintDiagnostic } from '../core/lint.js';
@@ -17,7 +20,7 @@ import {
 } from '../core/schema.js';
 import { getContextRules } from '../core/context.js';
 import { graphNodeToRecord } from '../store/transfer.js';
-import type { EdgeKind, Project, Store } from '../store/store.js';
+import type { EdgeKind, NodeFilter, Project, Store } from '../store/store.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import packageJson from '../../package.json' with { type: 'json' };
@@ -30,6 +33,7 @@ const EDGE_KINDS = [
   'promoted_to',
   'conflicts_with',
 ] as const;
+const UI_ASSET_DIRECTORY = resolveUiAssetDirectory();
 const graphNodeFields = {
   projectId: z.string().min(1),
   id: z.string().min(1),
@@ -125,6 +129,19 @@ async function routeRequest(
     sendJson(response, 200, await store.listProjects());
     return;
   }
+  if (request.method === 'GET' && url.pathname === '/facets') {
+    const projects = await selectProjects(
+      store,
+      queryValues(url, 'project'),
+      queryValues(url, 'projectType'),
+    );
+    sendJson(
+      response,
+      200,
+      await store.getFacets(projects.map((project) => project.id)),
+    );
+    return;
+  }
   if (
     request.method === 'POST' &&
     parts.length === 3 &&
@@ -153,20 +170,38 @@ async function routeRequest(
     return;
   }
   if (request.method === 'GET' && url.pathname === '/search') {
-    const query = url.searchParams.get('q');
-    if (!query) {
-      sendJson(response, 400, { error: 'Query parameter "q" is required' });
-      return;
-    }
+    const query = url.searchParams.get('q') ?? '';
     const projects = await selectProjects(
       store,
-      url.searchParams.get('project') ?? undefined,
-      url.searchParams.get('projectType') ?? undefined,
+      queryValues(url, 'project'),
+      queryValues(url, 'projectType'),
     );
-    const results = await Promise.all(
-      projects.map((project) => store.search(project.id, query)),
-    );
-    sendJson(response, 200, results.flat());
+    const filter = parseNodeFilter(url);
+    if (query.trim()) {
+      sendJson(
+        response,
+        200,
+        await store.searchAcrossProjects(
+          projects.map((project) => project.id),
+          query,
+          filter,
+        ),
+      );
+      return;
+    }
+    const results = (
+      await Promise.all(
+        projects.map((project) => store.list(project.id, filter)),
+      )
+    )
+      .flat()
+      .sort(
+        (left, right) =>
+          left.title.localeCompare(right.title) ||
+          left.projectId.localeCompare(right.projectId) ||
+          left.id.localeCompare(right.id),
+      );
+    sendJson(response, 200, results);
     return;
   }
   if (request.method === 'GET' && url.pathname === '/context') {
@@ -180,8 +215,8 @@ async function routeRequest(
     }
     const projects = await selectProjects(
       store,
-      url.searchParams.get('project') ?? undefined,
-      url.searchParams.get('projectType') ?? undefined,
+      queryValues(url, 'project'),
+      queryValues(url, 'projectType'),
     );
     const results = await Promise.all(
       projects.map(async (project) =>
@@ -192,6 +227,47 @@ async function routeRequest(
       ),
     );
     sendJson(response, 200, results.flat());
+    return;
+  }
+  if (
+    request.method === 'GET' &&
+    parts.length === 3 &&
+    parts[0] === 'records'
+  ) {
+    const project = await findProject(store, parts[1]);
+    if (!project) {
+      sendJson(response, 404, { error: `Project not found: ${parts[1]}` });
+      return;
+    }
+    const record = await store.get(project.id, parts[2]);
+    if (!record) {
+      sendJson(response, 404, {
+        error: `Record not found: ${parts[1]}/${parts[2]}`,
+      });
+      return;
+    }
+    const edges = (await store.listEdges(project.id))
+      .filter((edge) => edge.src === record.id || edge.dst === record.id)
+      .sort(
+        (left, right) =>
+          left.kind.localeCompare(right.kind) ||
+          left.src.localeCompare(right.src) ||
+          left.dst.localeCompare(right.dst),
+      );
+    const relationships = await Promise.all(
+      edges.map(async (edge) => {
+        const direction = edge.src === record.id ? 'outgoing' : 'incoming';
+        const relatedId = direction === 'outgoing' ? edge.dst : edge.src;
+        const relatedRecord = await store.get(project.id, relatedId);
+        if (!relatedRecord) {
+          throw new Error(
+            `Relationship ${edge.src} -> ${edge.dst} references a missing record`,
+          );
+        }
+        return { kind: edge.kind, direction, record: relatedRecord };
+      }),
+    );
+    sendJson(response, 200, { record, relationships });
     return;
   }
   if (
@@ -228,6 +304,9 @@ async function routeRequest(
         kinds.length ? kinds : undefined,
       ),
     );
+    return;
+  }
+  if (request.method === 'GET' && serveUiAsset(url.pathname, response)) {
     return;
   }
   sendJson(response, 404, { error: 'Not found' });
@@ -438,24 +517,108 @@ function countLines(content: string): number {
 
 async function selectProjects(
   store: Store,
-  projectId?: string,
-  projectType?: string,
+  projectIds: string[],
+  projectTypes: string[],
 ): Promise<Project[]> {
   const projects = await store.listProjects();
-  if (projectId) {
-    const project = projects.find((item) => item.id === projectId);
-    if (!project) throw new HttpError(`Project not found: ${projectId}`, 404);
-    if (projectType && project.type !== projectType) {
+  for (const projectId of projectIds) {
+    if (!projects.some((item) => item.id === projectId)) {
+      throw new HttpError(`Project not found: ${projectId}`, 404);
+    }
+  }
+  if (projectIds.length === 1 && projectTypes.length > 0) {
+    const project = projects.find((item) => item.id === projectIds[0]);
+    if (project && !projectTypes.includes(project.type)) {
       throw new HttpError(
-        `Project ${projectId} does not have type ${projectType}`,
+        `Project ${projectIds[0]} does not have type ${projectTypes.join(', ')}`,
         400,
       );
     }
-    return [project];
   }
-  return projectType
-    ? projects.filter((project) => project.type === projectType)
-    : projects;
+  return projects.filter(
+    (project) =>
+      (projectIds.length === 0 || projectIds.includes(project.id)) &&
+      (projectTypes.length === 0 || projectTypes.includes(project.type)),
+  );
+}
+
+function queryValues(url: URL, key: string): string[] {
+  const values = url.searchParams.getAll(key).map((value) => value.trim());
+  if (values.some((value) => value.length === 0)) {
+    throw new HttpError(`Query parameter "${key}" cannot be empty`);
+  }
+  return [...new Set(values)];
+}
+
+function parseNodeFilter(url: URL): NodeFilter {
+  const types = queryValues(url, 'type').map((value) => {
+    if (value === 'adr' || value === 'sdr') return value;
+    throw new HttpError(`Unknown record type: ${value}`);
+  });
+  const statuses = queryValues(url, 'status');
+  const tags = queryValues(url, 'tag');
+  return {
+    ...(types.length === 1 ? { type: types[0] } : {}),
+    ...(types.length > 1 ? { type: types } : {}),
+    ...(statuses.length === 1 ? { status: statuses[0] } : {}),
+    ...(statuses.length > 1 ? { status: statuses } : {}),
+    ...(tags.length === 1 ? { tag: tags[0] } : {}),
+    ...(tags.length > 1 ? { tag: tags } : {}),
+  };
+}
+
+function serveUiAsset(pathname: string, response: ServerResponse): boolean {
+  const relativePath = pathname === '/' ? 'index.html' : pathname.slice(1);
+  if (relativePath !== 'index.html' && !relativePath.startsWith('assets/')) {
+    return false;
+  }
+  const segments = relativePath.split('/');
+  if (
+    segments.some((segment) => !segment || segment === '.' || segment === '..')
+  ) {
+    return false;
+  }
+  const file = path.resolve(UI_ASSET_DIRECTORY, ...segments);
+  if (
+    !file.startsWith(`${UI_ASSET_DIRECTORY}${path.sep}`) ||
+    !existsSync(file)
+  ) {
+    return false;
+  }
+  const contentTypes: Record<string, string> = {
+    '.css': 'text/css; charset=utf-8',
+    '.html': 'text/html; charset=utf-8',
+    '.ico': 'image/x-icon',
+    '.js': 'text/javascript; charset=utf-8',
+    '.svg': 'image/svg+xml',
+    '.woff2': 'font/woff2',
+  };
+  const contentType = contentTypes[path.extname(file).toLowerCase()];
+  if (!contentType) return false;
+  const body = readFileSync(file);
+  response.writeHead(200, {
+    'cache-control':
+      relativePath === 'index.html'
+        ? 'no-cache'
+        : 'public, max-age=31536000, immutable',
+    'content-length': body.byteLength,
+    'content-security-policy':
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    'content-type': contentType,
+    'referrer-policy': 'strict-origin-when-cross-origin',
+    'x-content-type-options': 'nosniff',
+  });
+  response.end(body);
+  return true;
+}
+
+function resolveUiAssetDirectory(): string {
+  const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
+  const sourceDirectory = path.resolve(moduleDirectory, '../ui');
+  const bundledDirectory = path.resolve(moduleDirectory, 'ui');
+  return existsSync(path.join(sourceDirectory, 'index.html'))
+    ? sourceDirectory
+    : bundledDirectory;
 }
 
 async function findProject(

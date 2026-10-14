@@ -42,6 +42,12 @@ published. See the [README](../README.md#getting-started) for exact commands.
 `3000`), and `--host` (default `127.0.0.1`). `dg push` and `dg pull` accept
 `--remote`; `dg pull` also accepts `--project`.
 
+The server also serves the read-only browser explorer at `/` from the same
+origin as the API. Keep the default localhost binding: the UI does not add
+authentication or change the access boundary of the API. In a source checkout,
+`npm run dev` starts Vite on `127.0.0.1:5173` and proxies requests to the
+server; `DG_API_ORIGIN` overrides the default API origin.
+
 `DG_TEST_PG_URL` configures the optional PostgreSQL integration tests. The
 local `docker-compose.yml` also supports `DG_PG_PORT` and
 `POSTGRES_PASSWORD`; its fallback is for local development only and must not
@@ -74,18 +80,26 @@ Markdown.
 
 ## Health Checks and Monitoring
 
-`GET /projects` is a basic HTTP liveness check. The server does not expose
-metrics or a dedicated health endpoint. Monitor the process and, when used,
-PostgreSQL availability with the deployment platform's standard tools.
+`GET /projects` is a basic HTTP liveness check. `GET /` serves the browser
+explorer. The server does not expose metrics or a dedicated health endpoint.
+Monitor the process and, when used, PostgreSQL availability with the
+deployment platform's standard tools.
 
 The HTTP API also provides:
 
 - `POST /projects/:id/push`
 - `GET /projects/:id/records`
-- `GET /search?q=...&project=...&projectType=...`
+- `GET /facets?project=...`
+- `GET /search?q=...&project=...&type=...&status=...&tag=...`
+- `GET /records/:project/:id`
 - `GET /context?files=...&project=...&projectType=...`
 - `GET /records/:project/:id/related?depth=...&kind=...`
 - MCP at `/mcp`
+
+Search filters accept repeated parameters. Different facets combine with AND;
+multiple values for one facet combine with OR. An empty `q` returns a
+title-sorted browse list, while a text query returns relevance-ranked records
+across the selected projects.
 
 ## Upgrades and Rollback
 

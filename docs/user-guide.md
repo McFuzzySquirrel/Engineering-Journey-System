@@ -85,6 +85,24 @@ to `127.0.0.1:3000` and has no authentication in v1; use only on localhost or
 a trusted network. Configure MCP clients using the
 [MCP client guide](mcp.md).
 
+## Browse in the Local UI
+
+Start `dg serve` and open `http://127.0.0.1:3000/`. The read-only Workbench
+shows indexed records across all projects in the server database. To include
+another repository, run `dg push --remote http://127.0.0.1:3000` from that
+repository after indexing it with `dg sync`.
+
+Search titles and record content, or leave the query empty to browse records
+sorted by title. Project, record type, status, and tag filters can be combined;
+multiple selections within a filter match any selected value. Select a result
+to read its sanitized Markdown, source path, update time, and linked records.
+The UI does not create or modify decision records.
+
+For development from this repository, run `dg serve` in one terminal and
+`npm run dev` in another. Vite listens on `127.0.0.1:5173` and proxies API
+requests to `127.0.0.1:3000`; set `DG_API_ORIGIN` to use a different API
+origin.
+
 ## Offline and Reconnect Behavior
 
 Local queries and stdio MCP use the project's Markdown files and SQLite
@@ -108,9 +126,10 @@ are preserved as an inactive archive under `legacy/`.
 
 ## Accessibility and Mobile Use
 
-decision-graph is a CLI and MCP service, not a graphical application. It has
-no mobile interface or product UI accessibility claim. Repository Markdown
-can be read with accessible GitHub or local Markdown tools.
+The local browser explorer targets WCAG 2.2 AA, with semantic controls,
+keyboard and screen-reader support, visible focus, and responsive reflow down
+to 320 CSS pixels. Markdown record content is rendered with raw HTML disabled
+and sanitized before display.
 
 ## Privacy and Data Handling
 

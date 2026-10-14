@@ -64,6 +64,7 @@ decision records.
 | Validation and export | Lint records, run checks, compile `AGENTS.md`, and export Mermaid or DOT graphs |
 | Agent integration | Provide shared tools over stdio MCP and streamable-HTTP MCP |
 | Multi-project serving | Store/query projects with SQLite or PostgreSQL and exchange records using push/pull |
+| Local browser UI | Browse, search, filter, and follow relationships across indexed projects |
 
 ## Tech Stack
 
@@ -86,6 +87,7 @@ flowchart LR
   LocalStore --> SQLite[("SQLite + FTS5")]
   LocalMCP["dg mcp (stdio)"] --> LocalStore
   CLI -->|"push / pull"| API["HTTP API"]
+  Browser["Local browser UI"] --> API
   RemoteMCP["MCP at /mcp"] --> API
   API --> ServerStore["Server Store"]
   ServerStore --> ServerDB[("SQLite or PostgreSQL")]
@@ -102,13 +104,14 @@ server and storage boundaries.
 - `src/store/` — Shared Store contract, SQLite/PostgreSQL implementations, and transfer helpers.
 - `src/mcp/` — Shared MCP tools and stdio transport.
 - `src/server/` — HTTP API and streamable-HTTP MCP transport.
+- `src/ui/` — Read-only browser explorer assets.
 - `test/` — Unit, CLI, MCP, and optional PostgreSQL integration tests.
 - `docs/` — Implementation plan, user/admin/MCP guides, ADRs, and release notes.
 - `legacy/` — Inactive historical EJS material; do not execute its hooks or scripts.
 - `.dg/config.json` — Project configuration; local database files are ignored.
 - `AGENTS.md` — Generated decision-graph guidance block.
 - Tooling — `package.json`, `tsconfig.json`, `tsup.config.ts`,
-  `vitest.config.ts`, and ESLint configuration.
+  `vite.config.ts`, `vitest.config.ts`, and ESLint configuration.
 
 ## Record formats
 
@@ -192,6 +195,13 @@ HTTP API and streamable-HTTP MCP endpoint. PostgreSQL can be selected by
 passing a PostgreSQL connection URL to `--db`. The server has no
 authentication in v1; keep it on localhost or a trusted network. See the
 [administrator guide](docs/admin-guide.md) before operating a server.
+
+The read-only record explorer is served from the same origin at
+`http://127.0.0.1:3000/`. It reads records already indexed by the server and
+does not create or modify decision records. For UI development, start `dg
+serve` in one terminal and run `npm run dev` in another; Vite listens only on
+`127.0.0.1:5173` and proxies API requests to port 3000. Set
+`DG_API_ORIGIN` to override the API origin when using a different port.
 
 ## Security
 
