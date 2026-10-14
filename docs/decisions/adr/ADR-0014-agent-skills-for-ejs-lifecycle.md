@@ -8,20 +8,27 @@ tags: [historical, ejs, agent-skills]
 supersedes: []
 relates_to: []
 derived_from: []
-date: 2026-03-11
+date: 2026-10-14
 deciders: [Engineering Journey System maintainers]
 ---
 
 # ADR-0014: Agent Skills for Session Lifecycle Workflows
 
+- **Deciders:** Engineering Journey System maintainers
+- **Date:** 2026-10-14 (original decision: 2026-03-11)
+
+**Technical Story:** Historical EJS instruction architecture decision,
+migrated during decision-graph Phase 9. See the
+[original ADR](../../../legacy/ejs-docs/adr/0014-agent-skills-for-session-lifecycle.md).
+
 ## Agent Rules
 
-- **SHOULD:** Treat EJS lifecycle skills as archived artifacts; do not activate them in decision-graph work.
+- **MUST NOT:** Activate the archived EJS lifecycle skills in decision-graph work.
 
 ## Verify
 
-- **Check:** `node -e "const fs = require('node:fs'); if (!fs.existsSync('legacy/ejs-docs/adr/0014-agent-skills-for-session-lifecycle.md')) process.exit(1)"`
-- **Expected:** The original EJS decision remains available in the inactive archive.
+- **Check:** `node -e "const fs=require('node:fs'); const p=fs.readFileSync('docs/decisions/adr/ADR-0001-pivot-from-ejs-to-decision-graph.md','utf8'); if (!p.includes('ADR-0014') || !fs.existsSync('legacy/ejs-docs/adr/0014-agent-skills-for-session-lifecycle.md')) process.exit(1)"`
+- **Expected:** ADR-0001 supersedes the EJS skill workflow, and its source remains archived.
 
 ## Context and Problem Statement
 
@@ -47,8 +54,36 @@ The historical EJS decision kept the agent profile and added skills for
 initialization, wrap-up, and sub-agent capture. ADR-0001 retires those
 session-recording workflows; the archived skills must not be run.
 
-## Consequences
+## Positive Consequences
 
-On-demand skills reduced always-on context but added files to maintain and
-depended on platform relevance detection. Their content is preserved in the
-inactive archive.
+On-demand skills reduced always-on context by separating lifecycle procedures
+from the EJS agent profile.
+
+## Negative Consequences
+
+The approach added files to maintain and depended on platform relevance
+detection. ADR-0001 retires the EJS lifecycle process.
+
+## Pros and Cons of the Options
+
+### Agent profile only
+
+- Good, because it kept persona and lifecycle instructions in one place.
+- Bad, because detailed procedures occupied context even when irrelevant.
+
+### Skills only
+
+- Good, because detailed workflows could load on demand.
+- Bad, because skills alone did not provide the EJS agent persona and
+  coordination behavior.
+
+### Agent profile and skills
+
+- Good, because the profile supplied coordination while skills supplied
+  task-specific procedures.
+- Bad, because both mechanisms required maintenance and platform support.
+
+## Links
+
+- Superseded by [ADR-0001](ADR-0001-pivot-from-ejs-to-decision-graph.md).
+- [Original EJS ADR](../../../legacy/ejs-docs/adr/0014-agent-skills-for-session-lifecycle.md)

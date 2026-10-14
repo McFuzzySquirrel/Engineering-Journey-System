@@ -1,60 +1,75 @@
 # decision-graph — Unreleased
 
-**Release date:** Not released
+- **Package manifest version:** `0.1.0`
+- **Release date:** Not released; npm publication is pending.
 
 ## Summary
 
-The `decision-graph` package scaffold is implemented but not released. The
-`dg` CLI currently supports `--help` and `--version`; decision indexing and
-other product workflows remain planned.
+The initial decision-graph CLI and server implementation is ready for local
+installation and validation. This is a pre-release summary, not a claim that
+version `0.1.0` has been published.
 
 ## Highlights
 
-- Adds a Node.js/TypeScript CLI scaffold with lint, format, typecheck, test, and
-  build commands.
-- Adds cross-platform GitHub Actions checks for Node 26.
-- Records that EJS is retired from active use and retained only as a historical
-  archive.
+- Create, import, and synchronize hybrid MADR ADRs and SDRs.
+- Retrieve file-scoped rules, search records, inspect graph relationships,
+  lint decisions, and run verification checks.
+- Compile accepted rules into a managed `AGENTS.md` block.
+- Use MCP over stdio or streamable HTTP.
+- Serve multiple projects with SQLite or PostgreSQL storage and synchronize
+  records with push and read-only pull workflows.
+- See the [ADR index](../decisions/README.md) for architectural decisions
+  and migrated EJS history.
 
 ## Compatibility and Prerequisites
 
-The package supports Node.js 26+ and has version `0.1.0`;
-it is not published to npm. The `ejs-final` tag belongs to the previous EJS
-project state, not to decision-graph.
+- Node.js 26 or newer is required.
+- SQLite uses `better-sqlite3`, a native module with prebuilt binaries for
+  common platforms.
+- PostgreSQL is needed only for a PostgreSQL-backed server or its optional
+  integration tests.
+- No migration from an existing EJS database is provided. Existing ADRs can
+  be imported; review heuristic conversion drafts before accepting them.
 
 ## Installation or Upgrade
 
-The package is not published. To build the CLI from source, use the clone and
-`npm ci` instructions in the [README](../../README.md). There is no migration
-from EJS to a feature-complete decision-graph tool; the
-[administrator guide](../admin-guide.md) describes current limitations.
+The package is not published to npm. Build from a checkout with `npm ci` and
+`npm run build`, or create a local package with `npm pack` and install the
+resulting `decision-graph-0.1.0.tgz` tarball. See the
+[user guide](../user-guide.md) and [administrator guide](../admin-guide.md).
 
 ## Known Limitations
 
-- Only CLI help and version are implemented; the data index, search, agent
-  integrations, and server are not implemented.
-- There is no application configuration or deployment procedure.
-- Planned architecture and milestones are subject to change as implementation
-  decisions are made.
+- The HTTP server has no authentication in v1. Keep it on localhost or a
+  trusted network.
+- `dg import --convert` uses heuristics and always creates proposed drafts
+  that require human review.
+- `dg push` upserts records and edges but does not remove server records
+  missing from the local project.
+- `dg pull` stores remote data in a separate local namespace and does not write
+  into repository decision files.
+- No npm release or published upgrade path is available yet.
 
 ## Validation
 
-Local build, CLI help/version, and dependency audit checks pass. GitHub Actions
-runs lint, format, typecheck, tests, build, and CLI help/version smoke checks on
-Node 26 across Ubuntu, macOS, and Windows; the dependency
-audit is local-only.
+On Node.js 26, lint, formatting, typecheck, tests, build, `dg lint`, and
+`dg verify` passed. The test run reported 38 passing tests and one skipped
+test. A locally packed `0.1.0` tarball was installed in a temporary fixture;
+initialization, MADR indexing, `dg context`, and `AGENTS.md` generation passed.
+No live hosted MCP client or public npm release was validated as part of this
+pre-release check.
 
 ## Security and Privacy
 
-There is no application service that collects user data. Repository content
-and GitHub interactions are subject to repository-host settings. Do not place
-secrets or private user data in documentation or public reports.
+Local CLI and stdio MCP workflows access files and the SQLite index in the
+selected project. Push transmits indexed records and project metadata to the
+configured server. Pull imports server records into a separate namespace.
+The server does not authenticate requests in v1; operators are responsible
+for network restrictions and any TLS termination.
 
 ## Documentation
 
-- [README](../../README.md)
 - [User guide](../user-guide.md)
 - [Administrator guide](../admin-guide.md)
-- [ADR index](../adr/README.md)
-- [Implementation plan](../IMPLEMENTATION-PLAN.md)
-- [Changelog](../../CHANGELOG.md)
+- [MCP client configuration](../mcp.md)
+- [Architecture decision records](../decisions/README.md)

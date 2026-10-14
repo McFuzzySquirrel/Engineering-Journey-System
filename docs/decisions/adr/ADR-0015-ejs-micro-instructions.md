@@ -8,20 +8,27 @@ tags: [historical, ejs, instructions]
 supersedes: []
 relates_to: []
 derived_from: []
-date: 2026-03-13
+date: 2026-10-14
 deciders: [Engineering Journey System maintainers]
 ---
 
 # ADR-0015: Micro-Instruction Simplification of EJS Always-On Recording Contract
 
+- **Deciders:** Engineering Journey System maintainers
+- **Date:** 2026-10-14 (original decision: 2026-03-13)
+
+**Technical Story:** Historical EJS instruction simplification decision,
+migrated during decision-graph Phase 9. See the
+[original ADR](../../../legacy/ejs-docs/adr/0015-micro-instruction-simplification.md).
+
 ## Agent Rules
 
-- **SHOULD:** Treat the EJS micro-instruction pattern as historical context, not as the active instruction contract for this repository.
+- **MUST NOT:** Treat the EJS micro-instruction as decision-graph's active instruction contract.
 
 ## Verify
 
-- **Check:** `node -e "const fs = require('node:fs'); if (!fs.existsSync('legacy/ejs-docs/adr/0015-micro-instruction-simplification.md')) process.exit(1)"`
-- **Expected:** The original EJS decision remains available in the inactive archive.
+- **Check:** `node -e "const fs=require('node:fs'); const p=fs.readFileSync('docs/decisions/adr/ADR-0001-pivot-from-ejs-to-decision-graph.md','utf8'); if (!p.includes('ADR-0015') || !fs.existsSync('legacy/ejs-docs/adr/0015-micro-instruction-simplification.md')) process.exit(1)"`
+- **Expected:** ADR-0001 supersedes this EJS contract, and its source remains archived.
 
 ## Context and Problem Statement
 
@@ -47,8 +54,36 @@ The historical EJS decision adopted a short always-on contract and a
 sub-agent instruction fragment, leaving structural detail in templates and
 skills. ADR-0001 supersedes the EJS recording contract.
 
-## Consequences
+## Positive Consequences
 
-The shorter instruction reduced context and duplication, but moved detailed
-checkpoint guidance into on-demand materials. The source remains in
-`legacy/`.
+The micro-instruction reduced always-on context and separated behavior from
+template structure.
+
+## Negative Consequences
+
+Detailed checkpoint guidance moved into on-demand materials, and a separate
+delegation fragment needed to be maintained. ADR-0001 replaces the EJS
+recording contract.
+
+## Pros and Cons of the Options
+
+### Micro-instruction model
+
+- Good, because it reduced always-on context and left structural detail in
+  templates and skills.
+- Bad, because detailed guidance was no longer always visible.
+
+### Consolidated instructions
+
+- Good, because it kept the workflow in a single instruction file.
+- Bad, because it increased always-on context and duplicated skill content.
+
+### Hybrid micro-instruction and delegation fragment
+
+- Good, because it combined a short contract with delegated-agent coverage.
+- Bad, because the fragment introduced another convention to maintain.
+
+## Links
+
+- Superseded by [ADR-0001](ADR-0001-pivot-from-ejs-to-decision-graph.md).
+- [Original EJS ADR](../../../legacy/ejs-docs/adr/0015-micro-instruction-simplification.md)

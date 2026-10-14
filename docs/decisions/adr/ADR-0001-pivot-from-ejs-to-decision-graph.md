@@ -23,6 +23,13 @@ deciders: [Project maintainers]
 
 # ADR-0001: Pivot from EJS to decision-graph
 
+- **Deciders:** Project maintainers
+- **Date:** 2026-10-14
+
+**Technical Story:** Replace the high-maintenance EJS session-recording system
+with a searchable, scoped decision graph. The implementation plan records the
+project requirement; no separate issue is associated with this pivot.
+
 ## Agent Rules
 
 - **MUST:** Treat versioned Markdown decision records as the source of truth; rebuild the local index from those files.
@@ -63,11 +70,13 @@ multi-project server.
 
 ## Considered Options
 
-- Continue EJS and incrementally simplify its journey lifecycle, instructions,
-  and hooks.
-- Replace EJS with a Markdown decision graph containing ADRs, SDRs, scoped
-  rules, verification checks, and relationships.
-- Retain EJS as the active system and add an independent ADR search tool.
+- **Continue and simplify EJS.** Preserve journey capture while reducing
+  lifecycle and instruction overhead.
+- **Replace EJS with decision-graph.** Keep durable Markdown decisions, add
+  scoped rules, verification checks, SDRs, and graph relationships, and retire
+  session-capture automation.
+- **Keep EJS and add a separate ADR search tool.** Improve lookup without
+  changing the session-recording system.
 
 ## Decision Outcome
 
@@ -81,9 +90,7 @@ The existing EJS ADRs 0010–0018 are converted to deprecated hybrid ADRs and
 preserved in the inactive `legacy/` archive. This ADR supersedes those records.
 The database remains a rebuildable index rather than the source of truth.
 
-## Consequences
-
-### Positive
+## Positive Consequences
 
 - Agents can retrieve rules by file scope and search linked decisions without
   loading whole session histories.
@@ -92,7 +99,7 @@ The database remains a rebuildable index rather than the source of truth.
 - EJS-specific hooks and session capture are no longer part of the active
   development workflow.
 
-### Trade-offs
+## Negative Consequences
 
 - Indexes must be synchronized after source records change.
 - ADR conversion is heuristic and requires human review before acceptance.
@@ -100,3 +107,31 @@ The database remains a rebuildable index rather than the source of truth.
   a trusted network.
 - Migrating EJS requires translating durable decisions; session narratives
   remain historical rather than being imported as active policy.
+
+## Pros and Cons of the Options
+
+### Continue and simplify EJS
+
+- Good, because existing journeys and lifecycle tooling could be retained.
+- Bad, because the system would continue to pay the maintenance and context
+  costs of recording entire sessions.
+
+### Replace EJS with decision-graph
+
+- Good, because durable decisions become searchable, scoped, verifiable, and
+  available through several agent interfaces.
+- Bad, because users must migrate durable guidance and rebuild their local
+  index; session narratives do not become active records.
+
+### Keep EJS and add a separate ADR search tool
+
+- Good, because it could improve decision lookup without changing EJS.
+- Bad, because it would leave the duplicated lifecycle system in place and
+  create two overlapping sources of agent guidance.
+
+## Links
+
+- Supersedes [ADR-0010](ADR-0010-engineering-journey-system-adoption.md)
+  through [ADR-0018](ADR-0018-ejs-story-command-and-db-first.md).
+- [Implementation plan](../../IMPLEMENTATION-PLAN.md)
+- [Archived EJS source](../../../legacy/README.md)

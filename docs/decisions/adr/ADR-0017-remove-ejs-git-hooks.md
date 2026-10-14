@@ -8,20 +8,27 @@ tags: [historical, ejs, hooks]
 supersedes: []
 relates_to: []
 derived_from: []
-date: 2026-04-08
+date: 2026-10-14
 deciders: [Engineering Journey System maintainers]
 ---
 
 # ADR-0017: Remove Git Hooks in Favor of Copilot Hooks
 
+- **Deciders:** Engineering Journey System maintainers
+- **Date:** 2026-10-14 (original decision: 2026-04-08)
+
+**Technical Story:** Historical EJS Git-hook removal decision, migrated
+during decision-graph Phase 9. See the
+[original ADR](../../../legacy/ejs-docs/adr/0017-remove-git-hooks-in-favor-of-copilot-hooks.md).
+
 ## Agent Rules
 
-- **SHOULD:** Treat this removal decision as historical EJS architecture, not as a decision-graph hook policy.
+- **MUST NOT:** Reintroduce archived EJS Git hooks as decision-graph automation.
 
 ## Verify
 
-- **Check:** `node -e "const fs = require('node:fs'); if (!fs.existsSync('legacy/ejs-docs/adr/0017-remove-git-hooks-in-favor-of-copilot-hooks.md')) process.exit(1)"`
-- **Expected:** The original EJS decision remains available in the inactive archive.
+- **Check:** `node -e "const fs=require('node:fs'); const p=fs.readFileSync('docs/decisions/adr/ADR-0001-pivot-from-ejs-to-decision-graph.md','utf8'); if (!p.includes('ADR-0017') || !fs.existsSync('legacy/ejs-docs/adr/0017-remove-git-hooks-in-favor-of-copilot-hooks.md')) process.exit(1)"`
+- **Expected:** ADR-0001 supersedes this EJS hook decision, and its source remains archived.
 
 ## Context and Problem Statement
 
@@ -47,8 +54,34 @@ The historical EJS decision removed its Git hooks and installer scripts,
 relying on Copilot hooks for structural session automation. ADR-0001
 supersedes both hook systems for active decision-graph work.
 
-## Consequences
+## Positive Consequences
 
-Removing Git hooks simplified setup but left non-Copilot work without
-session-recording reminders. This trade-off is now historical; the archive
-must not be activated.
+Removing Git hooks reduced installation friction and avoided duplicated
+session-recording automation.
+
+## Negative Consequences
+
+Non-Copilot workflows no longer received EJS session reminders. ADR-0001
+retires both EJS hook systems from active decision-graph work.
+
+## Pros and Cons of the Options
+
+### Keep Git hooks as a safety net
+
+- Good, because they could remind contributors who were not using Copilot.
+- Bad, because they duplicated automation and required manual installation.
+
+### Remove Git hooks
+
+- Good, because the EJS stack had fewer files and setup steps.
+- Bad, because CLI-only EJS workflows had no reminder mechanism.
+
+### Make Git hooks Copilot-aware
+
+- Good, because checks could have been limited to active EJS sessions.
+- Bad, because marker checks added complexity for little benefit.
+
+## Links
+
+- Superseded by [ADR-0001](ADR-0001-pivot-from-ejs-to-decision-graph.md).
+- [Original EJS ADR](../../../legacy/ejs-docs/adr/0017-remove-git-hooks-in-favor-of-copilot-hooks.md)
