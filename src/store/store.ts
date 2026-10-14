@@ -45,6 +45,7 @@ export interface Store {
   upsertProject(project: Project): Promise<void>;
   upsertNode(projectId: string, record: DecisionRecord): Promise<boolean>;
   deleteMissing(projectId: string, ids: string[]): Promise<number>;
+  deleteEdges(projectId: string, sources?: string[]): Promise<void>;
   addEdge(
     projectId: string,
     src: string,

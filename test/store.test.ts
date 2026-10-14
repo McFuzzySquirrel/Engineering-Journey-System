@@ -112,6 +112,24 @@ it('deletes stale nodes, their edges, and full-text entries', async () => {
   await expect(store.search('project-a', 'PostgreSQL')).resolves.toEqual([]);
 });
 
+it('deletes edges only for the requested sources', async () => {
+  const first = makeAdr('ADR-0001', 'First', ['src/**']);
+  const second = makeAdr('ADR-0002', 'Second', ['src/**']);
+  const third = makeAdr('ADR-0003', 'Third', ['src/**']);
+  for (const record of [first, second, third]) {
+    await store.upsertNode('project-a', record);
+  }
+  await store.addEdge('project-a', first.id, second.id, 'relates_to');
+  await store.addEdge('project-a', third.id, second.id, 'relates_to');
+
+  await store.deleteEdges('project-a', [first.id]);
+
+  await expect(store.related('project-a', first.id)).resolves.toEqual([]);
+  await expect(store.related('project-a', third.id)).resolves.toMatchObject([
+    { id: second.id },
+  ]);
+});
+
 it('traverses only selected edge kinds and respects depth', async () => {
   const first = makeAdr('ADR-0001', 'First', ['src/**']);
   const second = makeAdr('ADR-0002', 'Second', ['src/**']);

@@ -2,8 +2,9 @@
 
 decision-graph is a Node.js tool for indexing architecture decision records
 (ADRs) and session decision records (SDRs) so developers and coding agents can
-find applicable decisions. The Phase 1 CLI scaffold is implemented; currently,
-`dg` only supports `--help` and `--version`.
+find applicable decisions. The Phase 4 CLI supports initializing a project,
+importing and syncing records, creating ADR drafts, and querying the local
+decision graph.
 
 ## Table of Contents
 
@@ -125,12 +126,10 @@ GitHub pull-request workflow.
 
 ## What's Next
 
-The Phase 1 package scaffold is complete. Later phases cover record parsing and
-storage, decision-management commands, SDR workflows, generated agent
-instructions, verification and linting, MCP, and optional remote storage. None
-of these features should be treated as shipped; see the
-[implementation plan](docs/IMPLEMENTATION-PLAN.md) for status and acceptance
-criteria.
+Phases 0-4 are complete. SDR workflows, full agent-instruction compilation,
+verification and linting, MCP, and optional remote storage remain planned; see
+the [implementation plan](docs/IMPLEMENTATION-PLAN.md) for status and
+acceptance criteria.
 
 ## License
 
