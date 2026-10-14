@@ -42,6 +42,7 @@ export function parseMadr(source: string, filePath: string) {
       consideredOptions: listItems(sections.get('considered options')),
       decisionOutcome:
         sections.get('decision outcome') ?? sections.get('decision') ?? '',
+      consequences: listItems(sections.get('consequences')),
       positiveConsequences: listItems(sections.get('positive consequences')),
       negativeConsequences: listItems(sections.get('negative consequences')),
       prosAndCons: listItems(sections.get('pros and cons of the options')),

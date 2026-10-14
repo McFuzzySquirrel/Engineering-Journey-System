@@ -14,6 +14,19 @@ export function detectFormat(source: string, filePath = ''): RecordFormat {
       return 'agent';
     }
     if (/^##+\s+Agent Rules\s*$/im.test(source)) return 'hybrid';
+    if (
+      [
+        'context and problem statement',
+        'decision drivers',
+        'considered options',
+        'decision outcome',
+        'positive consequences',
+        'negative consequences',
+        'pros and cons of the options',
+      ].some((heading) => sections.has(heading))
+    ) {
+      return 'hybrid';
+    }
     return 'agent';
   }
   if (

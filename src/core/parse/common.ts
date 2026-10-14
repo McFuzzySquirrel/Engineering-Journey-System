@@ -1,4 +1,5 @@
 import matter from 'gray-matter';
+import { load as parseYaml } from 'js-yaml';
 import { z } from 'zod';
 import {
   FrontmatterSchema,
@@ -26,7 +27,23 @@ export interface ParsedSource {
 
 export function parseSource(source: string, filePath: string): ParsedSource {
   try {
-    const parsed = matter(source);
+    const parsed = matter(source, {
+      engines: {
+        yaml: {
+          parse: (text) => {
+            const parsed = parseYaml(text);
+            if (
+              typeof parsed !== 'object' ||
+              parsed === null ||
+              Array.isArray(parsed)
+            ) {
+              throw new Error('frontmatter must be a YAML mapping');
+            }
+            return parsed as Record<string, unknown>;
+          },
+        },
+      },
+    });
     const data = FrontmatterSchema.safeParse(parsed.data);
     if (!data.success) {
       throw validationError(filePath, data.error);

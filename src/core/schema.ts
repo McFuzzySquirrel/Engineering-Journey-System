@@ -58,6 +58,7 @@ export const AdrRecordSchema = z.object({
   decisionDrivers: z.array(z.string()).default([]),
   consideredOptions: z.array(z.string()).default([]),
   decisionOutcome: z.string().default(''),
+  consequences: z.array(z.string()).default([]),
   positiveConsequences: z.array(z.string()).default([]),
   negativeConsequences: z.array(z.string()).default([]),
   prosAndCons: z.array(z.string()).default([]),

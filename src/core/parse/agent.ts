@@ -56,6 +56,7 @@ export function parseAgent(source: string, filePath: string) {
       decisionDrivers: [],
       consideredOptions: [],
       decisionOutcome: sections.get('decision outcome') ?? '',
+      consequences: [],
       positiveConsequences: [],
       negativeConsequences: [],
       prosAndCons: [],

@@ -88,6 +88,7 @@ export function parseHybrid(source: string, filePath: string) {
     consideredOptions: items(sections, 'considered options'),
     decisionOutcome:
       sections.get('decision outcome') ?? sections.get('decision') ?? '',
+    consequences: items(sections, 'consequences'),
     positiveConsequences: items(sections, 'positive consequences'),
     negativeConsequences: items(sections, 'negative consequences'),
     prosAndCons: items(sections, 'pros and cons of the options'),

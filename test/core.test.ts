@@ -41,6 +41,9 @@ it('imports a MADR record and derives its id from a numbered filename', async ()
   if (record.type !== 'adr') throw new Error('expected ADR');
   expect(record.decisionOutcome).toContain('SQLite');
   expect(record.consideredOptions).toEqual(['SQLite', 'PostgreSQL']);
+  expect(record.consequences).toEqual([
+    'The database is local to each checkout.',
+  ]);
 });
 
 it('imports agent frontmatter rules and detects that format', async () => {
@@ -57,6 +60,15 @@ it('imports agent frontmatter rules and detects that format', async () => {
   expect(record.verify).toHaveLength(1);
 });
 
+it('detects hybrid ADRs without an explicit Agent Rules section', () => {
+  expect(
+    detectFormat(
+      '---\nid: ADR-0003\ntype: adr\ntitle: Record rationale\nstatus: accepted\n---\n\n## Context and Problem Statement\n\nKeep the rationale.',
+      'ADR-0003-record-rationale.md',
+    ),
+  ).toBe('hybrid');
+});
+
 it('imports Nygard records and recognizes superseding links', async () => {
   const source = await fixture('0012-local-first.md');
   const record = parseRecord(source, 'docs/adr/0012-local-first.md');
@@ -64,6 +76,7 @@ it('imports Nygard records and recognizes superseding links', async () => {
   expect(detectFormat(source, 'docs/adr/0012-local-first.md')).toBe('nygard');
   expect(record.id).toBe('ADR-0012');
   expect(record.status).toBe('superseded');
+  if (record.type !== 'adr') throw new Error('expected ADR');
   expect(record.supersedes).toEqual(['ADR-0013']);
   expect(record.positiveConsequences).toEqual([
     'Records remain available without a server.',
