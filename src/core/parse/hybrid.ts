@@ -3,6 +3,8 @@ import { AdrRecordSchema, type Rule } from '../schema.js';
 import {
   getFrontmatterRules,
   getSections,
+  getSectionWithSubsections,
+  listItems,
   parseRules,
   parseSource,
   parseVerification,
@@ -49,12 +51,7 @@ export function parseHybrid(source: string, filePath: string) {
         promotedTo: data.promoted_to,
         decision,
         why,
-        alternatives: sections.get('alternatives considered')
-          ? sections
-              .get('alternatives considered')!
-              .split(/\r?\n/)
-              .filter(Boolean)
-          : [],
+        alternatives: listItems(sections.get('alternatives considered')),
         body: content.trim(),
       },
       filePath,
@@ -84,15 +81,17 @@ export function parseHybrid(source: string, filePath: string) {
       sections.get('context and problem statement') ??
       sections.get('context') ??
       '',
-    decisionDrivers: items(sections, 'decision drivers'),
-    consideredOptions: items(sections, 'considered options'),
+    decisionDrivers: listItems(sections.get('decision drivers')),
+    consideredOptions: listItems(sections.get('considered options')),
     decisionOutcome:
       sections.get('decision outcome') ?? sections.get('decision') ?? '',
-    consequences: items(sections, 'consequences'),
-    positiveConsequences: items(sections, 'positive consequences'),
-    negativeConsequences: items(sections, 'negative consequences'),
-    prosAndCons: items(sections, 'pros and cons of the options'),
-    links: items(sections, 'links'),
+    consequences: listItems(sections.get('consequences')),
+    positiveConsequences: listItems(sections.get('positive consequences')),
+    negativeConsequences: listItems(sections.get('negative consequences')),
+    prosAndCons: listItems(
+      getSectionWithSubsections(content, 'pros and cons of the options'),
+    ),
+    links: listItems(sections.get('links')),
     body: content.trim(),
   };
   return AdrRecordSchema.parse(validateRecord(record, filePath));
@@ -107,15 +106,6 @@ export function assignRuleIds<T extends Pick<Rule, 'id' | 'modality' | 'text'>>(
     modality: rule.modality,
     text: rule.text,
   }));
-}
-
-function items(sections: Map<string, string>, heading: string): string[] {
-  const section = sections.get(heading);
-  if (!section) return [];
-  return section
-    .split(/\r?\n/)
-    .map((line) => line.match(/^\s*(?:[-*+]|\d+\.)\s+(.+)$/)?.[1]?.trim())
-    .filter((item): item is string => Boolean(item));
 }
 
 function normalizeDate(date: string | Date | undefined): string | undefined {

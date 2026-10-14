@@ -21,9 +21,9 @@ export function parseNygard(source: string, filePath: string) {
   const supersededBy = statusText.match(
     /superseded by\s+(?:\[([^\]]+)\]|(ADR-\d{4}))/i,
   );
-  const supersedes =
-    data.supersedes ??
-    (supersededBy ? [supersededBy[1] ?? supersededBy[2]] : []);
+  const successor = supersededBy?.[1] ?? supersededBy?.[2];
+  const relatesTo = [...(data.relates_to ?? [])];
+  if (successor && !relatesTo.includes(successor)) relatesTo.push(successor);
 
   return validateRecord(
     {
@@ -39,8 +39,8 @@ export function parseNygard(source: string, filePath: string) {
           : data.date,
       path: filePath,
       contentHash: createHash('sha256').update(source).digest('hex'),
-      supersedes,
-      relatesTo: data.relates_to ?? [],
+      supersedes: data.supersedes ?? [],
+      relatesTo,
       derivedFrom: data.derived_from ?? [],
       deciders: data.deciders,
       rules: [],

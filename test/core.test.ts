@@ -29,6 +29,7 @@ it('parses hybrid ADR rules, checks, sections, and stable rule ids', async () =>
     'Improve performance.',
     'Avoid layout shift.',
   ]);
+  expect(record.prosAndCons).toEqual(['Good, because it optimizes images.']);
   expect(record.contentHash).toMatch(/^[a-f0-9]{64}$/);
 });
 
@@ -41,6 +42,7 @@ it('imports a MADR record and derives its id from a numbered filename', async ()
   if (record.type !== 'adr') throw new Error('expected ADR');
   expect(record.decisionOutcome).toContain('SQLite');
   expect(record.consideredOptions).toEqual(['SQLite', 'PostgreSQL']);
+  expect(record.prosAndCons).toEqual(['Good, because SQLite is portable.']);
   expect(record.consequences).toEqual([
     'The database is local to each checkout.',
   ]);
@@ -69,6 +71,59 @@ it('detects hybrid ADRs without an explicit Agent Rules section', () => {
   ).toBe('hybrid');
 });
 
+it('keeps horizontal rules in MADR documents out of frontmatter detection', () => {
+  const source = `# Use SQLite
+
+## Status
+
+Accepted
+
+---
+
+## Decision Outcome
+
+Use SQLite.
+`;
+
+  expect(detectFormat(source, 'ADR-0008-local-database.md')).toBe('madr');
+  const record = parseRecord(source, 'ADR-0008-local-database.md');
+  if (record.type !== 'adr') throw new Error('expected ADR');
+  expect(record.decisionOutcome).toBe('Use SQLite.');
+});
+
+it('detects and parses native SDR frontmatter', () => {
+  const source = `---
+id: SDR-20261013-001
+type: sdr
+title: Use zod
+status: open
+---
+
+## Decision
+
+Use zod.
+
+## Why
+
+Typed parse results.
+
+## Alternatives considered
+
+- ajv + JSON Schema
+
+- hand-rolled checks
+`;
+
+  expect(detectFormat(source, 'SDR-20261013-001-use-zod.md')).toBe('hybrid');
+  const record = parseRecord(source, 'SDR-20261013-001-use-zod.md');
+  expect(record.type).toBe('sdr');
+  if (record.type !== 'sdr') throw new Error('expected SDR');
+  expect(record.alternatives).toEqual([
+    'ajv + JSON Schema',
+    'hand-rolled checks',
+  ]);
+});
+
 it('imports Nygard records and recognizes superseding links', async () => {
   const source = await fixture('0012-local-first.md');
   const record = parseRecord(source, 'docs/adr/0012-local-first.md');
@@ -77,7 +132,8 @@ it('imports Nygard records and recognizes superseding links', async () => {
   expect(record.id).toBe('ADR-0012');
   expect(record.status).toBe('superseded');
   if (record.type !== 'adr') throw new Error('expected ADR');
-  expect(record.supersedes).toEqual(['ADR-0013']);
+  expect(record.supersedes).toEqual([]);
+  expect(record.relatesTo).toEqual(['ADR-0013']);
   expect(record.positiveConsequences).toEqual([
     'Records remain available without a server.',
   ]);

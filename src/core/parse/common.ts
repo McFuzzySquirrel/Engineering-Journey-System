@@ -94,6 +94,26 @@ export function getSections(content: string): Map<string, string> {
   return sections;
 }
 
+export function getSectionWithSubsections(
+  content: string,
+  heading: string,
+): string | undefined {
+  const headings = [...content.matchAll(/^(#{1,6})\s+(.+?)\s*#*\s*$/gm)];
+  const index = headings.findIndex(
+    (match) => normalizeHeading(match[2]) === normalizeHeading(heading),
+  );
+  if (index === -1) return undefined;
+
+  const current = headings[index];
+  const start = (current.index ?? 0) + current[0].length;
+  const end =
+    headings
+      .slice(index + 1)
+      .find((match) => match[1].length <= current[1].length)?.index ??
+    content.length;
+  return content.slice(start, end).trim();
+}
+
 export function normalizeHeading(heading: string): string {
   return heading
     .toLowerCase()

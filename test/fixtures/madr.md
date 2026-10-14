@@ -25,6 +25,12 @@ Chosen option: SQLite.
 
 - The database is local to each checkout.
 
+## Pros and Cons of the Options
+
+### SQLite
+
+- Good, because SQLite is portable.
+
 ## Links
 
 None.

@@ -8,8 +8,14 @@ export type RecordFormat = 'hybrid' | 'madr' | 'nygard' | 'agent';
 
 export function detectFormat(source: string, filePath = ''): RecordFormat {
   const sections = getSections(source);
-  const hasFrontmatter = /^---\s*$/m.test(source);
+  const frontmatter = source.match(
+    /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/,
+  )?.[1];
+  const hasFrontmatter = /^---[ \t]*\r?\n/.test(source);
   if (hasFrontmatter) {
+    if (/^\s*type:\s*['"]?sdr['"]?\s*(?:#.*)?$/im.test(frontmatter ?? '')) {
+      return 'hybrid';
+    }
     if (/^---\s*[\r\n]+[\s\S]*?^\s*(?:rules|verify):/m.test(source)) {
       return 'agent';
     }

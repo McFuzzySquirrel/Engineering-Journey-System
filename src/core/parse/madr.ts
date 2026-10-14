@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import {
   getSections,
+  getSectionWithSubsections,
   listItems,
   parseSource,
   RecordParseError,
@@ -45,7 +46,9 @@ export function parseMadr(source: string, filePath: string) {
       consequences: listItems(sections.get('consequences')),
       positiveConsequences: listItems(sections.get('positive consequences')),
       negativeConsequences: listItems(sections.get('negative consequences')),
-      prosAndCons: listItems(sections.get('pros and cons of the options')),
+      prosAndCons: listItems(
+        getSectionWithSubsections(content, 'pros and cons of the options'),
+      ),
       links: listItems(sections.get('links')),
       body: content.trim(),
     },
