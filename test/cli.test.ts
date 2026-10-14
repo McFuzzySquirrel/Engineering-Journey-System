@@ -56,6 +56,9 @@ it('initializes, syncs, and returns only applicable accepted rules', async () =>
   expect(readFileSync(path.join(root, '.gitignore'), 'utf8')).toContain(
     '.dg/graph.db',
   );
+  expect(readFileSync(path.join(root, '.gitignore'), 'utf8')).toContain(
+    '.dg/server.db',
+  );
   expect(readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toContain(
     '<!-- dg:begin -->',
   );

@@ -30,7 +30,14 @@ export function createMcpServer(root: string = process.cwd()): {
   registerDecisionTools(server, {
     config,
     store,
-    addSdr: async (title, input) => {
+    listProjects: () => store.listProjects(),
+    defaultProject: config.project,
+    addSdr: async (title, input, projectId) => {
+      if (projectId !== config.project) {
+        throw new Error(
+          'Local SDR creation is limited to the configured project',
+        );
+      }
       const result = await createSdr(root, config, store, title, input);
       return {
         id: result.id,

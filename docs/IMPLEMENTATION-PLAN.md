@@ -1,6 +1,6 @@
 # decision-graph (`dg`) — Implementation Plan
 
-> Status: **Phases 0-7 complete; Phases 8-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
+> Status: **Phases 0-8 complete; Phase 9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
 > Tick boxes as work lands. Each phase has acceptance criteria. The phase is done only when every criterion is met.
 
 ---
@@ -345,14 +345,24 @@ verify tool discovery, CLI-equivalent context results, and all seven tools.
 **Acceptance:** an MCP client can list the tools and get `context` results that match the CLI's.
 
 ### Phase 8 — Postgres store, server, push/pull
-- [ ] Postgres `Store` implementation: same migrations, tsvector + GIN search, project scoping
-- [ ] `dg serve [--db <postgres-url|sqlite-path>] [--port] [--host 127.0.0.1]`
+- [x] Postgres `Store` implementation: same migrations, tsvector + GIN search, project scoping
+- [x] `dg serve [--db <postgres-url|sqlite-path>] [--port] [--host 127.0.0.1]`
   - HTTP API: `POST /projects/:id/push` (bulk upsert by hash), `GET /projects`, `GET /projects/:id/records`, `GET /search?q=&project=&projectType=`, `GET /context?project=&files=`, `GET /records/:project/:id/related`
   - streamable-HTTP MCP endpoint `/mcp` using the shared tools, with optional `project` / `projectType` arguments for cross-project queries
   - warns at startup when bound to anything other than localhost (no auth in v1)
-- [ ] `dg push [--remote url]` / `dg pull [--remote url] [--project ...]` (pull imports read-only into a separate namespace and never writes into the repo's files)
-- [ ] `remote` setting in config
-- [ ] Postgres integration tests run when `DG_TEST_PG_URL` is set. `docker-compose.yml` for local Postgres
+- [x] `dg push [--remote url]` / `dg pull [--remote url] [--project ...]` (pull imports read-only into a separate namespace and never writes into the repo's files)
+- [x] `remote` setting in config
+- [x] Postgres integration tests run when `DG_TEST_PG_URL` is set. `docker-compose.yml` for local Postgres
+
+**Completion notes:** Added a Postgres implementation of the Promise-based
+store contract with project-scoped graph operations and `tsvector`/GIN search.
+`dg serve` now exposes project, push, records, search, context, related-record,
+and streamable-HTTP MCP endpoints; non-local binds warn that v1 has no
+authentication. `dg push` safely upserts indexed records and edges, while
+`dg pull` imports records into a separate local namespace without changing
+repository files. The remote URL can come from `.dg/config.json` or `--remote`.
+Podman-backed Postgres integration tests and the CLI's SQLite-server remote
+flow pass; the compose file supplies a localhost-only Postgres service.
 
 **Acceptance:** two fixture repos of different project types push to one server, and a cross-project search by `projectType` returns the expected records. Re-pushing is safe (no duplicates).
 

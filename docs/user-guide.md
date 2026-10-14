@@ -3,9 +3,9 @@
 ## Who This Is For
 
 This guide is for developers and coding agents that need to find and follow
-relevant architecture decisions. The local CLI, SQLite index, decision-record
-workflows, and stdio MCP server are implemented; the package is not yet
-published.
+relevant architecture decisions. The CLI supports local SQLite workflows,
+Postgres-backed multi-project serving, remote push/pull, and stdio or
+streamable-HTTP MCP.
 
 ## Before You Begin
 
@@ -25,14 +25,25 @@ configuration and local SQLite index.
 Use `dg init` to initialize a project, `dg sync` to index its decision records,
 and `dg context <files...>` to retrieve applicable accepted rules. Other
 workflows include `dg search`, `dg get`, `dg related`, `dg sdr add`, `dg lint`,
-`dg verify`, and `dg graph`. To connect an agent, configure its stdio MCP
-client as described in the [MCP client guide](mcp.md).
+`dg verify`, `dg graph`, `dg push`, and `dg pull`. Set `.dg/config.json`'s
+`remote` value or pass `--remote <url>` to push and pull. A pull stores records
+in a separate `remote:<fingerprint>:<project>` database namespace and never
+writes them into the project's Markdown directories.
+
+Run `dg serve --db <postgres-url|sqlite-path>` to start the HTTP API and
+streamable-HTTP MCP endpoint. The server binds to `127.0.0.1` by default. For
+local Postgres, use `podman-compose up -d` (or `docker compose up -d`) and set
+`DG_TEST_PG_URL` when running the optional integration tests. To connect an
+agent, use stdio MCP or the remote endpoint as described in the
+[MCP client guide](mcp.md).
 
 ## Offline and Reconnect Behavior
 
-The CLI and MCP server use the project's local Markdown files and SQLite index;
-they do not require a remote service for local workflows. Synchronize the index
-after changing records with `dg sync`.
+Local CLI and stdio MCP workflows use the project's Markdown files and SQLite
+index. Remote push/pull and `dg serve` require network access. Push is
+idempotent and upserts records; it does not delete server records that are
+missing from the local project. Synchronize the local index after changing
+records with `dg sync`.
 
 ## Statuses and Notifications
 
@@ -53,10 +64,13 @@ local Markdown tools; no product-level accessibility claim is made.
 
 ## Privacy and Data Handling
 
-The local CLI and stdio MCP server read and update files and the SQLite index in
-the selected project; they do not send project data to a remote service.
-Repository content and issue or pull-request data are handled by Git and GitHub
-according to the user's and repository host's settings. Do not commit
+The local CLI and stdio MCP server read and update files and the SQLite index
+in the selected project. `dg push` sends indexed records and project metadata
+to the configured remote; `dg pull` downloads records to the local index
+without modifying repository files. The server has no authentication in v1:
+keep it on localhost or a trusted network and do not expose it publicly.
+Repository content and issue or pull-request data are handled by Git and
+GitHub according to the user's and repository host's settings. Do not commit
 credentials, private data, or session content that should not be public.
 
 ## Troubleshooting
