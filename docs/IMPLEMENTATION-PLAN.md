@@ -1,6 +1,6 @@
 # decision-graph (`dg`) — Implementation Plan
 
-> Status: **Phases 0-4 complete; Phases 5-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
+> Status: **Phases 0-5 complete; Phases 6-9 pending** · Tracks the pivot from the Engineering Journey System (EJS) to **decision-graph**.
 > Tick boxes as work lands. Each phase has acceptance criteria. The phase is done only when every criterion is met.
 
 ---
@@ -285,10 +285,18 @@ and JSON output; lint, format, typecheck, tests, and build pass.
 **Acceptance:** in a temp repo with fixture ADRs, `init → sync → context src/x.tsx` returns exactly the matching rules. Integration tests cover each command.
 
 ### Phase 5 — SDRs & promotion
-- [ ] `dg sdr add "<title>" --decision ... --why ... [--alt ...] [--applies-to ...] [--agent ...] [--session ...]` writes the file and indexes it
-- [ ] `dg sdr list [--status open]`
-- [ ] `dg sdr promote <sdr-id>` creates an ADR draft (`proposed`) with `derived_from`, sets the SDR to `promoted` with `promoted_to`, and adds the edges
-- [ ] `dg sdr discard <sdr-id> [--reason]`
+- [x] `dg sdr add "<title>" --decision ... --why ... [--alt ...] [--applies-to ...] [--agent ...] [--session ...]` writes the file and indexes it
+- [x] `dg sdr list [--status open]`
+- [x] `dg sdr promote <sdr-id>` creates an ADR draft (`proposed`) with `derived_from`, sets the SDR to `promoted` with `promoted_to`, and adds the edges
+- [x] `dg sdr discard <sdr-id> [--reason]`
+
+**Completion notes:** Added date-sequenced SDR creation, indexing, and open-by-
+default listing. Promotion writes a proposed ADR carrying the SDR's decision,
+rationale, alternatives, scope, and tags; updates the SDR lifecycle metadata;
+and creates both `derived_from` and `promoted_to` graph edges. Promoting a
+non-open SDR is rejected. Discard updates lifecycle metadata and records an
+optional reason in the SDR file. CLI integration tests cover creation, listing,
+promotion, both edges, repeat-promotion rejection, and discard.
 
 **Acceptance:** after promote, both files and the edges are correct, and running promote again is rejected.
 

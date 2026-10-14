@@ -8,14 +8,16 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import picomatch from 'picomatch';
-import { dump } from 'js-yaml';
+import { dump, load } from 'js-yaml';
 import type { Command } from 'commander';
 import {
   ConfigSchema,
   parseConfig,
   parseRecord,
+  type AdrRecord,
   type Config,
   type DecisionRecord,
+  type SdrRecord,
 } from '../core/index.js';
 import {
   SQLiteStore,
@@ -154,6 +156,92 @@ export function registerCommands(program: Command): void {
         }
       },
     );
+
+  const sdr = program
+    .command('sdr')
+    .description('Capture and manage session decision records');
+
+  sdr
+    .command('add')
+    .description('Capture a session decision record')
+    .argument('<title>', 'decision title')
+    .requiredOption('--decision <text>', 'decision made')
+    .requiredOption('--why <text>', 'reason for the decision')
+    .option('--alt <alternative...>', 'alternative(s) considered')
+    .option(
+      '--applies-to <glob...>',
+      'file glob(s) to which this decision applies',
+    )
+    .option('--agent <name>', 'agent that made the decision')
+    .option('--session <reference>', 'session reference')
+    .action(
+      async (
+        title: string,
+        options: {
+          decision: string;
+          why: string;
+          alt?: string[];
+          appliesTo?: string[];
+          agent?: string;
+          session?: string;
+        },
+      ) => {
+        const runtime = openRuntime(process.cwd());
+        try {
+          const file = await createSdr(runtime, title, options);
+          console.log(`Created ${path.relative(runtime.root, file)}`);
+        } finally {
+          runtime.store.close();
+        }
+      },
+    );
+
+  sdr
+    .command('list')
+    .description('List session decision records')
+    .option('--status <status>', 'filter by status', 'open')
+    .option('--json', 'output JSON')
+    .action(async (options: { status: string; json?: boolean }) => {
+      const runtime = openRuntime(process.cwd());
+      try {
+        const records = await runtime.store.list(runtime.config.project, {
+          type: 'sdr',
+          status: options.status,
+        });
+        outputRecords(records, options.json);
+      } finally {
+        runtime.store.close();
+      }
+    });
+
+  sdr
+    .command('promote')
+    .description('Promote an SDR to a proposed ADR')
+    .argument('<sdr-id>', 'session decision record id')
+    .action(async (id: string) => {
+      const runtime = openRuntime(process.cwd());
+      try {
+        const adr = await promoteSdr(runtime, id);
+        console.log(`Promoted ${id} to ${adr}`);
+      } finally {
+        runtime.store.close();
+      }
+    });
+
+  sdr
+    .command('discard')
+    .description('Discard an open session decision record')
+    .argument('<sdr-id>', 'session decision record id')
+    .option('--reason <reason>', 'reason for discarding the record')
+    .action(async (id: string, options: { reason?: string }) => {
+      const runtime = openRuntime(process.cwd());
+      try {
+        await setSdrLifecycle(runtime, id, 'discarded', null, options.reason);
+        console.log(`Discarded ${id}`);
+      } finally {
+        runtime.store.close();
+      }
+    });
 
   program
     .command('list')
@@ -513,15 +601,183 @@ async function confirmImport(directories: string[]): Promise<boolean> {
   }
 }
 
+async function createSdr(
+  runtime: Runtime,
+  title: string,
+  options: {
+    decision: string;
+    why: string;
+    alt?: string[];
+    appliesTo?: string[];
+    agent?: string;
+    session?: string;
+  },
+): Promise<string> {
+  const date = new Date().toISOString().slice(0, 10);
+  const dateId = date.replaceAll('-', '');
+  const indexed = await runtime.store.list(runtime.config.project, {
+    type: 'sdr',
+  });
+  const fileRecords = collectMarkdownFiles(
+    path.resolve(runtime.root, runtime.config.sdrDir),
+  ).map((file) => parseFile(runtime.root, file, 'auto'));
+  const next = nextSdrNumber(
+    [...indexed, ...fileRecords].map((record) => record.id),
+    dateId,
+  );
+  const id = `SDR-${dateId}-${String(next).padStart(3, '0')}`;
+  const slug =
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'decision';
+  const relativeFile = path.join(runtime.config.sdrDir, `${id}-${slug}.md`);
+  const absoluteFile = path.join(runtime.root, relativeFile);
+  const metadata = {
+    id,
+    type: 'sdr',
+    title,
+    status: 'open',
+    applies_to: options.appliesTo ?? [],
+    tags: [],
+    date,
+    promoted_to: null,
+    ...(options.agent ? { agent: options.agent } : {}),
+    ...(options.session ? { session: options.session } : {}),
+  };
+  const alternatives = options.alt?.length
+    ? options.alt.map((alternative) => `- ${alternative}`).join('\n')
+    : 'None.';
+  const content = `---\n${dump(metadata, { noRefs: true, lineWidth: -1 }).trimEnd()}\n---\n\n# ${id}: ${title}\n\n## Decision\n\n${options.decision}\n\n## Why\n\n${options.why}\n\n## Alternatives considered\n\n${alternatives}\n`;
+  mkdirSync(path.dirname(absoluteFile), { recursive: true });
+  writeFileSync(absoluteFile, content, { flag: 'wx' });
+  const record = parseRecord(
+    content,
+    relativeFile.split(path.sep).join('/'),
+    'hybrid',
+  );
+  await indexRecords(runtime.store, runtime.config, [record]);
+  return absoluteFile;
+}
+
+function nextSdrNumber(ids: string[], dateId: string): number {
+  return (
+    ids.reduce((max, id) => {
+      const match = new RegExp(`^SDR-${dateId}-(\\d+)$`, 'i').exec(id);
+      return match ? Math.max(max, Number(match[1])) : max;
+    }, 0) + 1
+  );
+}
+
+async function promoteSdr(runtime: Runtime, id: string): Promise<string> {
+  const source = await loadSdr(runtime, id);
+  const existingAdr = readAdrRecords(runtime).find((record) =>
+    record.derivedFrom.includes(id),
+  );
+  if (existingAdr) {
+    if (
+      source.status !== 'open' &&
+      (source.status !== 'promoted' || source.promotedTo !== existingAdr.id)
+    ) {
+      throw new Error(`Cannot promote SDR ${id}: status is ${source.status}`);
+    }
+    await indexRecords(runtime.store, runtime.config, [existingAdr]);
+    if (source.status === 'open') {
+      await setSdrLifecycle(runtime, id, 'promoted', existingAdr.id);
+    } else {
+      await indexRecords(runtime.store, runtime.config, [source]);
+    }
+    return existingAdr.id;
+  }
+  if (source.status !== 'open') {
+    throw new Error(`Cannot promote SDR ${id}: status is ${source.status}`);
+  }
+  const adrFile = await createAdrDraft(
+    runtime,
+    source.title,
+    {
+      appliesTo: source.appliesTo,
+      tags: source.tags,
+      derivedFrom: [source.id],
+    },
+    source,
+  );
+  const adr = parseFile(runtime.root, adrFile, 'hybrid');
+  if (adr.type !== 'adr') {
+    throw new Error(`Generated draft for SDR ${id} is not an ADR`);
+  }
+  await setSdrLifecycle(runtime, id, 'promoted', adr.id);
+  return adr.id;
+}
+
+async function loadSdr(runtime: Runtime, id: string): Promise<SdrRecord> {
+  const node = await runtime.store.get(runtime.config.project, id);
+  if (!node) throw new Error(`SDR not found: ${id}`);
+  const file = path.resolve(runtime.root, node.path);
+  if (!existsSync(file)) {
+    throw new Error(`Source file for SDR ${id} is missing; run "dg sync"`);
+  }
+  const record = parseFile(runtime.root, file, 'auto');
+  if (record.type !== 'sdr') throw new Error(`Record is not an SDR: ${id}`);
+  if (record.id !== id) {
+    throw new Error(`Source file for SDR ${id} contains record ${record.id}`);
+  }
+  return record;
+}
+
+async function setSdrLifecycle(
+  runtime: Runtime,
+  id: string,
+  status: 'promoted' | 'discarded',
+  promotedTo: string | null,
+  reason?: string,
+): Promise<SdrRecord> {
+  const record = await loadSdr(runtime, id);
+  if (record.status !== 'open') {
+    throw new Error(`Cannot update SDR ${id}: status is ${record.status}`);
+  }
+  const file = path.resolve(runtime.root, record.path);
+  const original = readFileSync(file, 'utf8');
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(original);
+  if (!frontmatter) throw new Error(`Invalid frontmatter for SDR ${id}`);
+  const data = load(frontmatter[1]);
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+    throw new Error(`Invalid frontmatter for SDR ${id}`);
+  }
+  const metadata = data as Record<string, unknown>;
+  metadata.status = status;
+  metadata.promoted_to = promotedTo;
+  const originalBody = original.slice(frontmatter[0].length);
+  const body =
+    reason === undefined
+      ? originalBody
+      : `${originalBody.trimEnd()}\n\n## Discard Reason\n\n${reason}\n`;
+  const content = `---\n${dump(metadata, { noRefs: true, lineWidth: -1 }).trimEnd()}\n---\n${body}`;
+  writeFileSync(file, content);
+  const updated = parseFile(runtime.root, file, 'auto');
+  if (updated.type !== 'sdr') throw new Error(`Record is not an SDR: ${id}`);
+  await indexRecords(runtime.store, runtime.config, [updated]);
+  return updated;
+}
+
 async function createAdrDraft(
   runtime: Runtime,
   title: string,
-  options: { appliesTo?: string[]; tags?: string[] },
+  options: {
+    appliesTo?: string[];
+    tags?: string[];
+    derivedFrom?: string[];
+  },
+  source?: SdrRecord,
 ): Promise<string> {
   const records = await runtime.store.list(runtime.config.project, {
     type: 'adr',
   });
-  const next = nextAdrNumber(records.map((record) => record.id));
+  const adrRecords = readAdrRecords(runtime);
+  const next = nextAdrNumber([
+    ...records.map((record) => record.id),
+    ...adrRecords.map((record) => record.id),
+  ]);
   const id = `ADR-${String(next).padStart(4, '0')}`;
   const slug =
     title
@@ -531,26 +787,35 @@ async function createAdrDraft(
   const relativeFile = path.join(runtime.config.adrDir, `${id}-${slug}.md`);
   const absoluteFile = path.join(runtime.root, relativeFile);
   mkdirSync(path.dirname(absoluteFile), { recursive: true });
-  const content = renderHybridDraft({
-    id,
-    type: 'adr',
-    title,
-    status: 'proposed',
-    applies_to: options.appliesTo ?? [],
-    tags: options.tags ?? [],
-    supersedes: [],
-    relates_to: [],
-    derived_from: [],
-    date: new Date().toISOString().slice(0, 10),
-  });
-  writeFileSync(absoluteFile, content, { flag: 'wx' });
+  const draft = renderHybridDraft(
+    {
+      id,
+      type: 'adr',
+      title,
+      status: 'proposed',
+      applies_to: options.appliesTo ?? [],
+      tags: options.tags ?? [],
+      supersedes: [],
+      relates_to: [],
+      derived_from: options.derivedFrom ?? [],
+      date: new Date().toISOString().slice(0, 10),
+    },
+    source,
+  );
+  writeFileSync(absoluteFile, draft, { flag: 'wx' });
   const record = parseRecord(
-    content,
+    draft,
     relativeFile.split(path.sep).join('/'),
     'hybrid',
   );
   await indexRecords(runtime.store, runtime.config, [record]);
   return absoluteFile;
+}
+
+function readAdrRecords(runtime: Runtime): AdrRecord[] {
+  return collectMarkdownFiles(path.resolve(runtime.root, runtime.config.adrDir))
+    .map((file) => parseFile(runtime.root, file, 'auto'))
+    .filter((record): record is AdrRecord => record.type === 'adr');
 }
 
 async function writeConvertedDraft(
@@ -613,23 +878,28 @@ async function writeConvertedDraft(
 
 function renderHybridDraft(
   metadata: Record<string, unknown>,
-  source?: Extract<DecisionRecord, { type: 'adr' }>,
+  source?: AdrRecord | SdrRecord,
 ): string {
   const yaml = dump(metadata, { noRefs: true, lineWidth: -1 }).trimEnd();
   const list = (values: string[]) =>
     values.length ? values.map((value) => `- ${value}`).join('\n') : 'None.';
   const rules =
-    source?.rules
-      .map((rule) => `- **${rule.modality}:** ${rule.text}`)
-      .join('\n') ?? 'None.';
+    source?.type === 'adr'
+      ? source.rules
+          .map((rule) => `- **${rule.modality}:** ${rule.text}`)
+          .join('\n')
+      : 'None.';
   const checks =
-    source?.verify
-      .map(
-        (check) =>
-          `- **Check:** ${check.check}\n  **Expected:** ${check.expected}`,
-      )
-      .join('\n') ?? 'None.';
-  return `---\n${yaml}\n---\n\n# ${metadata.id}: ${metadata.title}\n\n## Agent Rules\n\n${rules}\n\n## Verify\n\n${checks}\n\n## Context and Problem Statement\n\n${source?.context || 'Describe the context and problem.'}\n\n## Decision Drivers\n\n${list(source?.decisionDrivers ?? [])}\n\n## Considered Options\n\n${list(source?.consideredOptions ?? [])}\n\n## Decision Outcome\n\n${source?.decisionOutcome || 'Describe the decision.'}\n\n### Positive Consequences\n\n${list(source?.positiveConsequences ?? [])}\n\n### Negative Consequences\n\n${list(source?.negativeConsequences ?? [])}\n\n## Pros and Cons of the Options\n\n${list(source?.prosAndCons ?? [])}\n\n## Links\n\n${list(source?.links ?? [])}\n`;
+    source?.type === 'adr'
+      ? source.verify
+          .map(
+            (check) =>
+              `- **Check:** ${check.check}\n  **Expected:** ${check.expected}`,
+          )
+          .join('\n')
+      : 'None.';
+  const isAdr = source?.type === 'adr';
+  return `---\n${yaml}\n---\n\n# ${metadata.id}: ${metadata.title}\n\n## Agent Rules\n\n${rules}\n\n## Verify\n\n${checks}\n\n## Context and Problem Statement\n\n${(isAdr ? source.context : source?.why) || 'Describe the context and problem.'}\n\n## Decision Drivers\n\n${list(isAdr ? source.decisionDrivers : [])}\n\n## Considered Options\n\n${list(isAdr ? source.consideredOptions : (source?.alternatives ?? []))}\n\n## Decision Outcome\n\n${(isAdr ? source.decisionOutcome : source?.decision) || 'Describe the decision.'}\n\n### Positive Consequences\n\n${list(isAdr ? source.positiveConsequences : [])}\n\n### Negative Consequences\n\n${list(isAdr ? source.negativeConsequences : [])}\n\n## Pros and Cons of the Options\n\n${list(isAdr ? source.prosAndCons : [])}\n\n## Links\n\n${list(isAdr ? source.links : [])}\n`;
 }
 
 function nextAdrNumber(ids: string[]): number {
