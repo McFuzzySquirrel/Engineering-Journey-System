@@ -21,8 +21,12 @@ describe.skipIf(!connectionString)('PostgresStore', () => {
         name: 'Other project',
         type: 'app',
       });
-      const first = makeAdr('ADR-0001', 'Use Postgres for remote storage.');
-      const second = makeAdr('ADR-0002', 'Keep records searchable.');
+      const first = makeAdr('ADR-0001', 'Use Postgres for remote storage.', [
+        'storage',
+      ]);
+      const second = makeAdr('ADR-0002', 'Keep records searchable.', [
+        'search',
+      ]);
       await expect(store.upsertNode(projectId, first)).resolves.toBe(true);
       await expect(store.upsertNode(projectId, first)).resolves.toBe(false);
       await store.upsertNode(projectId, second);
@@ -31,6 +35,24 @@ describe.skipIf(!connectionString)('PostgresStore', () => {
       await expect(
         store.search(projectId, 'remote storage'),
       ).resolves.toMatchObject([{ id: first.id }]);
+      await expect(
+        store.searchAcrossProjects(
+          [projectId, `${projectId}-other`],
+          'remote storage',
+          {
+            type: ['adr'],
+            status: ['accepted', 'proposed'],
+            tag: ['storage', 'search'],
+          },
+        ),
+      ).resolves.toMatchObject([{ projectId, id: first.id }]);
+      await expect(
+        store.getFacets([projectId, `${projectId}-other`]),
+      ).resolves.toEqual({
+        types: ['adr'],
+        statuses: ['accepted'],
+        tags: ['search', 'storage'],
+      });
       await expect(
         store.related(projectId, first.id, 1, ['relates_to']),
       ).resolves.toMatchObject([{ id: second.id }]);
@@ -111,7 +133,7 @@ describe.skipIf(!connectionString)('PostgresStore', () => {
   });
 });
 
-function makeAdr(id: string, title: string) {
+function makeAdr(id: string, title: string, tags: string[] = []) {
   return parseRecord(
     `---
 id: ${id}
@@ -119,6 +141,7 @@ type: adr
 title: ${title}
 status: accepted
 applies_to: ["src/**/*.ts"]
+tags: ${JSON.stringify(tags)}
 ---
 
 # ${id}: ${title}

@@ -11,6 +11,7 @@ can serve multiple projects over HTTP.
 - [About](#about)
 - [Concepts](#concepts)
 - [Features](#features)
+- [UI screenshots](#ui-screenshots)
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
@@ -64,13 +65,31 @@ decision records.
 | Validation and export | Lint records, run checks, compile `AGENTS.md`, and export Mermaid or DOT graphs |
 | Agent integration | Provide shared tools over stdio MCP and streamable-HTTP MCP |
 | Multi-project serving | Store/query projects with SQLite or PostgreSQL and exchange records using push/pull |
+| Local browser UI | Browse, search, filter, and follow relationships across indexed projects |
+
+## UI screenshots
+
+The read-only Workbench serves indexed decision records from `dg serve`.
+These captures show the desktop and responsive mobile layouts, followed by a
+short tour of searching, filtering, and following a record relationship.
+
+![Animated tour of the Workbench: browsing projects, applying filters, searching, opening a decision, and following a relationship](docs/assets/ui/explorer-workbench-tour.gif)
+
+The tour uses clearly labeled synthetic Sample Service records to demonstrate
+cross-project browsing. The static screenshots show records from this
+repository.
+
+![Desktop Workbench with project and status filters, matching records, and ADR-0019 open in the record inspector](docs/assets/ui/explorer-workbench-desktop.png)
+
+![Mobile Workbench showing the responsive filter controls, record list, and ADR-0019 inspector](docs/assets/ui/explorer-workbench-mobile.png)
 
 ## Tech Stack
 
 The CLI is an ESM Node.js and TypeScript application and requires Node.js 26
 or newer. It uses Commander, Zod, the Model Context Protocol SDK, SQLite via
 `better-sqlite3` with FTS5, and PostgreSQL via `pg`. The HTTP server uses
-Node.js HTTP APIs.
+Node.js HTTP APIs. Vite builds and serves the browser UI in development;
+`markdown-it` and DOMPurify render record content safely.
 
 ## Architecture
 
@@ -86,6 +105,7 @@ flowchart LR
   LocalStore --> SQLite[("SQLite + FTS5")]
   LocalMCP["dg mcp (stdio)"] --> LocalStore
   CLI -->|"push / pull"| API["HTTP API"]
+  Browser["Local browser UI"] --> API
   RemoteMCP["MCP at /mcp"] --> API
   API --> ServerStore["Server Store"]
   ServerStore --> ServerDB[("SQLite or PostgreSQL")]
@@ -102,13 +122,14 @@ server and storage boundaries.
 - `src/store/` — Shared Store contract, SQLite/PostgreSQL implementations, and transfer helpers.
 - `src/mcp/` — Shared MCP tools and stdio transport.
 - `src/server/` — HTTP API and streamable-HTTP MCP transport.
+- `src/ui/` — Read-only browser explorer assets.
 - `test/` — Unit, CLI, MCP, and optional PostgreSQL integration tests.
 - `docs/` — Implementation plan, user/admin/MCP guides, ADRs, and release notes.
 - `legacy/` — Inactive historical EJS material; do not execute its hooks or scripts.
 - `.dg/config.json` — Project configuration; local database files are ignored.
 - `AGENTS.md` — Generated decision-graph guidance block.
 - Tooling — `package.json`, `tsconfig.json`, `tsup.config.ts`,
-  `vitest.config.ts`, and ESLint configuration.
+  `vite.config.ts`, `vitest.config.ts`, and ESLint configuration.
 
 ## Record formats
 
@@ -129,6 +150,8 @@ initialize the repository where you want to use decision-graph.
 From the decision-graph checkout:
 
 ```sh
+git clone https://github.com/McFuzzySquirrel/Engineering-Journey-System.git
+cd Engineering-Journey-System
 npm ci
 npm run build
 npm pack
@@ -173,11 +196,26 @@ The CLI includes `init`, `import`, `sync`, `new`, `sdr`, `list`, `get`,
 | `tokenBudget` | Compiled guidance budget | `1500` |
 | `remote` | Default remote server URL or `null` | `null` |
 
-The `dg serve` defaults are `.dg/server.db`, port `3000`, and host
-`127.0.0.1`. `DG_TEST_PG_URL` is only for optional integration tests.
-`DG_PG_PORT` and `POSTGRES_PASSWORD` are used by the local PostgreSQL Compose
-service; see the [administrator guide](docs/admin-guide.md) for operational
-details and safe handling.
+`dg serve` options:
+
+| Option | Purpose | Default |
+|---|---|---|
+| `--db <path-or-url>` | SQLite file path or PostgreSQL connection URL | `.dg/server.db` |
+| `--host <host>` | HTTP bind address | `127.0.0.1` |
+| `--port <port>` | HTTP port | `3000` |
+
+Environment variables:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `DG_API_ORIGIN` | Vite development proxy target | `http://127.0.0.1:3000` |
+| `DG_TEST_PG_URL` | Optional PostgreSQL integration-test connection | Unset |
+| `DG_PG_PORT` | Local Compose PostgreSQL host port | `5432` |
+| `POSTGRES_PASSWORD` | Local Compose PostgreSQL password | Local-only fallback; override for development and never reuse for deployment |
+
+`DG_API_ORIGIN` affects local UI development only. `POSTGRES_PASSWORD` and
+`DG_PG_PORT` configure the local Compose service; see the
+[administrator guide](docs/admin-guide.md) for safe handling and operations.
 
 ### MCP setup
 
@@ -193,6 +231,13 @@ passing a PostgreSQL connection URL to `--db`. The server has no
 authentication in v1; keep it on localhost or a trusted network. See the
 [administrator guide](docs/admin-guide.md) before operating a server.
 
+The read-only record explorer is served from the same origin at
+`http://127.0.0.1:3000/`. It reads records already indexed by the server and
+does not create or modify decision records. For UI development, start `dg
+serve` in one terminal and run `npm run dev` in another; Vite listens only on
+`127.0.0.1:5173` and proxies API requests to port 3000. Set
+`DG_API_ORIGIN` to override the API origin when using a different port.
+
 ## Security
 
 The local CLI and stdio MCP server operate on the selected project. The
@@ -200,7 +245,11 @@ network server has no authentication in v1 and warns when bound to a
 non-local interface. Do not expose it to untrusted networks; operators must
 provide access controls and any TLS termination. Push sends indexed records
 and project metadata to the configured server. Do not put credentials or
-private content in tracked files. See the
+private content in tracked files. Report non-sensitive bugs through the
+[issue tracker](https://github.com/McFuzzySquirrel/Engineering-Journey-System/issues).
+For vulnerabilities, use GitHub's private vulnerability reporting for this
+repository if available; do not post sensitive details in a public issue.
+See the
 [administrator security checklist](docs/admin-guide.md#security-and-privacy-checklist).
 
 ## Migrating from EJS
@@ -246,7 +295,9 @@ version `0.1.0` remains a manual release step. Until it is published, install
 from a local tarball or source checkout. The
 [implementation plan](docs/IMPLEMENTATION-PLAN.md) and
 [unreleased notes](docs/releases/unreleased.md) track the current status;
-no other roadmap item is represented as shipped here.
+possible follow-up work such as a secondary graph view or large-project
+performance targets remains uncommitted and is tracked in
+[issue #40](https://github.com/McFuzzySquirrel/Engineering-Journey-System/issues/40).
 
 ## License
 

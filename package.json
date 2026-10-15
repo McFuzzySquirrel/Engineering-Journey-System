@@ -13,7 +13,8 @@
     "node": ">=26"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && vite build",
+    "dev": "vite",
     "lint": "eslint src test",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"*.config.ts\" eslint.config.js package.json tsconfig.json",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"*.config.ts\" eslint.config.js package.json tsconfig.json",
@@ -24,8 +25,10 @@
     "@modelcontextprotocol/sdk": "^1.32.1",
     "better-sqlite3": "^12.11.1",
     "commander": "^14.0.2",
+    "dompurify": "^3.4.17",
     "gray-matter": "^4.0.3",
     "js-yaml": "^4.3.2",
+    "markdown-it": "^15.0.2",
     "pg": "^8.23.1",
     "picomatch": "^4.0.7",
     "zod": "^4.6.7"
@@ -38,10 +41,12 @@
     "@types/pg": "^8.23.1",
     "@types/picomatch": "^4.0.3",
     "eslint": "^10.12.0",
+    "jsdom": "^30.1.2",
     "prettier": "^3.9.10",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.71.2",
+    "vite": "^8.3.4",
     "vitest": "^4.1.11"
   },
   "overrides": {

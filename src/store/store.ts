@@ -38,9 +38,15 @@ export interface GraphNode {
 }
 
 export interface NodeFilter {
-  type?: DecisionRecord['type'];
-  status?: string;
-  tag?: string;
+  type?: DecisionRecord['type'] | DecisionRecord['type'][];
+  status?: string | string[];
+  tag?: string | string[];
+}
+
+export interface RecordFacets {
+  types: DecisionRecord['type'][];
+  statuses: string[];
+  tags: string[];
 }
 
 export interface SearchResult extends GraphNode {
@@ -75,8 +81,14 @@ export interface Store {
   listEdges(projectId: string): Promise<GraphEdge[]>;
   get(projectId: string, id: string): Promise<GraphNode | null>;
   list(projectId: string, filter?: NodeFilter): Promise<GraphNode[]>;
+  getFacets(projectIds: string[]): Promise<RecordFacets>;
   search(
     projectId: string,
+    query: string,
+    filter?: NodeFilter,
+  ): Promise<SearchResult[]>;
+  searchAcrossProjects(
+    projectIds: string[],
     query: string,
     filter?: NodeFilter,
   ): Promise<SearchResult[]>;
