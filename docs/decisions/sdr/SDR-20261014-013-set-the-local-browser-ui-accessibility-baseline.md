@@ -2,13 +2,13 @@
 id: SDR-20261014-013
 type: sdr
 title: Set the local browser UI accessibility baseline
-status: open
+status: promoted
 applies_to:
   - src/ui/**
   - test/ui.test.ts
 tags: []
 date: '2026-10-14'
-promoted_to: null
+promoted_to: ADR-0022
 agent: Copilot
 session: 'Wayfinder issue #44'
 ---

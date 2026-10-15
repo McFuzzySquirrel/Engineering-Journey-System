@@ -2,13 +2,13 @@
 id: SDR-20261014-014
 type: sdr
 title: Render decision-record Markdown safely in the browser UI
-status: open
+status: promoted
 applies_to:
   - src/ui/**
   - test/ui.test.ts
 tags: []
 date: '2026-10-14'
-promoted_to: null
+promoted_to: ADR-0023
 agent: Copilot
 session: 'Wayfinder issue #45'
 ---

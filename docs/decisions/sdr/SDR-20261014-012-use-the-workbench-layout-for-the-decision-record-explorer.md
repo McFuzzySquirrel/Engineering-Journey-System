@@ -2,12 +2,12 @@
 id: SDR-20261014-012
 type: sdr
 title: Use the Workbench layout for the decision-record explorer
-status: open
+status: promoted
 applies_to:
   - src/ui/**
 tags: []
 date: '2026-10-14'
-promoted_to: null
+promoted_to: ADR-0021
 agent: Copilot
 session: 'GitHub issue #43'
 ---

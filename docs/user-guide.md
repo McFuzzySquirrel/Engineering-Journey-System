@@ -93,10 +93,17 @@ another repository, run `dg push --remote http://127.0.0.1:3000` from that
 repository after indexing it with `dg sync`.
 
 Search titles and record content, or leave the query empty to browse records
-sorted by title. Project, record type, status, and tag filters can be combined;
-multiple selections within a filter match any selected value. Select a result
-to read its sanitized Markdown, source path, update time, and linked records.
-The UI does not create or modify decision records.
+sorted by title. Text searches match all query terms and rank results by
+relevance across the selected projects. Project, record type, status, and tag
+filters can be combined: different filters narrow results together, while
+multiple selections within one filter match any selected value. Select a
+result to read its sanitized Markdown, source path, update time, and linked
+records. The UI does not create or modify decision records.
+
+The UI announces loading and result counts. When no records match, it shows
+an empty-results message; when the server or a request fails, it displays an
+error message instead of treating the request as successful. Confirm that
+`dg serve` is running and retry after connectivity is restored.
 
 For development from this repository, run `dg serve` in one terminal and
 `npm run dev` in another. Vite listens on `127.0.0.1:5173` and proxies API
@@ -128,8 +135,10 @@ are preserved as an inactive archive under `legacy/`.
 
 The local browser explorer targets WCAG 2.2 AA, with semantic controls,
 keyboard and screen-reader support, visible focus, and responsive reflow down
-to 320 CSS pixels. Markdown record content is rendered with raw HTML disabled
-and sanitized before display.
+to 320 CSS pixels. A full WCAG conformance audit has not been completed; this
+target is not a certification claim. Markdown record content is rendered
+with raw HTML disabled and sanitized before display. Embedded images and
+active media are not loaded.
 
 ## Privacy and Data Handling
 
@@ -139,7 +148,8 @@ metadata to the configured server. `dg pull` receives server records into a
 separate local namespace without modifying repository files. The remote
 server has no authentication in v1; send data only to a server you trust and
 do not expose it to an untrusted network. Do not commit credentials or
-private content.
+private content. The browser does not fetch embedded remote images from
+decision records.
 
 ## Troubleshooting
 
@@ -163,7 +173,9 @@ records should be recovered through Git or the repository host.
 ## Getting Help
 
 See the [administrator guide](admin-guide.md) for operations and security, or
-the [ADR index](decisions/README.md) for architecture decisions. Use the
+the [ADR index](decisions/README.md) for architecture decisions. The
+[unreleased notes](releases/unreleased.md) summarize current validation and
+known limitations. Use the
 [GitHub issue tracker](https://github.com/McFuzzySquirrel/Engineering-Journey-System/issues)
 for questions and non-sensitive reports. Do not publish sensitive
 vulnerability details in a public issue.

@@ -53,6 +53,23 @@ local `docker-compose.yml` also supports `DG_PG_PORT` and
 `POSTGRES_PASSWORD`; its fallback is for local development only and must not
 be reused as a deployment credential.
 
+Environment variables:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `DG_API_ORIGIN` | Vite development proxy target; development only | `http://127.0.0.1:3000` |
+| `DG_TEST_PG_URL` | Optional PostgreSQL integration-test connection | Unset |
+| `DG_PG_PORT` | Host port published by the local Compose service | `5432` |
+| `POSTGRES_PASSWORD` | Password for the local Compose database only | Local-only fallback; set an appropriate development value and never reuse it for deployment |
+
+`dg serve --db` accepts either a SQLite path or a PostgreSQL connection URL.
+For PostgreSQL, pass the URL through `--db` and protect it in the invoking
+environment; do not commit it to `.dg/config.json` or shell scripts.
+
+The UI development proxy uses `DG_API_ORIGIN` only when running `npm run dev`;
+it does not change the address or authentication behavior of the production
+server.
+
 ## Identity, Secrets, and TLS
 
 The stdio MCP server does not open a network listener. The HTTP server has no
@@ -87,6 +104,7 @@ deployment platform's standard tools.
 
 The HTTP API also provides:
 
+- `GET /` and `/assets/*` for the built browser explorer
 - `POST /projects/:id/push`
 - `GET /projects/:id/records`
 - `GET /facets?project=...`
@@ -120,6 +138,9 @@ target.
   running, and that it is reachable from the client.
 - **SQLite index is stale or missing:** run `dg sync` from the initialized
   project root.
+- **Browser UI is missing or assets return 404:** build the package with
+  `npm run build` before starting `dg serve`; confirm the package contains
+  `dist/ui/`.
 - **MCP client cannot start:** verify the configured executable path, Node.js
   runtime, project working directory, and `/mcp` URL for HTTP transport.
 - **Archived scripts or hooks are present:** do not install or execute them;
@@ -141,6 +162,8 @@ target.
 
 Rebuild a project index from its Markdown records with `dg sync`. Restore
 server databases from operator-managed backups. Recover source files through
-Git or the repository host. For questions, use the
+Git or the repository host. For user workflows, see the
+[user guide](user-guide.md); for the current pre-release state, see the
+[unreleased notes](releases/unreleased.md). For questions, use the
 [GitHub issue tracker](https://github.com/McFuzzySquirrel/Engineering-Journey-System/issues);
 do not include credentials or sensitive vulnerability details.

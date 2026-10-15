@@ -2,7 +2,7 @@
 id: SDR-20261014-011
 type: sdr
 title: Define cross-project search and record filters
-status: open
+status: promoted
 applies_to:
   - src/server/http.ts
   - src/store/store.ts
@@ -11,7 +11,7 @@ applies_to:
   - src/ui/**
 tags: []
 date: '2026-10-14'
-promoted_to: null
+promoted_to: ADR-0020
 agent: Copilot
 ---
 

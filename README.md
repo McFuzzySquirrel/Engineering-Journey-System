@@ -71,7 +71,8 @@ decision records.
 The CLI is an ESM Node.js and TypeScript application and requires Node.js 26
 or newer. It uses Commander, Zod, the Model Context Protocol SDK, SQLite via
 `better-sqlite3` with FTS5, and PostgreSQL via `pg`. The HTTP server uses
-Node.js HTTP APIs.
+Node.js HTTP APIs. Vite builds and serves the browser UI in development;
+`markdown-it` and DOMPurify render record content safely.
 
 ## Architecture
 
@@ -132,6 +133,8 @@ initialize the repository where you want to use decision-graph.
 From the decision-graph checkout:
 
 ```sh
+git clone https://github.com/McFuzzySquirrel/Engineering-Journey-System.git
+cd Engineering-Journey-System
 npm ci
 npm run build
 npm pack
@@ -176,11 +179,26 @@ The CLI includes `init`, `import`, `sync`, `new`, `sdr`, `list`, `get`,
 | `tokenBudget` | Compiled guidance budget | `1500` |
 | `remote` | Default remote server URL or `null` | `null` |
 
-The `dg serve` defaults are `.dg/server.db`, port `3000`, and host
-`127.0.0.1`. `DG_TEST_PG_URL` is only for optional integration tests.
-`DG_PG_PORT` and `POSTGRES_PASSWORD` are used by the local PostgreSQL Compose
-service; see the [administrator guide](docs/admin-guide.md) for operational
-details and safe handling.
+`dg serve` options:
+
+| Option | Purpose | Default |
+|---|---|---|
+| `--db <path-or-url>` | SQLite file path or PostgreSQL connection URL | `.dg/server.db` |
+| `--host <host>` | HTTP bind address | `127.0.0.1` |
+| `--port <port>` | HTTP port | `3000` |
+
+Environment variables:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `DG_API_ORIGIN` | Vite development proxy target | `http://127.0.0.1:3000` |
+| `DG_TEST_PG_URL` | Optional PostgreSQL integration-test connection | Unset |
+| `DG_PG_PORT` | Local Compose PostgreSQL host port | `5432` |
+| `POSTGRES_PASSWORD` | Local Compose PostgreSQL password | Local-only fallback; override for development and never reuse for deployment |
+
+`DG_API_ORIGIN` affects local UI development only. `POSTGRES_PASSWORD` and
+`DG_PG_PORT` configure the local Compose service; see the
+[administrator guide](docs/admin-guide.md) for safe handling and operations.
 
 ### MCP setup
 
@@ -210,7 +228,11 @@ network server has no authentication in v1 and warns when bound to a
 non-local interface. Do not expose it to untrusted networks; operators must
 provide access controls and any TLS termination. Push sends indexed records
 and project metadata to the configured server. Do not put credentials or
-private content in tracked files. See the
+private content in tracked files. Report non-sensitive bugs through the
+[issue tracker](https://github.com/McFuzzySquirrel/Engineering-Journey-System/issues).
+For vulnerabilities, use GitHub's private vulnerability reporting for this
+repository if available; do not post sensitive details in a public issue.
+See the
 [administrator security checklist](docs/admin-guide.md#security-and-privacy-checklist).
 
 ## Migrating from EJS
@@ -256,7 +278,9 @@ version `0.1.0` remains a manual release step. Until it is published, install
 from a local tarball or source checkout. The
 [implementation plan](docs/IMPLEMENTATION-PLAN.md) and
 [unreleased notes](docs/releases/unreleased.md) track the current status;
-no other roadmap item is represented as shipped here.
+possible follow-up work such as a secondary graph view or large-project
+performance targets remains uncommitted and is tracked in
+[issue #40](https://github.com/McFuzzySquirrel/Engineering-Journey-System/issues/40).
 
 ## License
 

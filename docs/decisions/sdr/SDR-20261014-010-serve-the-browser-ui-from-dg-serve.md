@@ -2,14 +2,14 @@
 id: SDR-20261014-010
 type: sdr
 title: Serve the browser UI from dg serve
-status: open
+status: promoted
 applies_to:
   - src/server/http.ts
   - src/cli/commands.ts
   - src/ui/**
 tags: []
 date: '2026-10-14'
-promoted_to: null
+promoted_to: ADR-0019
 agent: Copilot
 ---
 
