@@ -11,6 +11,7 @@ can serve multiple projects over HTTP.
 - [About](#about)
 - [Concepts](#concepts)
 - [Features](#features)
+- [UI screenshots](#ui-screenshots)
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
@@ -65,6 +66,22 @@ decision records.
 | Agent integration | Provide shared tools over stdio MCP and streamable-HTTP MCP |
 | Multi-project serving | Store/query projects with SQLite or PostgreSQL and exchange records using push/pull |
 | Local browser UI | Browse, search, filter, and follow relationships across indexed projects |
+
+## UI screenshots
+
+The read-only Workbench serves indexed decision records from `dg serve`.
+These captures show the desktop and responsive mobile layouts, followed by a
+short tour of searching, filtering, and following a record relationship.
+
+![Animated tour of the Workbench: browsing projects, applying filters, searching, opening a decision, and following a relationship](docs/assets/ui/explorer-workbench-tour.gif)
+
+The tour uses clearly labeled synthetic Sample Service records to demonstrate
+cross-project browsing. The static screenshots show records from this
+repository.
+
+![Desktop Workbench with project and status filters, matching records, and ADR-0019 open in the record inspector](docs/assets/ui/explorer-workbench-desktop.png)
+
+![Mobile Workbench showing the responsive filter controls, record list, and ADR-0019 inspector](docs/assets/ui/explorer-workbench-mobile.png)
 
 ## Tech Stack
 

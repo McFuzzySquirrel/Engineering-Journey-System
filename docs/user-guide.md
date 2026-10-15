@@ -92,6 +92,16 @@ shows indexed records across all projects in the server database. To include
 another repository, run `dg push --remote http://127.0.0.1:3000` from that
 repository after indexing it with `dg sync`.
 
+The screenshots show the Workbench on desktop and mobile. The animated tour
+uses synthetic Sample Service records in an isolated capture database to
+illustrate cross-project browsing; it does not add demo records to a project.
+
+![Animated Workbench tour showing project browsing, filtering, searching, opening a record, and following a relationship](assets/ui/explorer-workbench-tour.gif)
+
+![Desktop Workbench with indexed records, project/status filters, and a selected record's details](assets/ui/explorer-workbench-desktop.png)
+
+![Responsive mobile Workbench with filters, records, and the record inspector](assets/ui/explorer-workbench-mobile.png)
+
 Search titles and record content, or leave the query empty to browse records
 sorted by title. Text searches match all query terms and rank results by
 relevance across the selected projects. Project, record type, status, and tag
