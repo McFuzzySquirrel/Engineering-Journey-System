@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "a227e717-3c9e-4164-8233-fdfeaf2f90ea",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/workflow-decision-records-20261019-205807/candidate.json",
+  "output": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/workflow-decision-records-20261019-205807/decision-record-workflow.html",
+  "specification": {
+    "sha256": "7f8a24b9897378c7f6d2b79aef18b1e959804b03c6f929a45ca86798b2e51976",
+    "bytes": 4984
+  },
+  "artifact": {
+    "sha256": "320278070c269175de3bc736723c1a31948f0b8fdc3862820417d6b4421719f8",
+    "bytes": 823178
+  }
+}

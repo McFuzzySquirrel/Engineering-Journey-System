@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "3dd9bfd9-d03c-4b82-ade1-2de300d20777",
+  "status": "current",
+  "command": "deliver",
+  "type": "dataflow",
+  "input": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/dataflow-cross-project-semantic-links-20261019-205807/candidate.json",
+  "output": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/dataflow-cross-project-semantic-links-20261019-205807/cross-project-semantic-suggestions.html",
+  "specification": {
+    "sha256": "2e59442986e7cee7e042b6cd1e0aa0cfba53ed6159699019c4986dcef1d71ba6",
+    "bytes": 4192
+  },
+  "artifact": {
+    "sha256": "1214d6b7cfb857e35f87ef74e66dadb88ac0fd51d6770a8d0447ab672e6ee1e4",
+    "bytes": 815857
+  }
+}

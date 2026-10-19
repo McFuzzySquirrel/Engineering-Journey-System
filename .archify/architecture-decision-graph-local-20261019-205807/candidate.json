@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Decision Graph: Local Index and Guidance",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": ".archify/architecture-decision-graph-local-20261019-205807/decision-graph-local.html",
+    "repository": {
+      "url": "https://github.com/McFuzzySquirrel/Engineering-Journey-System.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "1e2638831ac2ca39d6621719efa146f78e291dfd"
+    }
+  },
+  "components": [
+    {
+      "id": "agent",
+      "type": "external",
+      "label": "Developer / Agent",
+      "sublabel": "authors and queries decisions",
+      "pos": [40, 240],
+      "size": [158, 76]
+    },
+    {
+      "id": "cli",
+      "type": "backend",
+      "label": "dg CLI",
+      "sublabel": "init · adr create · new · sdr · sync",
+      "pos": [280, 240],
+      "size": [188, 82],
+      "sources": [
+        { "path": "src/cli/commands.ts", "line": 67, "end_line": 75 },
+        { "path": "src/cli/commands.ts", "line": 329, "end_line": 337 },
+        { "path": "src/cli/commands.ts", "line": 663, "end_line": 686 }
+      ]
+    },
+    {
+      "id": "markdown",
+      "type": "database",
+      "label": "ADR / SDR Markdown",
+      "sublabel": "versioned source records",
+      "pos": [540, 105],
+      "size": [198, 82],
+      "sources": [
+        { "path": "src/cli/commands.ts", "line": 902, "end_line": 931 },
+        { "path": "src/core/sdr.ts", "line": 17, "end_line": 79 },
+        { "path": "src/cli/commands.ts", "line": 1143, "end_line": 1193 }
+      ]
+    },
+    {
+      "id": "index",
+      "type": "database",
+      "label": "Local graph index",
+      "sublabel": ".dg/graph.db · SQLite FTS",
+      "pos": [540, 365],
+      "size": [198, 82],
+      "sources": [
+        { "path": "src/cli/commands.ts", "line": 747, "end_line": 757 },
+        { "path": "src/store/sqlite.ts", "line": 39, "end_line": 51 },
+        { "path": "src/store/sqlite.ts", "line": 307, "end_line": 326 }
+      ]
+    },
+    {
+      "id": "agent_guidance",
+      "type": "database",
+      "label": "AGENTS.md",
+      "sublabel": "managed accepted-rule block",
+      "pos": [840, 240],
+      "size": [206, 82],
+      "sources": [
+        { "path": "src/cli/commands.ts", "line": 1339, "end_line": 1431 }
+      ]
+    }
+  ],
+  "connections": [
+    { "id": "agent-command", "from": "agent", "to": "cli", "label": "runs dg commands", "variant": "emphasis" },
+    { "id": "cli-write-records", "from": "cli", "to": "markdown", "label": "create drafts" },
+    { "id": "records-to-cli", "from": "markdown", "to": "cli", "label": "read and parse on sync" },
+    { "id": "cli-index", "from": "cli", "to": "index", "label": "upsert records and edges" },
+    { "id": "index-search", "from": "index", "to": "cli", "label": "project-scoped FTS results" },
+    { "id": "compile-rules", "from": "cli", "to": "agent_guidance", "label": "compile accepted ADR rules", "variant": "emphasis" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Source and Index",
+      "items": [
+        "Markdown ADRs and SDRs are the files the CLI scans and updates.",
+        "SQLite stores the local graph and supports full-text search; it is an index, not the decision source."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Agent Guidance",
+      "items": [
+        "Only accepted ADR rules are compiled into the managed AGENTS.md block.",
+        "The local path shown here uses SQLite FTS, not embeddings."
+      ]
+    }
+  ]
+}

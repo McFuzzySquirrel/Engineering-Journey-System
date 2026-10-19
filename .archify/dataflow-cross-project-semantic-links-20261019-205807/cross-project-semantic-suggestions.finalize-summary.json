@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "dataflow",
+  "quality": "showcase",
+  "specification": {
+    "path": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/dataflow-cross-project-semantic-links-20261019-205807/candidate.json",
+    "sha256": "2e59442986e7cee7e042b6cd1e0aa0cfba53ed6159699019c4986dcef1d71ba6",
+    "bytes": 4192
+  },
+  "artifact": {
+    "path": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/dataflow-cross-project-semantic-links-20261019-205807/cross-project-semantic-suggestions.html",
+    "sha256": "1214d6b7cfb857e35f87ef74e66dadb88ac0fd51d6770a8d0447ab672e6ee1e4",
+    "bytes": 815857
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/dataflow-cross-project-semantic-links-20261019-205807/cross-project-semantic-suggestions.finalize.json",
+    "summaryReceipt": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/dataflow-cross-project-semantic-links-20261019-205807/cross-project-semantic-suggestions.finalize-summary.json",
+    "browserCheckReceipt": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/dataflow-cross-project-semantic-links-20261019-205807/cross-project-semantic-suggestions.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-19T19:05:59.772Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 3900,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}

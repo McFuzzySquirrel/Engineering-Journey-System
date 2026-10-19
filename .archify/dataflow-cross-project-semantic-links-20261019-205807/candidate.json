@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Proposed Cross-Project Semantic Suggestions",
+    "subtitle": "Future-state concept — embeddings and suggestion review are not implemented",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": ".archify/dataflow-cross-project-semantic-links-20261019-205807/cross-project-semantic-suggestions.html",
+    "repository": {
+      "url": "https://github.com/McFuzzySquirrel/Engineering-Journey-System.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "1e2638831ac2ca39d6621719efa146f78e291dfd"
+    }
+  },
+  "stages": [
+    { "label": "Project Inputs" },
+    { "label": "Select Corpus" },
+    { "label": "Encode" },
+    { "label": "Compare" },
+    { "label": "Review" }
+  ],
+  "nodes": [
+    {
+      "id": "project_catalog",
+      "type": "database",
+      "label": "Projects",
+      "sublabel": "IDs + types",
+      "stage": 0,
+      "row": 0,
+      "sources": [
+        { "path": "src/store/store.ts", "line": 16, "end_line": 20 },
+        { "path": "src/store/sqlite.ts", "line": 87, "end_line": 105 }
+      ]
+    },
+    {
+      "id": "record_corpus",
+      "type": "database",
+      "label": "ADR / SDR Text",
+      "sublabel": "project records",
+      "stage": 0,
+      "row": 4,
+      "sources": [
+        { "path": "src/cli/commands.ts", "line": 902, "end_line": 931 },
+        { "path": "src/store/store.ts", "line": 23, "end_line": 38 }
+      ]
+    },
+    {
+      "id": "scope_selector",
+      "type": "backend",
+      "label": "Selected Records",
+      "sublabel": "project-scoped",
+      "stage": 1,
+      "row": 2,
+      "sources": [
+        { "path": "src/mcp/tools.ts", "line": 36, "end_line": 52 },
+        { "path": "src/mcp/tools.ts", "line": 196, "end_line": 216 },
+        { "path": "src/store/store.ts", "line": 69, "end_line": 82 }
+      ]
+    },
+    {
+      "id": "embedding_model",
+      "type": "backend",
+      "label": "Embed Text",
+      "sublabel": "proposed",
+      "stage": 2,
+      "row": 2
+    },
+    {
+      "id": "vector_index",
+      "type": "backend",
+      "label": "Match Vectors",
+      "sublabel": "proposed",
+      "stage": 3,
+      "row": 2
+    },
+    {
+      "id": "suggestions",
+      "type": "backend",
+      "label": "Link Suggestions",
+      "sublabel": "ranked pairs",
+      "stage": 4,
+      "row": 2
+    },
+    {
+      "id": "human_review",
+      "type": "external",
+      "label": "Human Review",
+      "sublabel": "confirm / dismiss",
+      "stage": 4,
+      "row": 4
+    }
+  ],
+  "flows": [
+    { "id": "catalog-scope", "from": "project_catalog", "to": "scope_selector", "label": "IDs / types", "classification": "current project metadata" },
+    { "id": "records-scope", "from": "record_corpus", "to": "scope_selector", "label": "eligible records", "classification": "current records" },
+    { "id": "scope-embeddings", "from": "scope_selector", "to": "embedding_model", "label": "text + project IDs", "classification": "proposed; not implemented" },
+    { "id": "embeddings-match", "from": "embedding_model", "to": "vector_index", "label": "vectors + record IDs", "classification": "proposed; not implemented" },
+    { "id": "match-suggestions", "from": "vector_index", "to": "suggestions", "label": "similar pairs", "classification": "proposed; not implemented" },
+    { "id": "suggestions-review", "from": "suggestions", "to": "human_review", "label": "human check", "classification": "review required" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Today",
+      "items": [
+        "MCP search selects projects by ID or type and searches each selected project.",
+        "The store interface keeps search and graph-edge operations project-scoped."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Future Design Gate",
+      "items": [
+        "Keep project scope explicit and return project/record identity with every suggestion.",
+        "Treat similarity as a candidate link for a person to review; do not create graph edges automatically.",
+        "Current graph operations are project-scoped, so persisting accepted cross-project links needs a separate model."
+      ]
+    }
+  ]
+}

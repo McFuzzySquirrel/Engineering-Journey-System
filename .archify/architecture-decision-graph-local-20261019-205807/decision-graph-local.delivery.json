@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "ffd28373-62f8-4daa-b8b8-69ccc5be8f05",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/architecture-decision-graph-local-20261019-205807/candidate.json",
+  "output": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/architecture-decision-graph-local-20261019-205807/decision-graph-local.html",
+  "specification": {
+    "sha256": "b12f582f9deb77ed277c7c75507897e2529bb8a91274e2e0ea8eacbd2bfdab72",
+    "bytes": 3538
+  },
+  "artifact": {
+    "sha256": "6ae9ca2b483b5d377a87690fce6d45b38a99d41a0842e407cb0060d0878a8d17",
+    "bytes": 819066
+  }
+}

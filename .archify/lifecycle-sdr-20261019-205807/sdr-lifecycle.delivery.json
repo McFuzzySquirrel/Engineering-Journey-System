@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "d868981c-a996-42e8-8ee9-ba13217c8528",
+  "status": "current",
+  "command": "deliver",
+  "type": "lifecycle",
+  "input": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/lifecycle-sdr-20261019-205807/candidate.json",
+  "output": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/lifecycle-sdr-20261019-205807/sdr-lifecycle.html",
+  "specification": {
+    "sha256": "50e8734a7c24d500c07fcff6cd0f898ff61f5383e0cb607594e624dcdf16fa27",
+    "bytes": 2516
+  },
+  "artifact": {
+    "sha256": "3ce8fda60ee5733311ef35584b6e60b9aec1e7f926b821a67f3c7aa06c8950a8",
+    "bytes": 808513
+  }
+}

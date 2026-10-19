@@ -1,0 +1,144 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Initialize, Capture, and Apply Decisions",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": ".archify/workflow-decision-records-20261019-205807/decision-record-workflow.html",
+    "repository": {
+      "url": "https://github.com/McFuzzySquirrel/Engineering-Journey-System.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "1e2638831ac2ca39d6621719efa146f78e291dfd"
+    }
+  },
+  "lanes": [
+    { "id": "maintainer", "label": "Maintainer / Agent" },
+    { "id": "dg", "label": "dg CLI" }
+  ],
+  "mainPath": ["init", "choose", "direct_adr", "review", "sync"],
+  "nodes": [
+    {
+      "id": "init",
+      "lane": "dg",
+      "col": 0,
+      "type": "backend",
+      "label": "dg init",
+      "sublabel": "configures project; runs first sync and compile",
+      "sources": [{ "path": "src/cli/commands.ts", "line": 688, "end_line": 745 }]
+    },
+    {
+      "id": "choose",
+      "lane": "maintainer",
+      "col": 1,
+      "type": "external",
+      "label": "Choose capture path",
+      "sublabel": "direct ADR or session decision",
+      "sources": [{ "path": "docs/user-guide.md", "line": 50, "end_line": 63 }]
+    },
+    {
+      "id": "direct_adr",
+      "lane": "dg",
+      "col": 2,
+      "yOffset": -48,
+      "type": "backend",
+      "label": "dg adr create",
+      "sublabel": "writes and indexes a proposed ADR",
+      "sources": [
+        { "path": "src/cli/commands.ts", "line": 329, "end_line": 337 },
+        { "path": "src/cli/commands.ts", "line": 663, "end_line": 686 },
+        { "path": "src/cli/commands.ts", "line": 1143, "end_line": 1193 }
+      ]
+    },
+    {
+      "id": "sdr_add",
+      "lane": "dg",
+      "col": 2,
+      "yOffset": 48,
+      "type": "backend",
+      "label": "dg sdr add",
+      "sublabel": "writes and indexes an open SDR",
+      "sources": [
+        { "path": "src/cli/commands.ts", "line": 339, "end_line": 395 },
+        { "path": "src/core/sdr.ts", "line": 17, "end_line": 79 }
+      ]
+    },
+    {
+      "id": "promote",
+      "lane": "dg",
+      "col": 3,
+      "yOffset": -48,
+      "type": "backend",
+      "label": "dg sdr promote",
+      "sublabel": "creates a proposed ADR and promotes the SDR",
+      "sources": [
+        { "path": "src/cli/commands.ts", "line": 1052, "end_line": 1091 },
+        { "path": "src/cli/commands.ts", "line": 1108, "end_line": 1141 }
+      ]
+    },
+    {
+      "id": "discard",
+      "lane": "dg",
+      "col": 3,
+      "yOffset": 48,
+      "type": "backend",
+      "label": "dg sdr discard",
+      "sublabel": "optional reason is recorded",
+      "sources": [
+        { "path": "src/cli/commands.ts", "line": 416, "end_line": 429 },
+        { "path": "src/cli/commands.ts", "line": 1108, "end_line": 1141 }
+      ]
+    },
+    {
+      "id": "review",
+      "lane": "maintainer",
+      "col": 4,
+      "type": "external",
+      "label": "Review / accept ADR",
+      "sublabel": "edit status in Markdown",
+      "sources": [{ "path": "docs/user-guide.md", "line": 63, "end_line": 66 }]
+    },
+    {
+      "id": "sync",
+      "lane": "dg",
+      "col": 5,
+      "type": "backend",
+      "label": "dg sync",
+      "sublabel": "re-indexes records and compiles accepted rules",
+      "sources": [
+        { "path": "src/cli/commands.ts", "line": 131, "end_line": 152 },
+        { "path": "src/cli/commands.ts", "line": 902, "end_line": 949 },
+        { "path": "src/cli/commands.ts", "line": 1339, "end_line": 1431 }
+      ]
+    }
+  ],
+  "edges": [
+    { "id": "init-to-choice", "from": "init", "to": "choose", "label": "project ready", "variant": "emphasis" },
+    { "id": "choose-direct", "from": "choose", "to": "direct_adr", "label": "create ADR" },
+    { "id": "choose-sdr", "from": "choose", "to": "sdr_add", "label": "capture session decision", "role": "branch" },
+    { "id": "direct-review", "from": "direct_adr", "to": "review", "label": "proposed draft" },
+    { "id": "sdr-promote", "from": "sdr_add", "to": "promote", "label": "promote open SDR" },
+    { "id": "promote-review", "from": "promote", "to": "review", "label": "derived proposed ADR" },
+    { "id": "sdr-discard", "from": "sdr_add", "to": "discard", "label": "discard instead", "variant": "security", "role": "branch" },
+    { "id": "review-sync", "from": "review", "to": "sync", "label": "accepted status saved" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Initialization",
+      "items": [
+        "dg init creates config and record directories, then synchronizes and compiles the project.",
+        "This workflow assumes the project is initialized before a decision is captured."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Proposed Is Not Accepted",
+      "items": [
+        "dg adr create and SDR promotion both produce a proposed ADR; dg new remains a shorthand.",
+        "Review the Markdown and run dg sync after changing the ADR status."
+      ]
+    }
+  ]
+}

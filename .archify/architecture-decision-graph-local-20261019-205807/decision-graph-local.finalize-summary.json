@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/architecture-decision-graph-local-20261019-205807/candidate.json",
+    "sha256": "b12f582f9deb77ed277c7c75507897e2529bb8a91274e2e0ea8eacbd2bfdab72",
+    "bytes": 3538
+  },
+  "artifact": {
+    "path": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/architecture-decision-graph-local-20261019-205807/decision-graph-local.html",
+    "sha256": "6ae9ca2b483b5d377a87690fce6d45b38a99d41a0842e407cb0060d0878a8d17",
+    "bytes": 819066
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/architecture-decision-graph-local-20261019-205807/decision-graph-local.finalize.json",
+    "summaryReceipt": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/architecture-decision-graph-local-20261019-205807/decision-graph-local.finalize-summary.json",
+    "browserCheckReceipt": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/architecture-decision-graph-local-20261019-205807/decision-graph-local.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-19T19:05:59.772Z",
+    "source": "network",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 4254,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}

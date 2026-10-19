@@ -1,0 +1,81 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Session Decision Record Lifecycle",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": ".archify/lifecycle-sdr-20261019-205807/sdr-lifecycle.html",
+    "repository": {
+      "url": "https://github.com/McFuzzySquirrel/Engineering-Journey-System.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "1e2638831ac2ca39d6621719efa146f78e291dfd"
+    }
+  },
+  "mainPath": ["open", "promoted"],
+  "states": [
+    {
+      "id": "open",
+      "type": "start",
+      "label": "Open SDR",
+      "sublabel": "Markdown record; ready for a decision",
+      "tag": "open",
+      "step": "01",
+      "sources": [
+        { "path": "src/core/schema.ts", "line": 18, "end_line": 18 },
+        { "path": "src/core/sdr.ts", "line": 48, "end_line": 65 }
+      ]
+    },
+    {
+      "id": "promoted",
+      "type": "success",
+      "label": "Promoted",
+      "sublabel": "linked proposed ADR exists",
+      "tag": "promoted_to = ADR ID",
+      "step": "02",
+      "sources": [
+        { "path": "src/cli/commands.ts", "line": 1052, "end_line": 1091 },
+        { "path": "src/cli/commands.ts", "line": 1108, "end_line": 1141 }
+      ]
+    },
+    {
+      "id": "discarded",
+      "type": "neutral",
+      "label": "Discarded",
+      "sublabel": "optional reason kept in Markdown",
+      "tag": "terminal",
+      "sources": [
+        { "path": "src/cli/commands.ts", "line": 416, "end_line": 429 },
+        { "path": "src/cli/commands.ts", "line": 1108, "end_line": 1141 }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "id": "promote-sdr",
+      "from": "open",
+      "to": "promoted",
+      "label": "dg sdr promote",
+      "note": "Creates a proposed ADR with derived_from, sets promoted_to, then re-indexes the SDR."
+    },
+    {
+      "id": "discard-sdr",
+      "from": "open",
+      "to": "discarded",
+      "label": "dg sdr discard",
+      "note": "An optional discard reason is appended to the Markdown record before re-indexing."
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "ADR Statuses Are Separate",
+      "items": [
+        "ADR status values are proposed, accepted, superseded, and deprecated.",
+        "dg adr create creates proposed; the documented acceptance path is to review/edit Markdown and run dg sync.",
+        "The repository does not define automated transitions among every ADR status, so this diagram only draws the explicit SDR transitions."
+      ]
+    }
+  ]
+}

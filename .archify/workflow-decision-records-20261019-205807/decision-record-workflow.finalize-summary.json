@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "workflow",
+  "quality": "showcase",
+  "specification": {
+    "path": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/workflow-decision-records-20261019-205807/candidate.json",
+    "sha256": "7f8a24b9897378c7f6d2b79aef18b1e959804b03c6f929a45ca86798b2e51976",
+    "bytes": 4984
+  },
+  "artifact": {
+    "path": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/workflow-decision-records-20261019-205807/decision-record-workflow.html",
+    "sha256": "320278070c269175de3bc736723c1a31948f0b8fdc3862820417d6b4421719f8",
+    "bytes": 823178
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/workflow-decision-records-20261019-205807/decision-record-workflow.finalize.json",
+    "summaryReceipt": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/workflow-decision-records-20261019-205807/decision-record-workflow.finalize-summary.json",
+    "browserCheckReceipt": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/workflow-decision-records-20261019-205807/decision-record-workflow.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 4539,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}

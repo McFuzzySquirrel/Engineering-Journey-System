@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "lifecycle",
+  "quality": "showcase",
+  "specification": {
+    "path": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/lifecycle-sdr-20261019-205807/candidate.json",
+    "sha256": "50e8734a7c24d500c07fcff6cd0f898ff61f5383e0cb607594e624dcdf16fa27",
+    "bytes": 2516
+  },
+  "artifact": {
+    "path": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/lifecycle-sdr-20261019-205807/sdr-lifecycle.html",
+    "sha256": "3ce8fda60ee5733311ef35584b6e60b9aec1e7f926b821a67f3c7aa06c8950a8",
+    "bytes": 808513
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/lifecycle-sdr-20261019-205807/sdr-lifecycle.finalize.json",
+    "summaryReceipt": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/lifecycle-sdr-20261019-205807/sdr-lifecycle.finalize-summary.json",
+    "browserCheckReceipt": "/home/mcfuzzysquirrel/Projects/experiments/Engineering-Journey-System/.archify/lifecycle-sdr-20261019-205807/sdr-lifecycle.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 4008,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}
