@@ -47,8 +47,11 @@ the requested paths. It orders results by scope specificity. `dg search`,
 `dg get`, `dg list`, and `dg related` query record text, metadata, or graph
 relationships. Query commands support `--json`.
 
-**Create decisions.** Use `dg new "<title>"` to create a proposed ADR draft.
-For a session decision, provide a title, decision, and reason:
+**Create decisions.** Use `dg adr create "<title>"` to create a proposed ADR
+draft. The existing `dg new "<title>"` command remains available as a shorthand.
+Both commands accept `--applies-to <glob...>` and `--tags <tag...>`, and index
+the new ADR immediately. For a session decision, provide a title, decision, and
+reason:
 
 ```sh
 dg sdr add "Keep Markdown as the source" \

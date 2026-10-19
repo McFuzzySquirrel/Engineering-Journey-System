@@ -326,29 +326,15 @@ export function registerCommands(program: Command): void {
       },
     );
 
-  program
-    .command('new')
-    .description('Create a proposed hybrid MADR')
-    .argument('<title>', 'decision title')
-    .option(
-      '--applies-to <glob...>',
-      'file glob(s) to which this decision applies',
-    )
-    .option('--tags <tag...>', 'tag(s) for the decision')
-    .action(
-      async (
-        title: string,
-        options: { appliesTo?: string[]; tags?: string[] },
-      ) => {
-        const runtime = openRuntime(process.cwd());
-        try {
-          const file = await createAdrDraft(runtime, title, options);
-          console.log(`Created ${path.relative(runtime.root, file)}`);
-        } finally {
-          runtime.store.close();
-        }
-      },
-    );
+  registerAdrDraftCommand(
+    program.command('new'),
+    'Create a proposed hybrid MADR (legacy shorthand for "dg adr create")',
+  );
+
+  const adr = program
+    .command('adr')
+    .description('Create architecture decision records');
+  registerAdrDraftCommand(adr.command('create'), 'Create a proposed ADR draft');
 
   const sdr = program
     .command('sdr')
@@ -672,6 +658,31 @@ export function registerCommands(program: Command): void {
         runtime.store.close();
       }
     });
+}
+
+function registerAdrDraftCommand(command: Command, description: string): void {
+  command
+    .description(description)
+    .argument('<title>', 'decision title')
+    .option(
+      '--applies-to <glob...>',
+      'file glob(s) to which this decision applies',
+    )
+    .option('--tags <tag...>', 'tag(s) for the decision')
+    .action(
+      async (
+        title: string,
+        options: { appliesTo?: string[]; tags?: string[] },
+      ) => {
+        const runtime = openRuntime(process.cwd());
+        try {
+          const file = await createAdrDraft(runtime, title, options);
+          console.log(`Created ${path.relative(runtime.root, file)}`);
+        } finally {
+          runtime.store.close();
+        }
+      },
+    );
 }
 
 async function initProject(

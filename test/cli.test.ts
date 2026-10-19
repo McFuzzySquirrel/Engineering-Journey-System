@@ -703,6 +703,48 @@ it('adds, lists, promotes, and discards SDRs with lifecycle edges', async () => 
   expect(JSON.parse(log.mock.calls[0][0] as string)).toEqual([]);
 });
 
+it('creates and indexes a proposed ADR through dg adr create', async () => {
+  const root = createTempProject();
+  process.chdir(root);
+  await invoke('init', '--yes');
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  await invoke(
+    'adr',
+    'create',
+    'Use semantic search',
+    '--applies-to',
+    'src/**/*.ts',
+    '--tags',
+    'search',
+    'discovery',
+  );
+
+  const adrPath = path.join(
+    root,
+    'docs/decisions/adr/ADR-0001-use-semantic-search.md',
+  );
+  expect(log.mock.calls[0][0]).toBe(
+    'Created docs/decisions/adr/ADR-0001-use-semantic-search.md',
+  );
+  const adrContent = readFileSync(adrPath, 'utf8');
+  expect(adrContent).toContain('status: proposed');
+  expect(adrContent).toContain('applies_to:\n  - src/**/*.ts');
+  expect(adrContent).toContain('tags:\n  - search\n  - discovery');
+  log.mockClear();
+
+  await invoke('search', 'semantic', '--json');
+  expect(JSON.parse(log.mock.calls[0][0] as string)).toMatchObject([
+    { id: 'ADR-0001', type: 'adr', status: 'proposed' },
+  ]);
+
+  log.mockClear();
+  await invoke('new', 'Keep legacy shorthand');
+  expect(log.mock.calls[0][0]).toBe(
+    'Created docs/decisions/adr/ADR-0002-keep-legacy-shorthand.md',
+  );
+});
+
 it('resumes promotion when indexing the SDR lifecycle update fails', async () => {
   const root = createTempProject();
   process.chdir(root);
