@@ -725,7 +725,12 @@ it('creates and indexes a proposed ADR through dg adr create', async () => {
     'docs/decisions/adr/ADR-0001-use-semantic-search.md',
   );
   expect(log.mock.calls[0][0]).toBe(
-    'Created docs/decisions/adr/ADR-0001-use-semantic-search.md',
+    `Created ${path.join(
+      'docs',
+      'decisions',
+      'adr',
+      'ADR-0001-use-semantic-search.md',
+    )}`,
   );
   const adrContent = readFileSync(adrPath, 'utf8');
   expect(adrContent).toContain('status: proposed');
