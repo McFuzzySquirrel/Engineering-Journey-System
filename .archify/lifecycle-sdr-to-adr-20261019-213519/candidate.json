@@ -1,0 +1,136 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "From Session Decision to Accepted ADR",
+    "output": ".archify/lifecycle-sdr-to-adr-20261019-213519/sdr-to-adr-lifecycle.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/McFuzzySquirrel/Engineering-Journey-System.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "17ecb5423ba8db0fef8aa0fd4bd56e548bd8c2a3"
+    }
+  },
+  "mainPath": ["open_sdr", "promoted_draft", "accepted_adr"],
+  "states": [
+    {
+      "id": "open_sdr",
+      "type": "start",
+      "label": "Open SDR",
+      "sublabel": "Session decision in Markdown",
+      "tag": "open",
+      "sources": [
+        {
+          "path": "src/core/sdr.ts",
+          "line": 40,
+          "end_line": 58,
+          "label": "new SDR starts open"
+        },
+        {
+          "path": "docs/user-guide.md",
+          "line": 53,
+          "end_line": 61,
+          "label": "capture a session decision"
+        }
+      ]
+    },
+    {
+      "id": "promoted_draft",
+      "type": "waiting",
+      "label": "Promoted SDR + Proposed ADR",
+      "sublabel": "Linked records; review the draft",
+      "tag": "SDR=promoted · ADR=proposed",
+      "sources": [
+        {
+          "path": "src/cli/commands.ts",
+          "line": 1052,
+          "end_line": 1090,
+          "label": "promotion creates and links ADR"
+        },
+        {
+          "path": "src/cli/commands.ts",
+          "line": 1161,
+          "end_line": 1189,
+          "label": "draft status and derived-from link"
+        }
+      ]
+    },
+    {
+      "id": "accepted_adr",
+      "type": "success",
+      "label": "Accepted ADR",
+      "sublabel": "Indexed rules can guide context",
+      "tag": "accepted",
+      "sources": [
+        {
+          "path": "docs/user-guide.md",
+          "line": 63,
+          "end_line": 66,
+          "label": "review, accept, then sync"
+        },
+        {
+          "path": "src/core/schema.ts",
+          "line": 11,
+          "end_line": 18,
+          "label": "ADR and SDR status values"
+        }
+      ]
+    },
+    {
+      "id": "discarded_sdr",
+      "type": "neutral",
+      "label": "Discarded SDR",
+      "sublabel": "Optional reason stays on record",
+      "tag": "terminal",
+      "sources": [
+        {
+          "path": "docs/user-guide.md",
+          "line": 63,
+          "end_line": 66,
+          "label": "discard command"
+        },
+        {
+          "path": "src/cli/commands.ts",
+          "line": 1108,
+          "end_line": 1140,
+          "label": "terminal SDR update"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "id": "promote",
+      "from": "open_sdr",
+      "to": "promoted_draft",
+      "label": "promote",
+      "variant": "emphasis"
+    },
+    {
+      "id": "discard",
+      "from": "open_sdr",
+      "to": "discarded_sdr",
+      "label": "dg sdr discard",
+      "note": "May include --reason."
+    },
+    {
+      "id": "accept",
+      "from": "promoted_draft",
+      "to": "accepted_adr",
+      "label": "edit ADR status + sync"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Promotion and review",
+      "items": [
+        "dg sdr promote links records: SDR becomes promoted; ADR starts proposed.",
+        "Review the ADR, set status: accepted in Markdown, then run dg sync.",
+        "The diagram ends at accepted; later ADR statuses are outside this workflow."
+      ]
+    }
+  ]
+}

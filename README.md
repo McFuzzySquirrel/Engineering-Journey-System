@@ -51,6 +51,22 @@ describe current implementation status.
 - **`AGENTS.md`** contains a generated managed block with usage guidance and
   accepted rules.
 
+### SDR to ADR lifecycle
+
+An open session decision can become a proposed ADR for review, be discarded, or
+be accepted after its Markdown status is updated and the index is synchronized.
+
+[![Preview of the SDR-to-ADR lifecycle animation; open the WebM](docs/media/sdr-to-adr-lifecycle.png)](docs/media/sdr-to-adr-lifecycle.webm)
+
+[Open or download the SDR-to-ADR animation (WebM)](docs/media/sdr-to-adr-lifecycle.webm).
+
+```mermaid
+flowchart LR
+  Open["Open SDR"] -->|dg sdr promote| Proposed["Promoted SDR + proposed ADR"]
+  Open -->|dg sdr discard| Discarded["Discarded SDR"]
+  Proposed -->|review, update status in Markdown, dg sync| Accepted["Accepted ADR"]
+```
+
 See the [ADR index](docs/decisions/README.md) for active and historical
 decision records.
 
@@ -78,6 +94,13 @@ Markdown ADR and SDR files remain canonical. The CLI and local stdio MCP
 server use the same Store interface and local SQLite index. The CLI can push
 and pull against a remote HTTP server; server MCP requests use the shared
 decision tools and a server-side SQLite or PostgreSQL Store.
+
+The animation is optional; the Mermaid diagram below provides a static
+alternative.
+
+[![Preview of the decision-graph architecture animation; open the WebM](docs/media/decision-graph-system-architecture.png)](docs/media/decision-graph-system-architecture.webm)
+
+[Open or download the architecture animation (WebM)](docs/media/decision-graph-system-architecture.webm).
 
 ```mermaid
 flowchart LR
