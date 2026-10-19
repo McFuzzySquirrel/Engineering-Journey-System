@@ -746,7 +746,12 @@ it('creates and indexes a proposed ADR through dg adr create', async () => {
   log.mockClear();
   await invoke('new', 'Keep legacy shorthand');
   expect(log.mock.calls[0][0]).toBe(
-    'Created docs/decisions/adr/ADR-0002-keep-legacy-shorthand.md',
+    `Created ${path.join(
+      'docs',
+      'decisions',
+      'adr',
+      'ADR-0002-keep-legacy-shorthand.md',
+    )}`,
   );
 });
 
