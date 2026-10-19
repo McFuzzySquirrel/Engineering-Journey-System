@@ -9,3 +9,17 @@ ADR-0001#2 [**/*] MUST NOT Run archived EJS hooks, skills, bootstrap scripts, or
 ADR-0001#3 [**/*] SHOULD Run `dg context <files...>` before editing code and use `dg sdr add` to capture significant session decisions.
 ADR-0001#4 [**/*] MUST Keep unauthenticated decision-graph servers bound to localhost or a trusted network.
 <!-- dg:end -->
+
+## Agent skills
+
+### Issue tracker
+
+Issues and Wayfinder maps live in this repository's GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the five canonical labels `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This is a single-context repo. See `docs/agents/domain.md`.

@@ -99,6 +99,95 @@ Record the decision.
   );
 });
 
+it('applies OR within facets, AND across facets, and lists project facets', async () => {
+  const accepted = makeAdr(
+    'ADR-0001',
+    'Store cross-project metadata',
+    ['src/**'],
+    'accepted',
+    ['storage'],
+  );
+  const proposed = makeAdr(
+    'ADR-0002',
+    'Consider graph search',
+    ['src/**'],
+    'proposed',
+    ['search'],
+  );
+  const sdr = parseRecord(
+    `---
+id: SDR-20261013-001
+type: sdr
+title: Record a search decision
+status: open
+tags: [session]
+---
+
+## Decision
+
+Keep search discoverable.
+`,
+    'docs/decisions/sdr/SDR-20261013-001.md',
+    'hybrid',
+  );
+  for (const record of [accepted, proposed, sdr]) {
+    await store.upsertNode('project-a', record);
+  }
+  await store.upsertNode(
+    'project-b',
+    makeAdr('ADR-0001', 'Store unrelated metadata', ['src/**']),
+  );
+
+  await expect(
+    store.list('project-a', {
+      type: ['adr', 'sdr'],
+      status: ['accepted', 'open'],
+      tag: ['storage', 'session'],
+    }),
+  ).resolves.toMatchObject([{ id: accepted.id }, { id: sdr.id }]);
+  await expect(store.getFacets(['project-a'])).resolves.toEqual({
+    types: ['adr', 'sdr'],
+    statuses: ['accepted', 'open', 'proposed'],
+    tags: ['search', 'session', 'storage'],
+  });
+  await expect(store.getFacets([])).resolves.toEqual({
+    types: [],
+    statuses: [],
+    tags: [],
+  });
+});
+
+it('searches selected projects as one relevance-ranked result set', async () => {
+  const library = makeAdr(
+    'ADR-0001',
+    'Cross-project search ranks matching records',
+    ['src/**'],
+    'accepted',
+    ['library'],
+  );
+  const application = makeAdr(
+    'ADR-0002',
+    'Cross-project search in applications',
+    ['src/**'],
+    'proposed',
+    ['application'],
+  );
+  await store.upsertNode('project-a', library);
+  await store.upsertNode('project-b', application);
+
+  const results = await store.searchAcrossProjects(
+    ['project-a', 'project-b'],
+    'cross project search',
+    { type: 'adr', status: ['accepted', 'proposed'], tag: ['library'] },
+  );
+  expect(results).toMatchObject([
+    { projectId: 'project-a', id: library.id, snippet: expect.any(String) },
+  ]);
+  await expect(
+    store.searchAcrossProjects([], 'cross project search'),
+  ).resolves.toEqual([]);
+});
+
 it('deletes stale nodes, their edges, and full-text entries', async () => {
   const first = makeAdr('ADR-0001', 'Keep SQLite', ['src/**']);
   const stale = makeAdr('ADR-0002', 'Remove PostgreSQL', ['src/**']);

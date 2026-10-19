@@ -7,6 +7,7 @@ import type {
   GraphNode,
   NodeFilter,
   Project,
+  RecordFacets,
   SearchResult,
   Store,
 } from './store.js';
@@ -216,24 +217,67 @@ export class PostgresStore implements Store {
     return result.rows.map(mapNode);
   }
 
+  async getFacets(projectIds: string[]): Promise<RecordFacets> {
+    if (projectIds.length === 0) {
+      return { types: [], statuses: [], tags: [] };
+    }
+    await this.ready;
+    const [types, statuses, tags] = await Promise.all([
+      this.pool.query<{ type: DecisionRecord['type'] }>(
+        `SELECT DISTINCT type FROM nodes
+         WHERE project_id = ANY($1::text[])
+         ORDER BY type`,
+        [projectIds],
+      ),
+      this.pool.query<{ status: string }>(
+        `SELECT DISTINCT status FROM nodes
+         WHERE project_id = ANY($1::text[])
+         ORDER BY status`,
+        [projectIds],
+      ),
+      this.pool.query<{ tag: string }>(
+        `SELECT DISTINCT tag.value AS tag
+         FROM nodes
+         CROSS JOIN LATERAL jsonb_array_elements_text(nodes.tags) AS tag(value)
+         WHERE nodes.project_id = ANY($1::text[])
+         ORDER BY tag.value`,
+        [projectIds],
+      ),
+    ]);
+    return {
+      types: types.rows.map((row) => row.type),
+      statuses: statuses.rows.map((row) => row.status),
+      tags: tags.rows.map((row) => row.tag),
+    };
+  }
+
   async search(
     projectId: string,
     query: string,
     filter: NodeFilter = {},
   ): Promise<SearchResult[]> {
+    return this.searchAcrossProjects([projectId], query, filter);
+  }
+
+  async searchAcrossProjects(
+    projectIds: string[],
+    query: string,
+    filter: NodeFilter = {},
+  ): Promise<SearchResult[]> {
+    if (projectIds.length === 0) return [];
     await this.ready;
     if (!query.trim()) return [];
-    const { clause, values } = buildFilter(filter, 3);
+    const { clause, values } = buildFilter(filter, 3, 'n');
     const result = await this.pool.query<NodeRow & { snippet: string }>(
       `SELECT n.*,
               ts_headline('english', n.body, plainto_tsquery('english', $1),
                 'StartSel=>>>, StopSel=<<<, MaxFragments=2') AS snippet
        FROM nodes n
-       WHERE n.project_id = $2
+       WHERE n.project_id = ANY($2::text[])
          AND n.search_vector @@ plainto_tsquery('english', $1)${clause}
        ORDER BY ts_rank(n.search_vector, plainto_tsquery('english', $1)) DESC,
-                n.id`,
-      [query, projectId, ...values],
+                n.title, n.project_id, n.id`,
+      [query, projectIds, ...values],
     );
     return result.rows.map((row) => ({
       ...mapNode(row),
@@ -434,30 +478,40 @@ function buildFilter(
   filter: NodeFilter,
   firstParameter: number,
   alias = '',
-): { clause: string; values: string[] } {
+): { clause: string; values: (string | string[])[] } {
   const clauses: string[] = [];
-  const values: string[] = [];
+  const values: (string | string[])[] = [];
   const column = (name: string) => (alias ? `${alias}.${name}` : name);
-  if (filter.type) {
-    values.push(filter.type);
-    clauses.push(`${column('type')} = $${firstParameter + values.length - 1}`);
-  }
-  if (filter.status) {
-    values.push(filter.status);
+  const types = filterValues(filter.type);
+  const statuses = filterValues(filter.status);
+  const tags = filterValues(filter.tag);
+  if (types.length > 0) {
+    values.push(types);
     clauses.push(
-      `${column('status')} = $${firstParameter + values.length - 1}`,
+      `${column('type')} = ANY($${firstParameter + values.length - 1}::text[])`,
     );
   }
-  if (filter.tag) {
-    values.push(JSON.stringify([filter.tag]));
+  if (statuses.length > 0) {
+    values.push(statuses);
     clauses.push(
-      `${column('tags')} @> $${firstParameter + values.length - 1}::jsonb`,
+      `${column('status')} = ANY($${firstParameter + values.length - 1}::text[])`,
+    );
+  }
+  if (tags.length > 0) {
+    values.push(tags);
+    clauses.push(
+      `${column('tags')} ?| $${firstParameter + values.length - 1}::text[]`,
     );
   }
   return {
     clause: clauses.length > 0 ? ` AND ${clauses.join(' AND ')}` : '',
     values,
   };
+}
+
+function filterValues(value: string | string[] | undefined): string[] {
+  if (value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
 }
 
 function mapNode(row: NodeRow): GraphNode {

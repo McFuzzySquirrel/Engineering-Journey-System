@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Decision record explorer</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#results">Skip to records</a>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="decision-graph record explorer">
+          <span class="brand-mark" aria-hidden="true">DG</span>
+          <span>decision-graph</span>
+        </a>
+        <form id="search-form" class="search-form" role="search">
+          <label class="visually-hidden" for="search-input">
+            Search decision records
+          </label>
+          <input
+            id="search-input"
+            name="q"
+            type="search"
+            autocomplete="off"
+            placeholder="Search titles and decisions"
+          />
+          <button class="button button-primary" type="submit">Search</button>
+          <button id="clear-search" class="button button-quiet" type="button">
+            Clear
+          </button>
+        </form>
+      </header>
+
+      <main class="workspace">
+        <aside class="filter-panel" aria-labelledby="filters-heading">
+          <div class="filter-heading">
+            <h2 id="filters-heading">Filters</h2>
+            <button
+              id="reset-filters"
+              class="button button-quiet"
+              type="button"
+            >
+              Reset
+            </button>
+          </div>
+          <details id="filter-disclosure" open>
+            <summary class="filter-toggle">Filter options</summary>
+            <div id="filter-groups" class="filter-groups"></div>
+          </details>
+        </aside>
+
+        <section
+          id="results"
+          class="results-panel"
+          aria-labelledby="results-heading"
+        >
+          <header class="results-heading">
+            <div>
+              <p class="eyebrow">LOCAL DECISION GRAPH</p>
+              <h1 id="results-heading">Record explorer</h1>
+            </div>
+            <p
+              id="result-count"
+              class="result-count"
+              role="status"
+              aria-live="polite"
+            >
+              Loading records...
+            </p>
+          </header>
+          <p
+            id="search-error"
+            class="message message-error"
+            role="alert"
+            hidden
+          ></p>
+          <p
+            id="results-loading"
+            class="message"
+            role="status"
+            aria-live="polite"
+            hidden
+          >
+            Searching records...
+          </p>
+          <ol
+            id="results-list"
+            class="results-list"
+            aria-label="Decision records"
+          ></ol>
+          <p id="no-results" class="empty-state" role="status" hidden>
+            No records match the current search and filters.
+          </p>
+          <p
+            id="selection-status"
+            class="visually-hidden"
+            role="status"
+            aria-live="polite"
+          ></p>
+        </section>
+
+        <aside
+          id="inspector"
+          class="inspector-panel"
+          aria-labelledby="inspector-heading"
+          tabindex="-1"
+        >
+          <p class="eyebrow">RECORD INSPECTOR</p>
+          <h2 id="inspector-heading">Choose a record</h2>
+          <p id="detail-placeholder" class="empty-state">
+            Select a result to inspect its decision, provenance, and
+            relationships.
+          </p>
+          <p
+            id="detail-loading"
+            class="message"
+            role="status"
+            aria-live="polite"
+            hidden
+          >
+            Loading record...
+          </p>
+          <p
+            id="detail-error"
+            class="message message-error"
+            role="alert"
+            hidden
+          ></p>
+          <article id="detail-content" class="record-detail" hidden>
+            <div id="record-badges" class="record-badges"></div>
+            <dl id="record-provenance" class="provenance"></dl>
+            <div id="record-body" class="markdown-body"></div>
+            <section
+              id="relationships"
+              class="relationships"
+              aria-labelledby="relationships-heading"
+              hidden
+            >
+              <h3 id="relationships-heading">Relationships</h3>
+              <ul id="relationship-list"></ul>
+            </section>
+          </article>
+        </aside>
+      </main>
+      <footer class="app-footer">
+        Read-only view of records indexed by <code>dg serve</code>.
+      </footer>
+    </div>
+    <script type="module" src="/main.ts"></script>
+  </body>
+</html>

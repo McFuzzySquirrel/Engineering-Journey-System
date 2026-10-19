@@ -88,6 +88,41 @@ to `127.0.0.1:3000` and has no authentication in v1; use only on localhost or
 a trusted network. Configure MCP clients using the
 [MCP client guide](mcp.md).
 
+## Browse in the Local UI
+
+Start `dg serve` and open `http://127.0.0.1:3000/`. The read-only Workbench
+shows indexed records across all projects in the server database. To include
+another repository, run `dg push --remote http://127.0.0.1:3000` from that
+repository after indexing it with `dg sync`.
+
+The screenshots show the Workbench on desktop and mobile. The animated tour
+uses synthetic Sample Service records in an isolated capture database to
+illustrate cross-project browsing; it does not add demo records to a project.
+
+![Animated Workbench tour showing project browsing, filtering, searching, opening a record, and following a relationship](assets/ui/explorer-workbench-tour.gif)
+
+![Desktop Workbench with indexed records, project/status filters, and a selected record's details](assets/ui/explorer-workbench-desktop.png)
+
+![Responsive mobile Workbench with filters, records, and the record inspector](assets/ui/explorer-workbench-mobile.png)
+
+Search titles and record content, or leave the query empty to browse records
+sorted by title. Text searches match all query terms and rank results by
+relevance across the selected projects. Project, record type, status, and tag
+filters can be combined: different filters narrow results together, while
+multiple selections within one filter match any selected value. Select a
+result to read its sanitized Markdown, source path, update time, and linked
+records. The UI does not create or modify decision records.
+
+The UI announces loading and result counts. When no records match, it shows
+an empty-results message; when the server or a request fails, it displays an
+error message instead of treating the request as successful. Confirm that
+`dg serve` is running and retry after connectivity is restored.
+
+For development from this repository, run `dg serve` in one terminal and
+`npm run dev` in another. Vite listens on `127.0.0.1:5173` and proxies API
+requests to `127.0.0.1:3000`; set `DG_API_ORIGIN` to use a different API
+origin.
+
 ## Offline and Reconnect Behavior
 
 Local queries and stdio MCP use the project's Markdown files and SQLite
@@ -111,9 +146,12 @@ are preserved as an inactive archive under `legacy/`.
 
 ## Accessibility and Mobile Use
 
-decision-graph is a CLI and MCP service, not a graphical application. It has
-no mobile interface or product UI accessibility claim. Repository Markdown
-can be read with accessible GitHub or local Markdown tools.
+The local browser explorer targets WCAG 2.2 AA, with semantic controls,
+keyboard and screen-reader support, visible focus, and responsive reflow down
+to 320 CSS pixels. A full WCAG conformance audit has not been completed; this
+target is not a certification claim. Markdown record content is rendered
+with raw HTML disabled and sanitized before display. Embedded images and
+active media are not loaded.
 
 ## Privacy and Data Handling
 
@@ -123,7 +161,8 @@ metadata to the configured server. `dg pull` receives server records into a
 separate local namespace without modifying repository files. The remote
 server has no authentication in v1; send data only to a server you trust and
 do not expose it to an untrusted network. Do not commit credentials or
-private content.
+private content. The browser does not fetch embedded remote images from
+decision records.
 
 ## Troubleshooting
 
@@ -147,7 +186,9 @@ records should be recovered through Git or the repository host.
 ## Getting Help
 
 See the [administrator guide](admin-guide.md) for operations and security, or
-the [ADR index](decisions/README.md) for architecture decisions. Use the
+the [ADR index](decisions/README.md) for architecture decisions. The
+[unreleased notes](releases/unreleased.md) summarize current validation and
+known limitations. Use the
 [GitHub issue tracker](https://github.com/McFuzzySquirrel/Engineering-Journey-System/issues)
 for questions and non-sensitive reports. Do not publish sensitive
 vulnerability details in a public issue.

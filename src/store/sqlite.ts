@@ -7,6 +7,7 @@ import type {
   GraphNode,
   NodeFilter,
   Project,
+  RecordFacets,
   SearchResult,
   Store,
 } from './store.js';
@@ -304,14 +305,58 @@ export class SQLiteStore implements Store {
     return rows.map(mapNode);
   }
 
+  async getFacets(projectIds: string[]): Promise<RecordFacets> {
+    if (projectIds.length === 0) {
+      return { types: [], statuses: [], tags: [] };
+    }
+    const placeholders = projectIds.map(() => '?').join(', ');
+    const types = this.db
+      .prepare(
+        `SELECT DISTINCT type FROM nodes
+         WHERE project_id IN (${placeholders})
+         ORDER BY type`,
+      )
+      .all(...projectIds) as { type: DecisionRecord['type'] }[];
+    const statuses = this.db
+      .prepare(
+        `SELECT DISTINCT status FROM nodes
+         WHERE project_id IN (${placeholders})
+         ORDER BY status`,
+      )
+      .all(...projectIds) as { status: string }[];
+    const tags = this.db
+      .prepare(
+        `SELECT DISTINCT json_each.value AS tag
+         FROM nodes, json_each(nodes.tags)
+         WHERE nodes.project_id IN (${placeholders})
+         ORDER BY tag`,
+      )
+      .all(...projectIds) as { tag: string }[];
+    return {
+      types: types.map((row) => row.type),
+      statuses: statuses.map((row) => row.status),
+      tags: tags.map((row) => row.tag),
+    };
+  }
+
   async search(
     projectId: string,
     query: string,
     filter: NodeFilter = {},
   ): Promise<SearchResult[]> {
+    return this.searchAcrossProjects([projectId], query, filter);
+  }
+
+  async searchAcrossProjects(
+    projectIds: string[],
+    query: string,
+    filter: NodeFilter = {},
+  ): Promise<SearchResult[]> {
+    if (projectIds.length === 0) return [];
     const safeQuery = sanitizeFtsQuery(query);
     if (!safeQuery) return [];
     const { where, params } = buildFilter(filter, 'n');
+    const placeholders = projectIds.map(() => '?').join(', ');
     const rows = this.db
       .prepare(
         `SELECT n.*, snippet(nodes_fts, 3, '>>>', '<<<', '…', 24) AS snippet
@@ -319,10 +364,10 @@ export class SQLiteStore implements Store {
          JOIN nodes n
            ON n.project_id = nodes_fts.project_id
           AND n.id = nodes_fts.node_id
-         WHERE nodes_fts MATCH ? AND n.project_id = ?${where}
-         ORDER BY bm25(nodes_fts), n.id`,
+         WHERE nodes_fts MATCH ? AND n.project_id IN (${placeholders})${where}
+         ORDER BY bm25(nodes_fts), n.title COLLATE NOCASE, n.project_id, n.id`,
       )
-      .all(safeQuery, projectId, ...params) as SearchRow[];
+      .all(safeQuery, ...projectIds, ...params) as SearchRow[];
     return rows.map((row) => ({ ...mapNode(row), snippet: row.snippet }));
   }
 
@@ -415,31 +460,39 @@ export function sanitizeFtsQuery(query: string): string {
 function buildFilter(
   filter: NodeFilter,
   alias?: string,
-): { where: string; params: (string | undefined)[] } {
+): { where: string; params: string[] } {
   const prefix = alias ? `${alias}.` : '';
   const clauses: string[] = [];
-  const params: (string | undefined)[] = [];
-  if (filter.type) {
-    clauses.push(`${prefix}type = ?`);
-    params.push(filter.type);
+  const params: string[] = [];
+  const types = filterValues(filter.type);
+  const statuses = filterValues(filter.status);
+  const tags = filterValues(filter.tag);
+  if (types.length > 0) {
+    clauses.push(`${prefix}type IN (${types.map(() => '?').join(', ')})`);
+    params.push(...types);
   }
-  if (filter.status) {
-    clauses.push(`${prefix}status = ?`);
-    params.push(filter.status);
+  if (statuses.length > 0) {
+    clauses.push(`${prefix}status IN (${statuses.map(() => '?').join(', ')})`);
+    params.push(...statuses);
   }
-  if (filter.tag) {
+  if (tags.length > 0) {
     clauses.push(
       `EXISTS (
         SELECT 1 FROM json_each(${prefix}tags)
-        WHERE json_each.value = ?
+        WHERE json_each.value IN (${tags.map(() => '?').join(', ')})
       )`,
     );
-    params.push(filter.tag);
+    params.push(...tags);
   }
   return {
     where: clauses.length > 0 ? ` AND ${clauses.join(' AND ')}` : '',
     params,
   };
+}
+
+function filterValues(value: string | string[] | undefined): string[] {
+  if (value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
 }
 
 function mapNode(row: NodeRow): GraphNode {
