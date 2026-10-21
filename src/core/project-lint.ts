@@ -28,16 +28,7 @@ export async function lintProject(
   for (const file of [...files].sort()) {
     if (!existsSync(file)) continue;
     const content = readFileSync(file, 'utf8');
-    const lineCount = countLines(content);
     const relativePath = path.relative(root, file).split(path.sep).join('/');
-    if (lineCount > 200) {
-      diagnostics.push({
-        severity: 'warning',
-        code: 'line-budget',
-        path: relativePath,
-        message: `Record has ${lineCount} lines; the budget is 200.`,
-      });
-    }
     try {
       const record = parseRecord(content, relativePath, 'auto');
       records.push(record);
@@ -92,11 +83,6 @@ export async function lintProject(
     warnings: diagnostics.length - errors,
     diagnostics,
   };
-}
-
-function countLines(content: string): number {
-  if (content.length === 0) return 0;
-  return content.split(/\r?\n/).length - (/\r?\n$/.test(content) ? 1 : 0);
 }
 
 function idMismatch(

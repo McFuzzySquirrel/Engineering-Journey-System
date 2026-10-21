@@ -384,17 +384,6 @@ async function lintRemoteProjects(store: Store): Promise<ProjectLintResult> {
         record.promotedTo =
           outgoing.find((edge) => edge.kind === 'promoted_to')?.dst ?? null;
       }
-      const lineCount = countLines(node.body);
-      if (lineCount > 200) {
-        diagnostics.push({
-          severity: 'warning',
-          code: 'line-budget',
-          id: node.id,
-          path: node.path,
-          message: `Record has ${lineCount} lines; the budget is 200.`,
-          project: project.id,
-        });
-      }
       return record;
     });
     const result = lintRecords(records);
@@ -429,11 +418,6 @@ async function lintRemoteProjects(store: Store): Promise<ProjectLintResult> {
     warnings: diagnostics.length - errors,
     diagnostics,
   };
-}
-
-function countLines(content: string): number {
-  if (content.length === 0) return 0;
-  return content.split(/\r?\n/).length - (/\r?\n$/.test(content) ? 1 : 0);
 }
 
 async function selectProjects(

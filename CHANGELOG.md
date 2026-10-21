@@ -38,6 +38,9 @@ tag marks the prior EJS project state, not a decision-graph release.
 - Replaced `gray-matter` with direct `js-yaml` frontmatter parsing, removing
   the vulnerable `js-yaml@3`/`argparse@1`/`sprintf-js` chain from consumer
   installs and the root `js-yaml` override.
+- Removed the 200-line record budget from local, MCP, and remote lint; ADR and
+  SDR length is no longer limited. The separate `tokenBudget` still trims
+  compiled `AGENTS.md` guidance.
 
 - Replaced the active EJS session-recording direction with decision-graph.
   Historical EJS ADRs remain archived and are marked deprecated in the

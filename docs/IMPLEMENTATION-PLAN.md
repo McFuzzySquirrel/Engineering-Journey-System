@@ -121,7 +121,6 @@ Rules:
 - Individual rules get the IDs `ADR-0001#1`, `ADR-0001#2`, … in file order. Reviews and commits can cite them.
 - Populate every section; write `None` when a section has nothing to record rather than removing its heading.
 - Prefer automated checks. When automation is not practical, `Check` names a concrete manual review procedure and `Expected` states its observable result.
-- Keep files ≤ ~200 lines. `dg lint` warns above that.
 - Accepted decision content is immutable. To change a decision, write a new record with `supersedes: [ADR-0001]`, mark the old record `superseded`, and link the records in both directions.
 
 ### 3.2 SDR — `docs/decisions/sdr/SDR-20261013-001-<slug>.md`
@@ -309,7 +308,6 @@ promotion, both edges, repeat-promotion rejection, and discard.
 - [x] `dg lint`:
   - schema errors, duplicate IDs, unknown link targets, supersede cycles
   - accepted records that are superseded but not marked `superseded`
-  - files over the line budget
   - near-duplicate rules (normalized token Jaccard ≥ threshold) across records
   - conflicts: overlapping `applies_to` + the same normalized subject with opposite modality (MUST vs MUST NOT). Adds `conflicts_with` edges
   - `--json`, exits non-zero on errors
@@ -320,7 +318,7 @@ index under the managed AGENTS.md markers, preserves surrounding content, and
 trims the index to the configured token budget with a `dg context` fallback.
 `dg verify` runs checks from the project root with per-command timeouts, shows
 expected results, and reports manual or absent checks as skips. `dg lint`
-reports schema and graph errors, line-budget and near-duplicate warnings,
+reports schema and graph errors, near-duplicate warnings,
 supersede cycles, stale accepted statuses, and overlapping opposite rules; it
 also rebuilds `conflicts_with` edges. `dg graph` exports deterministic Mermaid
 or DOT output with optional root/depth filtering. CLI tests cover golden compile

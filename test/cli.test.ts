@@ -501,10 +501,10 @@ it('lints record and graph errors, detects conflicts, and exports the graph', as
     diagnostics: { code: string }[];
   };
   expect(report.ok).toBe(false);
-  expect(report.diagnostics.map(({ code }) => code)).toEqual(
+  const codes = report.diagnostics.map(({ code }) => code);
+  expect(codes).toEqual(
     expect.arrayContaining([
       'schema',
-      'line-budget',
       'duplicate-id',
       'unknown-link',
       'supersede-cycle',
@@ -513,6 +513,7 @@ it('lints record and graph errors, detects conflicts, and exports the graph', as
       'near-duplicate-rule',
     ]),
   );
+  expect(codes).not.toContain('line-budget');
   expect(process.exitCode).toBe(1);
   process.exitCode = undefined;
   const store = new SQLiteStore(path.join(root, '.dg/graph.db'));
