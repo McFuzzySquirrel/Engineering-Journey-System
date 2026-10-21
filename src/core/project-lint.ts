@@ -39,7 +39,18 @@ export async function lintProject(
       });
     }
     try {
-      records.push(parseRecord(content, relativePath, 'auto'));
+      const record = parseRecord(content, relativePath, 'auto');
+      records.push(record);
+      const mismatch = idMismatch(relativePath, content, record.id);
+      if (mismatch) {
+        diagnostics.push({
+          severity: 'warning',
+          code: 'id-mismatch',
+          id: record.id,
+          path: relativePath,
+          message: mismatch,
+        });
+      }
     } catch (error) {
       diagnostics.push({
         severity: 'error',
@@ -86,6 +97,32 @@ export async function lintProject(
 function countLines(content: string): number {
   if (content.length === 0) return 0;
   return content.split(/\r?\n/).length - (/\r?\n$/.test(content) ? 1 : 0);
+}
+
+function idMismatch(
+  filePath: string,
+  content: string,
+  id: string,
+): string | undefined {
+  const idNumber = Number(/^ADR-(\d+)$/i.exec(id)?.[1]);
+  if (!Number.isFinite(idNumber)) return undefined;
+  const fileName = path.basename(filePath);
+  const fileNumber = Number(
+    fileName.match(/^(?:ADR[-_ ]?)?(\d{1,4})(?:[-_.]|$)/i)?.[1],
+  );
+  const headingNumber = Number(
+    content.match(/^#\s+ADR[-_ ]?(\d{1,4})\b/im)?.[1],
+  );
+  const sources = [
+    Number.isFinite(fileNumber) && fileNumber !== idNumber
+      ? `filename (${fileNumber})`
+      : '',
+    Number.isFinite(headingNumber) && headingNumber !== idNumber
+      ? `heading (${headingNumber})`
+      : '',
+  ].filter(Boolean);
+  if (sources.length === 0) return undefined;
+  return `Record ID ${id} does not match the ${sources.join(' or ')} number.`;
 }
 
 function compareText(first: string, second: string): number {

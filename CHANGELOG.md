@@ -20,8 +20,24 @@ tag marks the prior EJS project state, not a decision-graph release.
   pull workflows.
 - Generated `AGENTS.md` guidance and documentation for users, administrators,
   architecture decisions, and the unreleased package.
+- Legacy ADR import support for short-numbered filenames, spaced headings such
+  as `ADR 001`, and inline `**Status:**`, `**Date:**`, and `**Tags:**` metadata.
+- Provisioned agent skill at `.agents/skills/decision-graph` (also available
+  for OpenCode and Claude directories) with migration and lint-triage guidance.
+- `dg lint` reports `id-mismatch` warnings when a record ID disagrees with its
+  filename or heading number.
 
 ### Changed
+
+- `dg init` resumes against an existing configuration instead of failing, can
+  adopt a detected legacy ADR directory, and reports unparseable records
+  without aborting. `dg sync` and `dg import` retain the last indexed version
+  of a file that fails to parse and exit non-zero after indexing the rest.
+- Upgraded `better-sqlite3` to 13.x, which uses N-API prebuilds and removes the
+  deprecated `prebuild-install` dependency.
+- Replaced `gray-matter` with direct `js-yaml` frontmatter parsing, removing
+  the vulnerable `js-yaml@3`/`argparse@1`/`sprintf-js` chain from consumer
+  installs and the root `js-yaml` override.
 
 - Replaced the active EJS session-recording direction with decision-graph.
   Historical EJS ADRs remain archived and are marked deprecated in the

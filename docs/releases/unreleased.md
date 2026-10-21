@@ -24,8 +24,9 @@ version `0.1.0` has been published.
 ## Compatibility and Prerequisites
 
 - Node.js 26 or newer is required.
-- SQLite uses `better-sqlite3`, a native module with prebuilt binaries for
-  common platforms.
+- SQLite uses `better-sqlite3` 13.x, a native module distributed with N-API
+  prebuilt binaries for common platforms; no compiler or `prebuild-install`
+  step is required.
 - PostgreSQL is needed only for a PostgreSQL-backed server or its optional
   integration tests.
 - No migration from an existing EJS database is provided. Existing ADRs can
@@ -53,9 +54,10 @@ resulting `decision-graph-0.1.0.tgz` tarball. See the
 ## Validation
 
 On Node.js 26, lint, formatting, typecheck, tests, build, `dg lint`, and
-`dg verify` passed. The test run reported 38 passing tests and one skipped
+`dg verify` passed. The test run reported 52 passing tests and one skipped
 test. A locally packed `0.1.0` tarball was installed in a temporary fixture;
-initialization, MADR indexing, `dg context`, and `AGENTS.md` generation passed.
+initialization, MADR indexing, `dg context`, and `AGENTS.md` generation passed,
+and the installed tree reported no audit vulnerabilities.
 No live hosted MCP client or public npm release was validated as part of this
 pre-release check.
 

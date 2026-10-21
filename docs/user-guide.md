@@ -25,9 +25,14 @@ dg init --type cli-tool
 ```
 
 `--type` is optional and defaults to `cli-tool`. Initialization creates
-`.dg/config.json`, the configured ADR and SDR directories, and the local
-SQLite index. If common ADR directories already contain Markdown records,
-`dg init` offers to import them; pass `--yes` to accept that prompt.
+`.dg/config.json`, the configured ADR and SDR directories, the local SQLite
+index, and an agent skill (`.agents/skills/decision-graph` by default). If one
+recognized ADR directory contains records, `dg init` offers to use it as
+`adrDir`; pass `--yes` to accept that and any import prompt. Re-running
+`dg init` resumes without rewriting the configuration, and records that fail
+to parse are reported without aborting initialization. Use `--adr-dir <path>`
+to choose the ADR directory, `--agent-skill none` to skip the skill, and
+`--force` to rewrite an existing configuration.
 
 For an existing checkout that has not been installed globally, use
 `node dist/cli.js` in place of `dg` after `npm ci` and `npm run build`.
@@ -69,7 +74,11 @@ record and run `dg sync`.
 formats. Use `--format` to select `hybrid`, `madr`, `nygard`, or `agent`.
 `--convert` creates proposed hybrid drafts and preserves the source records;
 review drafts rather than treating heuristic conversion as an accepted
-decision.
+decision. IDs are inferred from frontmatter, `ADR-0001` or `ADR 001` headings,
+and numbered filenames such as `001-title.md`, preserving the source digits.
+Legacy records without frontmatter may use `**Status:**`, `**Date:**`, and
+`**Tags:**` lines before the first section. Files that cannot be parsed are
+reported individually; `dg lint --json` lists the same diagnostics.
 
 **Check records.** Run `dg lint` for schema, relationship, lifecycle, and rule
 diagnostics. Run `dg verify [id...]` for automated checks; checks that are

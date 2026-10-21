@@ -84,6 +84,13 @@ export const RecordSchema = z.discriminatedUnion('type', [
   SdrRecordSchema,
 ]);
 
+export const AgentSkillSchema = z.enum([
+  'agents',
+  'opencode',
+  'claude',
+  'none',
+]);
+
 export const ConfigSchema = z.object({
   project: z.string().min(1),
   projectType: z.string().min(1),
@@ -92,6 +99,7 @@ export const ConfigSchema = z.object({
   agentsMd: z.string().min(1),
   tokenBudget: z.number().int().positive(),
   remote: z.string().url().nullable(),
+  agentSkill: AgentSkillSchema.default('agents'),
 });
 
 export const FrontmatterSchema = z.object({
@@ -119,4 +127,5 @@ export type DecisionRecord = z.infer<typeof RecordSchema>;
 export type Rule = z.infer<typeof RuleSchema>;
 export type Verification = z.infer<typeof VerifySchema>;
 export type Config = z.infer<typeof ConfigSchema>;
+export type AgentSkill = z.infer<typeof AgentSkillSchema>;
 export type Frontmatter = z.infer<typeof FrontmatterSchema>;

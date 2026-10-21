@@ -1,4 +1,3 @@
-import matter from 'gray-matter';
 import { load as parseYaml } from 'js-yaml';
 import { z } from 'zod';
 import {
@@ -25,30 +24,35 @@ export interface ParsedSource {
   content: string;
 }
 
+export interface FrontmatterBlock {
+  raw: string;
+  content: string;
+}
+
+const FRONTMATTER_PATTERN =
+  /^---[ \t]*\r?\n(?:([\s\S]*?)\r?\n)?---[ \t]*(?:\r?\n|$)/;
+
+export function stripBom(source: string): string {
+  return source.startsWith('\uFEFF') ? source.slice(1) : source;
+}
+
+export function getFrontmatter(source: string): FrontmatterBlock | undefined {
+  const match = source.match(FRONTMATTER_PATTERN);
+  if (!match) return undefined;
+  return { raw: match[1] ?? '', content: source.slice(match[0].length) };
+}
+
 export function parseSource(source: string, filePath: string): ParsedSource {
   try {
-    const parsed = matter(source, {
-      engines: {
-        yaml: {
-          parse: (text) => {
-            const parsed = parseYaml(text);
-            if (
-              typeof parsed !== 'object' ||
-              parsed === null ||
-              Array.isArray(parsed)
-            ) {
-              throw new Error('frontmatter must be a YAML mapping');
-            }
-            return parsed as Record<string, unknown>;
-          },
-        },
-      },
-    });
-    const data = FrontmatterSchema.safeParse(parsed.data);
+    const text = stripBom(source);
+    const block = getFrontmatter(text);
+    const data = FrontmatterSchema.safeParse(
+      block ? parseFrontmatter(block.raw) : {},
+    );
     if (!data.success) {
       throw validationError(filePath, data.error);
     }
-    return { data: data.data, content: parsed.content };
+    return { data: data.data, content: block?.content ?? text };
   } catch (error) {
     if (error instanceof RecordParseError) throw error;
     throw new RecordParseError(
@@ -56,6 +60,16 @@ export function parseSource(source: string, filePath: string): ParsedSource {
       `invalid frontmatter: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
+}
+
+function parseFrontmatter(raw: string): Record<string, unknown> {
+  if (!raw.trim()) return {};
+  const parsed = parseYaml(raw);
+  if (parsed === null || parsed === undefined) return {};
+  if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('frontmatter must be a YAML mapping');
+  }
+  return parsed as Record<string, unknown>;
 }
 
 export function validationError(
@@ -77,6 +91,57 @@ export function validateRecord(
   const parsed = RecordSchema.safeParse(record);
   if (!parsed.success) throw validationError(filePath, parsed.error);
   return parsed.data;
+}
+
+export interface InlineMetadata {
+  status?: string;
+  date?: string;
+  tags?: string[];
+}
+
+/**
+ * Read bold or plain metadata lines such as `**Status:** Accepted` that appear
+ * before the first level-two heading. Legacy ADRs often carry status, date, and
+ * tags there instead of in YAML frontmatter.
+ */
+export function parseInlineMetadata(content: string): InlineMetadata {
+  const firstSection = content.search(/^##\s+/m);
+  const header = firstSection === -1 ? content : content.slice(0, firstSection);
+  const metadata: InlineMetadata = {};
+  for (const line of header.split(/\r?\n/)) {
+    const match = line.match(
+      /^\s*(?:\*\*)?(status|date|tags)(?:\*\*)?\s*:\s*(.+?)\s*$/i,
+    );
+    if (!match) continue;
+    const value = cleanInline(match[2]);
+    if (!value) continue;
+    const key = match[1].toLowerCase();
+    if (key === 'status') metadata.status = value;
+    else if (key === 'date') metadata.date = value;
+    else metadata.tags = splitTags(value);
+  }
+  return metadata;
+}
+
+export function getDecisionOutcome(sections: Map<string, string>): string {
+  return [...sections.entries()]
+    .filter(
+      ([heading, text]) =>
+        Boolean(text) &&
+        (heading === 'decision outcome' ||
+          heading === 'decision' ||
+          /^decision \d+\b/.test(heading)),
+    )
+    .map(([, text]) => text)
+    .join('\n\n');
+}
+
+function splitTags(value: string): string[] {
+  return value
+    .replace(/^\[|\]$/g, '')
+    .split(/[,;]/)
+    .map((tag) => tag.trim().replace(/^["'`]|["'`]$/g, ''))
+    .filter(Boolean);
 }
 
 export function getSections(content: string): Map<string, string> {

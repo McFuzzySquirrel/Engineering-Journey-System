@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
 import {
+  getDecisionOutcome,
   getSections,
   getSectionWithSubsections,
   listItems,
+  parseInlineMetadata,
   parseSource,
   RecordParseError,
   validateRecord,
@@ -11,12 +13,14 @@ import {
 export function parseMadr(source: string, filePath: string) {
   const { data, content } = parseSource(source, filePath);
   const sections = getSections(content);
+  const inline = parseInlineMetadata(content);
   const title = data.title ?? findTitle(content);
   const id = data.id ?? inferId(filePath, content);
-  if (!title || !id) {
-    throw new RecordParseError(filePath, 'could not determine ADR title or id');
-  }
-  const status = normalizeStatus(data.status ?? sections.get('status'));
+  if (!title) throw missingTitle(filePath);
+  if (!id) throw missingId(filePath);
+  const status = normalizeStatus(
+    data.status ?? sections.get('status') ?? inline.status,
+  );
 
   return validateRecord(
     {
@@ -25,8 +29,8 @@ export function parseMadr(source: string, filePath: string) {
       title,
       status,
       appliesTo: data.applies_to ?? [],
-      tags: data.tags ?? [],
-      date: normalizeDate(data.date),
+      tags: data.tags ?? inline.tags ?? [],
+      date: normalizeDate(data.date ?? inline.date),
       path: filePath,
       contentHash: createHash('sha256').update(source).digest('hex'),
       supersedes: data.supersedes ?? [],
@@ -41,8 +45,7 @@ export function parseMadr(source: string, filePath: string) {
         '',
       decisionDrivers: listItems(sections.get('decision drivers')),
       consideredOptions: listItems(sections.get('considered options')),
-      decisionOutcome:
-        sections.get('decision outcome') ?? sections.get('decision') ?? '',
+      decisionOutcome: getDecisionOutcome(sections),
       consequences: listItems(sections.get('consequences')),
       positiveConsequences: listItems(sections.get('positive consequences')),
       negativeConsequences: listItems(sections.get('negative consequences')),
@@ -56,16 +59,22 @@ export function parseMadr(source: string, filePath: string) {
   );
 }
 
+const ADR_HEADING = /^#\s+ADR[-_ ]?(\d{1,4})\b/im;
+const NUMBERED_FILE = /^(?:ADR[-_ ]?)?(\d{1,4})(?:[-_.]|$)/i;
+
 export function inferId(filePath: string, content: string): string | undefined {
-  const numericName = filePath.match(/(?:^|[/\\])(?:ADR-)?(\d{4})[-_.]/i)?.[1];
+  const fileName = filePath.split(/[/\\]/).pop() ?? '';
+  const numericName = fileName.match(NUMBERED_FILE)?.[1];
   if (numericName) return `ADR-${numericName}`;
-  return content.match(/^#\s+(ADR-\d{4})\b/im)?.[1];
+  const heading = content.match(ADR_HEADING)?.[1];
+  if (heading) return `ADR-${heading}`;
+  return undefined;
 }
 
 export function findTitle(content: string): string | undefined {
   return content
     .match(/^#\s+(.+?)\s*#*\s*$/m)?.[1]
-    ?.replace(/^ADR-\d{4}:\s*/i, '')
+    ?.replace(/^ADR[-_ ]?\d{1,4}\s*:?\s*/i, '')
     .trim();
 }
 
@@ -81,7 +90,23 @@ export function normalizeStatus(status: string | undefined): string {
   return 'accepted';
 }
 
-function normalizeDate(date: string | Date | undefined): string | undefined {
+export function normalizeDate(
+  date: string | Date | undefined,
+): string | undefined {
   if (!date) return undefined;
   return date instanceof Date ? date.toISOString().slice(0, 10) : date;
+}
+
+export function missingTitle(filePath: string): RecordParseError {
+  return new RecordParseError(
+    filePath,
+    'could not determine ADR title (expected a title in frontmatter or a "# Title" heading)',
+  );
+}
+
+export function missingId(filePath: string): RecordParseError {
+  return new RecordParseError(
+    filePath,
+    'could not determine ADR id (expected an "id:" frontmatter field, an "ADR-0001" heading, or a numbered filename such as "0001-title.md")',
+  );
 }

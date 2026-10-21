@@ -209,6 +209,7 @@ async function startServer(): Promise<void> {
     agentsMd: 'AGENTS.md',
     tokenBudget: 1500,
     remote: null,
+    agentSkill: 'agents' as const,
   };
   server = createDecisionGraphHttpServer(serverStore, config);
   server.listen(0, '127.0.0.1');

@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdtempSync,
   mkdirSync,
   readdirSync,
@@ -18,6 +19,7 @@ const originalCwd = process.cwd();
 const temporaryDirectories: string[] = [];
 afterEach(() => {
   process.chdir(originalCwd);
+  process.exitCode = undefined;
   for (const directory of temporaryDirectories.splice(0)) {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -97,6 +99,160 @@ it('initializes, syncs, and returns only applicable accepted rules', async () =>
   );
 });
 
+it('adopts a legacy ADR directory and imports short-numbered records', async () => {
+  const root = createTempProject();
+  writeRecord(root, 'docs/adr/001-village-hub.md', legacyRecord());
+  process.chdir(root);
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  await invoke('init', '--yes');
+
+  const config = JSON.parse(
+    readFileSync(path.join(root, '.dg/config.json'), 'utf8'),
+  ) as { adrDir: string; agentSkill: string };
+  expect(config.adrDir).toBe('docs/adr');
+  expect(config.agentSkill).toBe('agents');
+  expect(log.mock.calls.map(([line]) => String(line)).join('\n')).toContain(
+    'Indexed 1 record(s)',
+  );
+  log.mockClear();
+
+  await invoke('list', '--json');
+  expect(JSON.parse(log.mock.calls[0][0] as string)).toMatchObject([
+    { id: 'ADR-001', status: 'accepted', title: 'Village Hub' },
+  ]);
+
+  log.mockClear();
+  await invoke('adr', 'create', 'Next decision');
+  expect(log.mock.calls[0][0]).toBe(
+    `Created ${path.join('docs', 'adr', 'ADR-002-next-decision.md')}`,
+  );
+
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0009-unrelated.md',
+    hybridRecord('ADR-0009', ['src/**'], 'MUST', 'Stay put.'),
+  );
+  await invoke('init', '--yes');
+  expect(
+    (
+      JSON.parse(readFileSync(path.join(root, '.dg/config.json'), 'utf8')) as {
+        adrDir: string;
+      }
+    ).adrDir,
+  ).toBe('docs/adr');
+});
+
+it('keeps init usable and reports files that cannot be parsed', async () => {
+  const root = createTempProject();
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0001-good.md',
+    hybridRecord('ADR-0001', ['src/**'], 'MUST', 'Keep going.'),
+  );
+  writeRecord(
+    root,
+    'docs/decisions/adr/broken.md',
+    '# 2024 Roadmap\n\n## Decision\n\nShip it.',
+  );
+  process.chdir(root);
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  await invoke('init', '--yes');
+
+  expect(process.exitCode).toBe(1);
+  expect(existsSync(path.join(root, '.dg/config.json'))).toBe(true);
+  expect(readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toContain(
+    '<!-- dg:begin -->',
+  );
+  expect(
+    existsSync(path.join(root, '.agents/skills/decision-graph/SKILL.md')),
+  ).toBe(true);
+  expect(error.mock.calls.map(([line]) => String(line)).join('\n')).toContain(
+    'could not determine ADR id',
+  );
+  log.mockClear();
+
+  await invoke('list', '--json');
+  expect(JSON.parse(log.mock.calls[0][0] as string)).toMatchObject([
+    { id: 'ADR-0001' },
+  ]);
+});
+
+it('resumes init when configuration already exists', async () => {
+  const root = createTempProject();
+  process.chdir(root);
+  await invoke('init', '--yes');
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0001-later.md',
+    hybridRecord('ADR-0001', ['src/**'], 'MUST', 'Keep going.'),
+  );
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  await invoke('init', '--yes');
+
+  expect(log.mock.calls.map(([line]) => String(line)).join('\n')).toContain(
+    'Resuming decision-graph initialization',
+  );
+  log.mockClear();
+  await invoke('list', '--json');
+  expect(JSON.parse(log.mock.calls[0][0] as string)).toHaveLength(1);
+});
+
+it('provisions an agent skill and leaves user-authored files untouched', async () => {
+  const root = createTempProject();
+  process.chdir(root);
+  vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  await invoke('init', '--yes', '--agent-skill', 'agents');
+
+  const skillFile = path.join(root, '.agents/skills/decision-graph/SKILL.md');
+  expect(readFileSync(skillFile, 'utf8')).toContain('name: decision-graph');
+  expect(readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toContain(
+    'Agent skill: `.agents/skills/decision-graph/SKILL.md`.',
+  );
+
+  writeFileSync(skillFile, '# Custom skill\n');
+  await invoke('init', '--yes');
+  expect(readFileSync(skillFile, 'utf8')).toBe('# Custom skill\n');
+});
+
+it('can skip agent skill provisioning', async () => {
+  const root = createTempProject();
+  process.chdir(root);
+  vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  await invoke('init', '--yes', '--agent-skill', 'none');
+
+  expect(existsSync(path.join(root, '.agents'))).toBe(false);
+  expect(readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).not.toContain(
+    'Agent skill:',
+  );
+});
+
+it('warns when a record id does not match its filename', async () => {
+  const root = createTempProject();
+  writeRecord(
+    root,
+    'docs/decisions/adr/ADR-0002-wrong.md',
+    hybridRecord('ADR-0003', ['src/**'], 'MUST', 'Do it.'),
+  );
+  process.chdir(root);
+  await invoke('init', '--yes');
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  await invoke('lint', '--json');
+
+  const report = JSON.parse(log.mock.calls[0][0] as string) as {
+    diagnostics: { code: string; severity: string }[];
+  };
+  expect(report.diagnostics).toContainEqual(
+    expect.objectContaining({ code: 'id-mismatch', severity: 'warning' }),
+  );
+});
+
 it('does not prompt to import when no Markdown records are present', async () => {
   const root = createTempProject();
   process.chdir(root);
@@ -109,6 +265,20 @@ it('does not prompt to import when no Markdown records are present', async () =>
       String(chunk).includes('Import records from'),
     ),
   ).toBe(false);
+});
+
+it('ignores non-record Markdown when detecting an ADR directory', async () => {
+  const root = createTempProject();
+  writeRecord(root, 'docs/adr/README.md', '# ADR index\n\n- No records yet.\n');
+  process.chdir(root);
+  vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+  await invoke('init', '--yes');
+
+  const config = JSON.parse(
+    readFileSync(path.join(root, '.dg/config.json'), 'utf8'),
+  ) as { adrDir: string };
+  expect(config.adrDir).toBe('docs/decisions/adr');
 });
 
 it('compiles a deterministic, budgeted managed block without changing surrounding text', async () => {
@@ -137,6 +307,7 @@ it('compiles a deterministic, budgeted managed block without changing surroundin
       'Run `dg context <files>` before editing.',
       'Record decisions with `dg sdr add`.',
       'MCP server: `dg mcp`.',
+      'Agent skill: `.agents/skills/decision-graph/SKILL.md`.',
       '',
       '## Accepted rules',
       'ADR-0001#1 [src/**/*.tsx] MUST Use the shared image rendering component for all image content.',
@@ -148,7 +319,7 @@ it('compiles a deterministic, budgeted managed block without changing surroundin
   const config = JSON.parse(readFileSync(configFile, 'utf8')) as {
     tokenBudget: number;
   };
-  config.tokenBudget = 58;
+  config.tokenBudget = 70;
   writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
 
   const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -850,6 +1021,27 @@ tags:
 ## Decision Outcome
 
 Use this decision.
+`;
+}
+
+function legacyRecord(): string {
+  return `# ADR 001: Village Hub
+
+**Status:** Accepted
+**Date:** 2026-06-16
+**Tags:** architecture, ux
+
+## Context
+
+Players need a hub.
+
+## Decision
+
+Build a hub.
+
+## Decision 1: Phaser village
+
+Use Phaser for the village.
 `;
 }
 

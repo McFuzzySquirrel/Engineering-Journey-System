@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { AdrRecordSchema, type Rule } from '../schema.js';
 import {
+  getDecisionOutcome,
   getFrontmatterRules,
   getSections,
   getSectionWithSubsections,
@@ -83,8 +84,7 @@ export function parseHybrid(source: string, filePath: string) {
       '',
     decisionDrivers: listItems(sections.get('decision drivers')),
     consideredOptions: listItems(sections.get('considered options')),
-    decisionOutcome:
-      sections.get('decision outcome') ?? sections.get('decision') ?? '',
+    decisionOutcome: getDecisionOutcome(sections),
     consequences: listItems(sections.get('consequences')),
     positiveConsequences: listItems(sections.get('positive consequences')),
     negativeConsequences: listItems(sections.get('negative consequences')),

@@ -1,26 +1,34 @@
 import { createHash } from 'node:crypto';
 import { FrontmatterSchema } from '../schema.js';
 import {
+  getDecisionOutcome,
   getFrontmatterRules,
   getSections,
+  parseInlineMetadata,
   parseRules,
   parseSource,
   parseVerification,
-  RecordParseError,
   validateRecord,
 } from './common.js';
-import { findTitle, inferId, normalizeStatus } from './madr.js';
+import {
+  findTitle,
+  inferId,
+  missingId,
+  missingTitle,
+  normalizeDate,
+  normalizeStatus,
+} from './madr.js';
 import { assignRuleIds } from './hybrid.js';
 
 export function parseAgent(source: string, filePath: string) {
   const parsed = parseSource(source, filePath);
   const sections = getSections(parsed.content);
+  const inline = parseInlineMetadata(parsed.content);
   const metadata = FrontmatterSchema.parse(parsed.data);
   const title = metadata.title ?? findTitle(parsed.content);
   const id = metadata.id ?? inferId(filePath, parsed.content);
-  if (!title || !id) {
-    throw new RecordParseError(filePath, 'could not determine ADR title or id');
-  }
+  if (!title) throw missingTitle(filePath);
+  if (!id) throw missingId(filePath);
 
   const rules = assignRuleIds(metadata.id ?? id, [
     ...getFrontmatterRules(metadata),
@@ -31,13 +39,12 @@ export function parseAgent(source: string, filePath: string) {
       id,
       type: metadata.type ?? 'adr',
       title,
-      status: normalizeStatus(metadata.status),
+      status: normalizeStatus(
+        metadata.status ?? sections.get('status') ?? inline.status,
+      ),
       appliesTo: metadata.applies_to ?? [],
-      tags: metadata.tags ?? [],
-      date:
-        metadata.date instanceof Date
-          ? metadata.date.toISOString().slice(0, 10)
-          : metadata.date,
+      tags: metadata.tags ?? inline.tags ?? [],
+      date: normalizeDate(metadata.date ?? inline.date),
       path: filePath,
       contentHash: createHash('sha256').update(source).digest('hex'),
       supersedes: metadata.supersedes ?? [],
@@ -55,7 +62,7 @@ export function parseAgent(source: string, filePath: string) {
         '',
       decisionDrivers: [],
       consideredOptions: [],
-      decisionOutcome: sections.get('decision outcome') ?? '',
+      decisionOutcome: getDecisionOutcome(sections),
       consequences: [],
       positiveConsequences: [],
       negativeConsequences: [],

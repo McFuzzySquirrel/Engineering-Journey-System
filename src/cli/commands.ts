@@ -12,10 +12,12 @@ import path from 'node:path';
 import { dump, load } from 'js-yaml';
 import type { Command } from 'commander';
 import {
+  AgentSkillSchema,
   ConfigSchema,
   parseConfig,
   parseRecord,
   type AdrRecord,
+  type AgentSkill,
   type Config,
   type DecisionRecord,
   type SdrRecord,
@@ -24,6 +26,7 @@ import { getContextRules } from '../core/context.js';
 import { collectMarkdownFiles } from '../core/markdown-files.js';
 import { lintProject } from '../core/project-lint.js';
 import { createSdr } from '../core/sdr.js';
+import { findProvisionedSkill, provisionDecisionSkill } from './skill.js';
 import {
   SQLiteStore,
   PostgresStore,
@@ -70,9 +73,31 @@ export function registerCommands(program: Command): void {
     .description('Initialize decision-graph in the current project')
     .option('--type <projectType>', 'project type', 'cli-tool')
     .option('-y, --yes', 'accept importing records from common ADR directories')
-    .action(async (options: { type: string; yes?: boolean }) => {
-      await initProject(process.cwd(), options.type, Boolean(options.yes));
-    });
+    .option('--force', 'rewrite an existing .dg/config.json')
+    .option('--adr-dir <path>', 'ADR directory to index')
+    .option(
+      '--agent-skill <target>',
+      'provision an agent skill: agents, opencode, claude, or none',
+    )
+    .action(
+      async (options: {
+        type: string;
+        yes?: boolean;
+        force?: boolean;
+        adrDir?: string;
+        agentSkill?: string;
+      }) => {
+        await initProject(process.cwd(), {
+          projectType: options.type,
+          yes: Boolean(options.yes),
+          force: Boolean(options.force),
+          adrDir: options.adrDir,
+          agentSkill: options.agentSkill
+            ? requireSkillTarget(options.agentSkill)
+            : undefined,
+        });
+      },
+    );
 
   program
     .command('import')
@@ -101,9 +126,13 @@ export function registerCommands(program: Command): void {
           if (files.length === 0) {
             throw new Error(`No Markdown records found at ${recordPath}`);
           }
-          const records = files.map((file) =>
-            parseFile(runtime.root, file, format),
-          );
+          const { records, failures } = parseFiles(runtime.root, files, format);
+          if (records.length === 0) {
+            reportFailures(failures);
+            throw new Error(
+              `No decision records could be parsed at ${recordPath}`,
+            );
+          }
           if (options.convert) {
             await indexRecords(runtime.store, runtime.config, records);
             const convertedRecords: DecisionRecord[] = [];
@@ -121,7 +150,7 @@ export function registerCommands(program: Command): void {
             runtime.config,
             records,
           );
-          printSyncResult(records.length, changed);
+          printSyncResult(records.length, changed, failures);
         } finally {
           runtime.store.close();
         }
@@ -146,6 +175,7 @@ export function registerCommands(program: Command): void {
             status: 'accepted',
           }),
         );
+        reportFailures(result.failures);
       } finally {
         runtime.store.close();
       }
@@ -685,30 +715,77 @@ function registerAdrDraftCommand(command: Command, description: string): void {
     );
 }
 
-async function initProject(
-  root: string,
-  projectType: string,
-  yes: boolean,
-): Promise<void> {
-  const configFile = path.join(root, CONFIG_PATH);
-  if (existsSync(configFile))
-    throw new Error(`Already initialized: ${CONFIG_PATH}`);
+interface InitOptions {
+  projectType: string;
+  yes: boolean;
+  force: boolean;
+  adrDir?: string;
+  agentSkill?: AgentSkill;
+}
 
+async function initProject(root: string, options: InitOptions): Promise<void> {
+  const configFile = path.join(root, CONFIG_PATH);
+  const existing = existsSync(configFile)
+    ? parseConfig(readFileSync(configFile, 'utf8'), CONFIG_PATH)
+    : undefined;
   const projectName = path.basename(root);
-  const config = ConfigSchema.parse({
-    project: projectName.toLowerCase().replace(/[^a-z0-9-]+/g, '-'),
-    projectType,
-    adrDir: DEFAULT_ADR_DIR,
-    sdrDir: DEFAULT_SDR_DIR,
-    agentsMd: 'AGENTS.md',
-    tokenBudget: 1500,
-    remote: null,
-  });
+
+  let config: Config;
+  if (existing && !options.force) {
+    config = { ...existing };
+    if (options.agentSkill) config.agentSkill = options.agentSkill;
+    if (options.adrDir) config.adrDir = options.adrDir;
+    console.log(`Resuming decision-graph initialization in ${root}`);
+  } else {
+    config = ConfigSchema.parse({
+      project: projectName.toLowerCase().replace(/[^a-z0-9-]+/g, '-'),
+      projectType: options.projectType,
+      adrDir: options.adrDir ?? DEFAULT_ADR_DIR,
+      sdrDir: DEFAULT_SDR_DIR,
+      agentsMd: 'AGENTS.md',
+      tokenBudget: 1500,
+      remote: null,
+      agentSkill: options.agentSkill ?? 'agents',
+    });
+  }
+
+  let additionalDirectories: string[] = [];
+  const allowAdoption =
+    !options.adrDir &&
+    (!existing || existing.adrDir === DEFAULT_ADR_DIR || options.force);
+  const candidates = allowAdoption ? detectAdrDirectories(root, config) : [];
+  if (!options.adrDir && candidates.length === 1) {
+    const [candidate] = candidates;
+    if (
+      options.yes ||
+      (await confirm(`Use ${candidate} as the ADR directory? [y/N] `))
+    ) {
+      config.adrDir = candidate;
+    } else {
+      additionalDirectories = candidates;
+    }
+  } else if (!options.adrDir && candidates.length > 1) {
+    additionalDirectories = candidates;
+  }
+
+  const configChanged =
+    !existing || JSON.stringify(existing) !== JSON.stringify(config);
   mkdirSync(path.dirname(configFile), { recursive: true });
   mkdirSync(path.join(root, config.adrDir), { recursive: true });
   mkdirSync(path.join(root, config.sdrDir), { recursive: true });
-  writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
+  if (configChanged) {
+    writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
+  }
   ensureGitignore(root);
+
+  const skill = provisionDecisionSkill(root, config.agentSkill);
+  if (skill && skill.action !== 'unchanged') {
+    console.log(
+      skill.action === 'skipped'
+        ? `Left existing agent skill untouched: ${skill.path}`
+        : `Provisioned agent skill: ${skill.path}`,
+    );
+  }
 
   const runtime = openRuntime(root);
   try {
@@ -717,15 +794,12 @@ async function initProject(
       name: projectName,
       type: config.projectType,
     });
-    const candidates = COMMON_ADR_DIRS.filter(
-      (directory) =>
-        collectMarkdownFiles(path.resolve(root, directory)).length > 0,
-    );
     const importCandidates =
-      candidates.length > 0 && (yes || (await confirmImport(candidates)));
+      additionalDirectories.length > 0 &&
+      (options.yes || (await confirmImport(additionalDirectories)));
     const result = await synchronize(
       runtime,
-      importCandidates ? candidates : [],
+      importCandidates ? additionalDirectories : [],
     );
     await compileInstructions(
       root,
@@ -739,6 +813,7 @@ async function initProject(
     console.log(
       `Indexed ${result.indexed} record(s); ${result.changed} changed, ${result.removed} removed.`,
     );
+    reportFailures(result.failures);
   } finally {
     runtime.store.close();
   }
@@ -899,10 +974,22 @@ function sanitizeRemoteOrigin(remote: string): string {
   return url.toString().replace(/\/+$/, '');
 }
 
+interface ParseFailure {
+  path: string;
+  message: string;
+}
+
+interface SyncResult {
+  indexed: number;
+  changed: number;
+  removed: number;
+  failures: ParseFailure[];
+}
+
 async function synchronize(
   runtime: Runtime,
   additionalDirectories: string[] = [],
-): Promise<{ indexed: number; changed: number; removed: number }> {
+): Promise<SyncResult> {
   const { root, config, store } = runtime;
   await store.upsertProject({
     id: config.project,
@@ -919,16 +1006,74 @@ async function synchronize(
     ),
     ...knownPaths.filter((file) => existsSync(file)),
   ]);
-  const records = [...files]
-    .sort()
-    .map((file) => parseFile(root, file, 'auto'));
+  const { records, failures } = parseFiles(root, files, 'auto');
   const changed = await indexRecords(store, config, records);
-  const removed = await store.deleteMissing(
-    config.project,
-    records.map((record) => record.id),
-  );
+  const failedPaths = new Set(failures.map((failure) => failure.path));
+  const retained = existing
+    .filter(
+      (record) =>
+        failedPaths.has(record.path) &&
+        existsSync(path.resolve(root, record.path)),
+    )
+    .map((record) => record.id);
+  const removed = await store.deleteMissing(config.project, [
+    ...new Set([...records.map((record) => record.id), ...retained]),
+  ]);
   await rebuildEdges(store, config.project, records);
-  return { indexed: records.length, changed, removed };
+  return { indexed: records.length, changed, removed, failures };
+}
+
+function parseFiles(
+  root: string,
+  files: Iterable<string>,
+  format: FormatName,
+): { records: DecisionRecord[]; failures: ParseFailure[] } {
+  const records: DecisionRecord[] = [];
+  const failures: ParseFailure[] = [];
+  for (const file of [...files].sort()) {
+    try {
+      records.push(parseFile(root, file, format));
+    } catch (error) {
+      failures.push({
+        path: path.relative(root, file).split(path.sep).join('/'),
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  return { records, failures };
+}
+
+function reportFailures(failures: ParseFailure[]): void {
+  if (failures.length === 0) return;
+  console.error(`${failures.length} record(s) could not be parsed:`);
+  for (const failure of failures) console.error(`  ${failure.message}`);
+  console.error('Fix these files or run "dg lint" for details.');
+  process.exitCode = 1;
+}
+
+function detectAdrDirectories(root: string, config: Config): string[] {
+  const adrDir = path.resolve(root, config.adrDir);
+  const sdrDir = path.resolve(root, config.sdrDir);
+  return COMMON_ADR_DIRS.filter((directory) => {
+    const absolute = path.resolve(root, directory);
+    if (isPathWithin(adrDir, absolute) || isPathWithin(absolute, adrDir)) {
+      return false;
+    }
+    return collectMarkdownFiles(absolute).some((file) => {
+      if (isPathWithin(sdrDir, file)) return false;
+      const fileName = path.basename(file);
+      if (/^(?:ADR[-_ ]?)?\d{1,4}[-_.]/i.test(fileName)) return true;
+      try {
+        const relative = path.relative(root, file).split(path.sep).join('/');
+        return (
+          parseRecord(readFileSync(file, 'utf8'), relative, 'auto').type ===
+          'adr'
+        );
+      } catch {
+        return false;
+      }
+    });
+  });
 }
 
 async function indexRecords(
@@ -1035,18 +1180,20 @@ function ensureGitignore(root: string): void {
   writeFileSync(file, `${current}${separator}${missing.join('\n')}\n`);
 }
 
-async function confirmImport(directories: string[]): Promise<boolean> {
+async function confirm(question: string): Promise<boolean> {
   const { createInterface } = await import('node:readline/promises');
   const { stdin, stdout } = await import('node:process');
   const prompt = createInterface({ input: stdin, output: stdout });
   try {
-    const answer = await prompt.question(
-      `Import records from ${directories.join(', ')}? [y/N] `,
-    );
+    const answer = await prompt.question(question);
     return /^y(es)?$/i.test(answer.trim());
   } finally {
     prompt.close();
   }
+}
+
+async function confirmImport(directories: string[]): Promise<boolean> {
+  return confirm(`Import records from ${directories.join(', ')}? [y/N] `);
 }
 
 async function promoteSdr(runtime: Runtime, id: string): Promise<string> {
@@ -1154,11 +1301,10 @@ async function createAdrDraft(
     type: 'adr',
   });
   const adrRecords = readAdrRecords(runtime);
-  const next = nextAdrNumber([
+  const id = nextAdrId([
     ...records.map((record) => record.id),
     ...adrRecords.map((record) => record.id),
   ]);
-  const id = `ADR-${String(next).padStart(4, '0')}`;
   const slug =
     title
       .toLowerCase()
@@ -1221,11 +1367,10 @@ async function writeConvertedDraft(
   const records = await runtime.store.list(runtime.config.project, {
     type: 'adr',
   });
-  const next = nextAdrNumber([
+  const id = nextAdrId([
     ...records.map((record) => record.id),
     ...adrRecords.map((record) => record.id),
   ]);
-  const id = `ADR-${String(next).padStart(4, '0')}`;
   const relativeFile = path.join(
     runtime.config.adrDir,
     `${id}-${
@@ -1282,13 +1427,16 @@ function renderHybridDraft(
   return `---\n${yaml}\n---\n\n# ${metadata.id}: ${metadata.title}\n\n## Agent Rules\n\n${rules}\n\n## Verify\n\n${checks}\n\n## Context and Problem Statement\n\n${(isAdr ? source.context : source?.why) || 'Describe the context and problem.'}\n\n## Decision Drivers\n\n${list(isAdr ? source.decisionDrivers : [])}\n\n## Considered Options\n\n${list(isAdr ? source.consideredOptions : (source?.alternatives ?? []))}\n\n## Decision Outcome\n\n${(isAdr ? source.decisionOutcome : source?.decision) || 'Describe the decision.'}\n\n### Positive Consequences\n\n${list(isAdr ? source.positiveConsequences : [])}\n\n### Negative Consequences\n\n${list(isAdr ? source.negativeConsequences : [])}\n\n## Pros and Cons of the Options\n\n${list(isAdr ? source.prosAndCons : [])}\n\n## Links\n\n${list(isAdr ? source.links : [])}\n`;
 }
 
-function nextAdrNumber(ids: string[]): number {
-  return (
-    ids.reduce((max, id) => {
-      const match = /^ADR-(\d+)$/i.exec(id);
-      return match ? Math.max(max, Number(match[1])) : max;
-    }, 0) + 1
-  );
+function nextAdrId(ids: string[]): string {
+  const numbers = ids.flatMap((id) => {
+    const match = /^ADR-(\d+)$/i.exec(id);
+    return match ? [match[1]] : [];
+  });
+  const width =
+    numbers.reduce((max, value) => Math.max(max, value.length), 0) || 4;
+  const next =
+    numbers.reduce((max, value) => Math.max(max, Number(value)), 0) + 1;
+  return `ADR-${String(next).padStart(width, '0')}`;
 }
 
 function outputRecords(records: GraphNode[], json?: boolean): void {
@@ -1303,8 +1451,13 @@ function printRecord(record: GraphNode): void {
   console.log(`${record.id} [${record.type}/${record.status}] ${record.title}`);
 }
 
-function printSyncResult(total: number, changed: number): void {
+function printSyncResult(
+  total: number,
+  changed: number,
+  failures: ParseFailure[] = [],
+): void {
   console.log(`Indexed ${total} record(s); ${changed} changed.`);
+  reportFailures(failures);
 }
 
 function validatedFilter(options: NodeFilter): NodeFilter {
@@ -1318,6 +1471,14 @@ function requireFormat(value: string): FormatName {
   if (FORMAT_NAMES.includes(value as FormatName)) return value as FormatName;
   throw new Error(
     `Invalid format "${value}". Expected one of ${FORMAT_NAMES.join(', ')}`,
+  );
+}
+
+function requireSkillTarget(value: string): AgentSkill {
+  const parsed = AgentSkillSchema.safeParse(value);
+  if (parsed.success) return parsed.data;
+  throw new Error(
+    `Invalid --agent-skill "${value}". Expected one of agents, opencode, claude, none`,
   );
 }
 
@@ -1354,19 +1515,25 @@ async function compileInstructions(
           `${rule.id} [${record.appliesTo.join(', ')}] ${rule.modality} ${rule.text}`,
       ),
     );
-  const instructionLines = [
+  const skillPath =
+    config.agentSkill === 'none' ? undefined : findProvisionedSkill(root);
+  const headerLines = [
     'Run `dg context <files>` before editing.',
     'Record decisions with `dg sdr add`.',
     'MCP server: `dg mcp`.',
+    ...(skillPath ? [`Agent skill: \`${skillPath}\`.`] : []),
     '',
     '## Accepted rules',
+  ];
+  const instructionLines = [
+    ...headerLines,
     ...(rules.length ? rules : ['No accepted rules are indexed.']),
   ];
   const includedRules = rules.length ? [] : ['No accepted rules are indexed.'];
   let omittedRules = false;
   for (const rule of rules) {
     const candidate = renderManagedBlock(
-      [...instructionLines.slice(0, 5), ...includedRules, rule],
+      [...headerLines, ...includedRules, rule],
       begin,
       end,
     );
@@ -1383,7 +1550,7 @@ async function compileInstructions(
       includedRules.length > 0 &&
       estimateTokens(
         renderManagedBlock(
-          [...instructionLines.slice(0, 5), ...includedRules, note],
+          [...headerLines, ...includedRules, note],
           begin,
           end,
         ),
@@ -1392,13 +1559,17 @@ async function compileInstructions(
       includedRules.pop();
     }
     instructionLines.splice(
-      5,
-      instructionLines.length - 5,
+      headerLines.length,
+      instructionLines.length - headerLines.length,
       ...includedRules,
       note,
     );
   } else {
-    instructionLines.splice(5, instructionLines.length - 5, ...includedRules);
+    instructionLines.splice(
+      headerLines.length,
+      instructionLines.length - headerLines.length,
+      ...includedRules,
+    );
   }
   const block = renderManagedBlock(instructionLines, begin, end);
   if (estimateTokens(block) > config.tokenBudget) {

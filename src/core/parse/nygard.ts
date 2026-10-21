@@ -1,29 +1,40 @@
 import { createHash } from 'node:crypto';
 import {
+  getDecisionOutcome,
   getSections,
   listItems,
+  parseInlineMetadata,
   parseSource,
-  RecordParseError,
   validateRecord,
 } from './common.js';
-import { findTitle, inferId, normalizeStatus } from './madr.js';
+import {
+  findTitle,
+  inferId,
+  missingId,
+  missingTitle,
+  normalizeDate,
+  normalizeStatus,
+} from './madr.js';
 
 export function parseNygard(source: string, filePath: string) {
   const { data, content } = parseSource(source, filePath);
   const sections = getSections(content);
+  const inline = parseInlineMetadata(content);
   const title = data.title ?? findTitle(content);
   const id = data.id ?? inferId(filePath, content);
-  if (!title || !id) {
-    throw new RecordParseError(filePath, 'could not determine ADR title or id');
-  }
+  if (!title) throw missingTitle(filePath);
+  if (!id) throw missingId(filePath);
 
-  const statusText = sections.get('status') ?? '';
+  const statusText = sections.get('status') ?? inline.status ?? '';
   const supersededBy = statusText.match(
-    /superseded by\s+(?:\[([^\]]+)\]|(ADR-\d{4}))/i,
+    /superseded by\s+(?:\[([^\]]+)\]|(ADR[-_ ]?\d{1,4}))/i,
   );
   const successor = supersededBy?.[1] ?? supersededBy?.[2];
   const relatesTo = [...(data.relates_to ?? [])];
-  if (successor && !relatesTo.includes(successor)) relatesTo.push(successor);
+  const successorId = successor ? normalizeAdrReference(successor) : undefined;
+  if (successorId && !relatesTo.includes(successorId)) {
+    relatesTo.push(successorId);
+  }
 
   return validateRecord(
     {
@@ -32,11 +43,8 @@ export function parseNygard(source: string, filePath: string) {
       title,
       status: normalizeStatus(statusText),
       appliesTo: data.applies_to ?? [],
-      tags: data.tags ?? [],
-      date:
-        data.date instanceof Date
-          ? data.date.toISOString().slice(0, 10)
-          : data.date,
+      tags: data.tags ?? inline.tags ?? [],
+      date: normalizeDate(data.date ?? inline.date),
       path: filePath,
       contentHash: createHash('sha256').update(source).digest('hex'),
       supersedes: data.supersedes ?? [],
@@ -51,7 +59,7 @@ export function parseNygard(source: string, filePath: string) {
         '',
       decisionDrivers: [],
       consideredOptions: [],
-      decisionOutcome: sections.get('decision') ?? '',
+      decisionOutcome: getDecisionOutcome(sections),
       consequences: listItems(sections.get('consequences')),
       positiveConsequences: listItems(sections.get('consequences')),
       negativeConsequences: [],
@@ -61,4 +69,9 @@ export function parseNygard(source: string, filePath: string) {
     },
     filePath,
   );
+}
+
+function normalizeAdrReference(value: string): string {
+  const match = value.match(/^(?:ADR[-_ ]?)?(\d{1,4})(?:[-_.].*)?$/i);
+  return match ? `ADR-${match[1]}` : value;
 }

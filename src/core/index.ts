@@ -1,11 +1,13 @@
 export {
   AdrRecordSchema,
+  AgentSkillSchema,
   ConfigSchema,
   RecordSchema,
   RuleSchema,
   SdrRecordSchema,
   VerifySchema,
   type AdrRecord,
+  type AgentSkill,
   type Config,
   type DecisionRecord,
   type Rule,

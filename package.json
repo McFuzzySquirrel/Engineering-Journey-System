@@ -22,9 +22,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "^13.0.3",
     "commander": "^14.0.2",
-    "gray-matter": "^4.0.3",
     "js-yaml": "^4.3.2",
     "pg": "^8.23.1",
     "picomatch": "^4.0.7",
@@ -43,8 +42,5 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.71.2",
     "vitest": "^4.1.11"
-  },
-  "overrides": {
-    "js-yaml": "^4.3.2"
   }
 }

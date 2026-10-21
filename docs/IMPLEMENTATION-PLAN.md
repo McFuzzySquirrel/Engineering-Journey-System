@@ -194,7 +194,7 @@ src/
 test/        unit + integration (vitest), fixtures/{hybrid,madr,nygard,agent,ejs}
 ```
 
-Planned dependencies: `commander`, `better-sqlite3`, `pg`, `zod`, `gray-matter`, `picomatch`, `@modelcontextprotocol/sdk`, `hono` (or node:http). Dev dependencies: `typescript`, `tsup`, `vitest`, `eslint`, `prettier`.
+Planned dependencies: `commander`, `better-sqlite3`, `pg`, `zod`, `js-yaml`, `picomatch`, `@modelcontextprotocol/sdk`, `hono` (or node:http). Dev dependencies: `typescript`, `tsup`, `vitest`, `eslint`, `prettier`.
 
 ---
 

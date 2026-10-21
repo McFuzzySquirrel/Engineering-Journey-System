@@ -1,4 +1,9 @@
-import { getSections, RecordParseError } from './common.js';
+import {
+  getFrontmatter,
+  getSections,
+  RecordParseError,
+  stripBom,
+} from './common.js';
 import { parseAgent } from './agent.js';
 import { parseHybrid } from './hybrid.js';
 import { parseMadr } from './madr.js';
@@ -7,19 +12,18 @@ import { parseNygard } from './nygard.js';
 export type RecordFormat = 'hybrid' | 'madr' | 'nygard' | 'agent';
 
 export function detectFormat(source: string, filePath = ''): RecordFormat {
-  const sections = getSections(source);
-  const frontmatter = source.match(
-    /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/,
-  )?.[1];
-  const hasFrontmatter = /^---[ \t]*\r?\n/.test(source);
-  if (hasFrontmatter) {
-    if (/^\s*type:\s*['"]?sdr['"]?\s*(?:#.*)?$/im.test(frontmatter ?? '')) {
+  const text = stripBom(source);
+  const frontmatter = getFrontmatter(text);
+  const body = frontmatter?.content ?? text;
+  const sections = getSections(body);
+  if (frontmatter) {
+    if (/^\s*type:\s*['"]?sdr['"]?\s*(?:#.*)?$/im.test(frontmatter.raw)) {
       return 'hybrid';
     }
-    if (/^---\s*[\r\n]+[\s\S]*?^\s*(?:rules|verify):/m.test(source)) {
+    if (/^\s*(?:rules|verify):/m.test(frontmatter.raw)) {
       return 'agent';
     }
-    if (/^##+\s+Agent Rules\s*$/im.test(source)) return 'hybrid';
+    if (/^##+\s+Agent Rules\s*$/im.test(body)) return 'hybrid';
     if (
       [
         'context and problem statement',
@@ -36,7 +40,7 @@ export function detectFormat(source: string, filePath = ''): RecordFormat {
     return 'agent';
   }
   if (
-    /(?:^|[/\\])\d{4}[-_.]/.test(filePath) &&
+    /(?:^|[/\\])(?:ADR[-_ ]?)?\d{1,4}[-_.]/.test(filePath) &&
     sections.has('decision') &&
     !sections.has('decision outcome')
   ) {

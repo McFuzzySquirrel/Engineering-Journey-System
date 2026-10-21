@@ -37,6 +37,7 @@ published. See the [README](../README.md#getting-started) for exact commands.
 | `agentsMd` | File where `dg compile` writes its managed block | `AGENTS.md` |
 | `tokenBudget` | Maximum size of the managed instruction block | `1500` |
 | `remote` | Default HTTP(S) server URL for push and pull, or `null` | `null` |
+| `agentSkill` | Agent skill target: `agents`, `opencode`, `claude`, or `none` | `agents` |
 
 `dg serve` accepts `--db` (default `.dg/server.db`), `--port` (default
 `3000`), and `--host` (default `127.0.0.1`). `dg push` and `dg pull` accept

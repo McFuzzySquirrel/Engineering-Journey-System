@@ -139,6 +139,73 @@ it('imports Nygard records and recognizes superseding links', async () => {
   ]);
 });
 
+it('imports short-numbered legacy ADRs with inline metadata and decision subsections', () => {
+  const source = `# ADR 001: Village Hub
+
+**Status:** Proposed
+**Date:** 2026-06-16
+**Tags:** architecture, ux
+
+## Context
+
+Players need a hub.
+
+## Decision
+
+Build a hub.
+
+## Decision 1: Phaser village
+
+Use Phaser for the village.
+
+## Decision 2: React overlays
+
+Keep HUD panels in React.
+`;
+
+  expect(detectFormat(source, 'docs/adr/001-village-hub.md')).toBe('nygard');
+  const record = parseRecord(source, 'docs/adr/001-village-hub.md');
+  expect(record.id).toBe('ADR-001');
+  expect(record.title).toBe('Village Hub');
+  expect(record.status).toBe('proposed');
+  expect(record.date).toBe('2026-06-16');
+  expect(record.tags).toEqual(['architecture', 'ux']);
+  if (record.type !== 'adr') throw new Error('expected ADR');
+  expect(record.decisionOutcome).toContain('Build a hub.');
+  expect(record.decisionOutcome).toContain('Use Phaser for the village.');
+  expect(record.decisionOutcome).toContain('Keep HUD panels in React.');
+});
+
+it('infers a spaced ADR heading and preserves the source digits', () => {
+  const source = `# ADR_004: Use a queue
+
+## Decision
+
+Queue writes.
+`;
+
+  const record = parseRecord(source, 'docs/adr/notes.md');
+  expect(record.id).toBe('ADR-004');
+  expect(record.title).toBe('Use a queue');
+});
+
+it('does not treat a plain numbered heading as an ADR id', () => {
+  expect(() =>
+    parseRecord(
+      '# 2024 Roadmap\n\n## Decision\n\nShip it.',
+      'docs/adr/notes.md',
+    ),
+  ).toThrow(/could not determine ADR id/);
+});
+
+it('ignores inline status lines that appear after the first section', () => {
+  const record = parseRecord(
+    '# ADR-0005: Scoped status\n\n## Context\n\n**Status:** Proposed\n',
+    'docs/adr/ADR-0005-scoped-status.md',
+  );
+  expect(record.status).toBe('accepted');
+});
+
 it('reports frontmatter validation errors with file and field names', () => {
   expect(() =>
     parseRecord(
@@ -167,6 +234,38 @@ it('validates project configuration and reports invalid fields', () => {
   expect(() => parseConfig('{"project":"demo"}', '.dg/config.json')).toThrow(
     /\.dg\/config\.json: invalid record \(projectType:/,
   );
+});
+
+it('parses empty frontmatter, CRLF line endings, and a leading BOM', () => {
+  const empty = parseRecord(
+    '---\n---\n# ADR-0006: Empty frontmatter\n\n## Decision\n\nUse it.',
+    'docs/adr/ADR-0006-empty.md',
+  );
+  expect(empty.id).toBe('ADR-0006');
+  expect(empty.title).toBe('Empty frontmatter');
+  expect(empty.body).toContain('## Decision');
+
+  const crlf = parseRecord(
+    '---\r\nid: ADR-0007\r\ntype: adr\r\ntitle: CRLF record\r\nstatus: accepted\r\n---\r\n\r\n# ADR-0007: CRLF record\r\n',
+    'docs/adr/ADR-0007-crlf.md',
+    'hybrid',
+  );
+  expect(crlf.id).toBe('ADR-0007');
+  expect(crlf.title).toBe('CRLF record');
+
+  const bom = parseRecord(
+    '\uFEFF---\nid: ADR-0008\ntype: adr\ntitle: BOM record\nstatus: accepted\n---\n\n# ADR-0008: BOM record\n',
+    'docs/adr/ADR-0008-bom.md',
+    'hybrid',
+  );
+  expect(bom.id).toBe('ADR-0008');
+  expect(bom.title).toBe('BOM record');
+});
+
+it('rejects frontmatter that is not a YAML mapping', () => {
+  expect(() =>
+    parseRecord('---\n- a\n- b\n---\nBody', 'docs/adr/list.md', 'hybrid'),
+  ).toThrow(/frontmatter must be a YAML mapping/);
 });
 
 it('rejects malformed frontmatter without crashing', () => {

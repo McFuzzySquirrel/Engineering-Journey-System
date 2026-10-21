@@ -138,8 +138,12 @@ server and storage boundaries.
 The native hybrid MADR format combines YAML frontmatter and Markdown sections
 for agent rules, checks, context, decision drivers, options, outcomes, and
 consequences. The parser also imports conventional MADR, Nygard/adr-tools,
-and agent-optimized records. `dg import --convert` creates proposed hybrid
-drafts and preserves source files; review drafts before accepting them.
+and agent-optimized records. IDs come from `id:` frontmatter, an `ADR-0001` or
+`ADR 001` heading, or numbered filenames such as `001-title.md`; source digits
+are preserved. Legacy records without frontmatter may carry `**Status:**`,
+`**Date:**`, and `**Tags:**` lines before the first section. `dg import
+--convert` creates proposed hybrid drafts and preserves source files; review
+drafts before accepting them.
 
 ## Getting Started
 
@@ -166,8 +170,14 @@ dg context src/index.ts
 ```
 
 `dg init` defaults `--type` to `cli-tool`. It creates `.dg/config.json`, ADR
-and SDR directories, and the local index; if it finds records in recognized
-ADR directories it offers to import them. Pass `--yes` to accept that prompt.
+and SDR directories, the local index, and an agent skill. If exactly one
+recognized ADR directory contains records, it offers to make that directory
+the configured `adrDir`; pass `--yes` to accept that and other import prompts.
+Re-running `dg init` resumes without rewriting existing configuration; pass
+`--force` to rewrite it. Use `--adr-dir <path>` to choose the ADR directory
+and `--agent-skill none` to skip skill provisioning. Files that cannot be
+parsed are reported individually and do not abort initialization; run
+`dg lint` for details.
 
 To use a source checkout without a global install, run `npm ci` and
 `npm run build`, then invoke `node /path/to/Engineering-Journey-System/dist/cli.js`
@@ -195,6 +205,7 @@ The CLI includes `init`, `import`, `sync`, `new`, `sdr`, `list`, `get`,
 | `agentsMd` | Managed guidance file | `AGENTS.md` |
 | `tokenBudget` | Compiled guidance budget | `1500` |
 | `remote` | Default remote server URL or `null` | `null` |
+| `agentSkill` | Agent skill target: `agents`, `opencode`, `claude`, or `none` | `agents` |
 
 The `dg serve` defaults are `.dg/server.db`, port `3000`, and host
 `127.0.0.1`. `DG_TEST_PG_URL` is only for optional integration tests.
@@ -207,6 +218,14 @@ details and safe handling.
 The stdio MCP server exposes `search`, `context`, `get`, `related`, `list`,
 `sdr_add`, and `lint`. See the [MCP client guide](docs/mcp.md) for Copilot CLI,
 VS Code, Claude Code, Cursor, and streamable-HTTP setup.
+
+### Agent skill
+
+`dg init` provisions `.agents/skills/decision-graph/SKILL.md` by default, with
+a short playbook for loading scoped rules, capturing SDRs, triaging `dg lint`
+diagnostics, and migrating legacy ADRs. Use `--agent-skill opencode` or
+`--agent-skill claude` for harness-specific directories, or `none` to skip it.
+Existing skill files without the managed version marker are never overwritten.
 
 ### Server setup
 
